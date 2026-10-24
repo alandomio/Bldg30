@@ -16,4 +16,10 @@ final class LocalizationTests: XCTestCase {
         XCTAssertFalse(usage.stale)
         XCTAssertTrue(usage.needsRefresh)
     }
+    func testMenuTooltipTranslatesDurationsAndFreshnessWithoutChangingItalian() {
+        let source = "Claude · 7 giorni · 58% utilizzato · ultimo dato, da aggiornare"
+        XCTAssertEqual(DeckLocalization.menuText(source, language: .italian), source)
+        XCTAssertEqual(DeckLocalization.menuText(source, language: .english), "Claude · 7 days · 58% used · last reading, needs refresh")
+        XCTAssertEqual(DeckLocalization.menuText("Claude · quota selezionata · non disponibile o in attesa di aggiornamento", language: .english), "Claude · selected quota · unavailable or awaiting refresh")
+    }
 }

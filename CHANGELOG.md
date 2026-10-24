@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 — 2026-10-24
+
+- Complete English menu bar tooltips, including quota durations, used/remaining labels and freshness messages.
+- Allow explicit toolchain, SDK and build-backend selection for Command Line Tools builds.
+
 ## 0.7.0 — 2026-10-24
 
 - Show dashboard RAM as a percentage, with byte totals and swap details.

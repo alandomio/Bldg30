@@ -68,10 +68,12 @@ public enum DeckLocalization {
         guard parts.count == arguments.count + 1 else { return template }
         return parts.enumerated().reduce("") { $0 + ($1.offset > 0 ? arguments[$1.offset - 1] : "") + $1.element }
     }
-    public static func menuText(_ value: String) -> String {
-        guard DeckLanguage.current.code == "en" else { return value }
-        var text = value.components(separatedBy: "\n").map { dynamic($0) }.joined(separator: "\n")
-        for (source, target) in [("rimanente", "remaining"), ("usato", "used"), ("non disponibile", "unavailable"), ("da aggiornare", "needs refresh"), ("scaduto", "expired")] {
+    public static func menuText(_ value: String, language: DeckLanguage = .current) -> String {
+        guard language.code == "en" else { return value }
+        var text = value.components(separatedBy: "\n").map { line in
+            line.components(separatedBy: " · ").map { dynamic($0, language: language) }.joined(separator: " · ")
+        }.joined(separator: "\n")
+        for (source, target) in [("non disponibile o in attesa di aggiornamento", "unavailable or awaiting refresh"), ("quota selezionata", "selected quota"), ("ultimo dato", "last reading"), ("da aggiornare", "needs refresh"), ("rimanente", "remaining"), ("utilizzato", "used"), ("usato", "used"), ("non disponibile", "unavailable"), ("scaduto", "expired")] {
             text = text.replacingOccurrences(of: source, with: target)
         }
         text = text.replacingOccurrences(of: "(?<=\\d)g\\b", with: "d", options: .regularExpression)

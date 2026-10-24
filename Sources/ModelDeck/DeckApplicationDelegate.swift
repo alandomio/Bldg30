@@ -133,6 +133,8 @@ import ModelDeckCore
         menuOptionsOverride = options; refreshStatusItem()
         let text = statusItem?.button?.title ?? ""
         let showsValues = text.contains("CPU 33%") && text.contains("RAM") && text.contains(DeckLocalization.menuText("Claude 7g 41% usato")) && text.contains(DeckLocalization.menuText("OpenAI 7g 58% usato"))
+        let tooltip = statusItem?.button?.toolTip ?? ""
+        let localizedTooltip = DeckLanguage.current.code == "en" ? tooltip.contains("7 days") && tooltip.contains("used") && !tooltip.contains("utilizzato") : tooltip.contains("7 giorni")
         let imageAndText = statusItem?.button?.imagePosition == .imageLeading && statusItem?.length == NSStatusItem.variableLength
         store.snapshot.cpu = 41
         let updatesValues = statusItem?.button?.title.contains("CPU 41%") == true
@@ -153,7 +155,7 @@ import ModelDeckCore
         let iconOnly = statusItem?.button?.title.isEmpty == true && statusItem?.length == NSStatusItem.squareLength
         return ["template_icon": statusItem?.button?.image?.isTemplate == true,
                 "button_target": statusItem?.button?.target === self,
-                "selected_values": showsValues, "image_and_text": imageAndText,
+                "selected_values": showsValues, "localized_tooltip": localizedTooltip, "image_and_text": imageAndText,
                 "live_values": updatesValues, "icon_only": iconOnly,
                 "values_while_open": valuesWhileOpen, "values_while_closed": valuesWhileClosed,
                 "two_rows": twoRows, "two_rows_width": compactWidth,

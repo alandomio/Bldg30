@@ -70,6 +70,8 @@ The local build is ad hoc signed. There is no Developer ID signature, notarizati
 
 The Command Line Tools can build the application; the XCTest suite requires the full Xcode test frameworks and an accepted Xcode license. To build with installed Command Line Tools without changing the global developer selection, use `env DEVELOPER_DIR=/Library/Developer/CommandLineTools bash scripts/build.sh`.
 
+If a tool update changes the available SDK or build engine, `MODELDECK_SWIFT`, `MODELDECK_SDK` and `MODELDECK_BUILD_SYSTEM` optionally pin those selections for this build. For example, with a compatible SDK already installed, use `MODELDECK_SWIFT=/Library/Developer/CommandLineTools/usr/bin/swift MODELDECK_SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk MODELDECK_BUILD_SYSTEM=native` in the build environment. The icon script uses the same selected SDK and the macOS 14 deployment target.
+
 For development, `swift run ModelDeck` works. A generated `ModelDeck.xcodeproj` is also included. To regenerate it after changing targets, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run `xcodegen generate`.
 
 ## Connect your tools
@@ -206,7 +208,7 @@ Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, 
 
 ## Versioning and release tags
 
-The current release is **0.7.0**; changes are listed in [CHANGELOG.md](CHANGELOG.md). Update `VERSION`, `DeckVersion.current` and `project.yml` together. The build reads `VERSION`, includes the localization resource bundle and writes the app's version metadata. Regenerate the Xcode project after adding files or changing its version:
+The current release is **0.7.1**; changes are listed in [CHANGELOG.md](CHANGELOG.md). Update `VERSION`, `DeckVersion.current` and `project.yml` together. The build reads `VERSION`, includes the localization resource bundle and writes the app's version metadata. Regenerate the Xcode project after adding files or changing its version:
 
 ```sh
 xcodegen generate

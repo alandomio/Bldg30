@@ -59,22 +59,22 @@ struct MenuBarLayoutsPreview: View {
     @EnvironmentObject var store: DeckStore
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Quote nella barra dei menu").font(.system(size: 22, weight: .semibold))
-            StatusPill(text: "ANTEPRIMA · DATI FITTIZI", color: DeckTheme.amber)
+            Text(L("Quote nella barra dei menu")).font(.system(size: 22, weight: .semibold))
+            StatusPill(text: L("ANTEPRIMA · DATI FITTIZI"), color: DeckTheme.amber)
             ForEach(MenuBarLayout.allCases, id: \.self) { layout in
                 let summary = summary(layout)
                 DeckCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(layout.title).font(.system(size: 12, weight: .semibold))
+                        Text(D(layout.title)).font(.system(size: 12, weight: .semibold))
                         HStack(spacing: 7) {
                             if layout == .twoRows { Image(nsImage: MenuBarBadge.image(for: summary)).renderingMode(.template).fixedSize() }
-                            else { Image(systemName: "square.stack.3d.up"); Text(summary.title).font(.system(size: 11, weight: .medium)).monospacedDigit() }
+                            else { Image(systemName: "square.stack.3d.up"); Text(D(summary.title)).font(.system(size: 11, weight: .medium)).monospacedDigit() }
                             Spacer()
                         }.frame(height: 24)
                     }
                 }
             }
-            Text("Le quote dell’esempio sono rimanenti. Finestra, reset e aggiornamento sono disponibili nel tooltip e nel pannello.")
+            Text(L("Le quote dell’esempio sono rimanenti. Finestra, reset e aggiornamento sono disponibili nel tooltip e nel pannello."))
                 .font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
         }.padding(24).frame(width: 650, height: 490).background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).deckAppearance(.light)
     }

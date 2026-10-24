@@ -32,9 +32,9 @@ struct SectionLabel: View {
     var trailing: String? = nil
     var body: some View {
         HStack {
-            Text(title).font(.system(size: 11, weight: .semibold, design: .monospaced)).tracking(1.8)
+            Text(D(title)).font(.system(size: 11, weight: .semibold, design: .monospaced)).tracking(1.8)
             Spacer()
-            if let trailing { Text(trailing).font(.system(size: 11)).tracking(0) }
+            if let trailing { Text(D(trailing)).font(.system(size: 11)).tracking(0) }
         }.foregroundStyle(DeckTheme.muted)
     }
 }
@@ -43,7 +43,7 @@ struct StatusPill: View {
     let text: String
     var color = DeckTheme.mint
     var body: some View {
-        HStack(spacing: 5) { Circle().fill(color).frame(width: 5, height: 5); Text(text).font(.system(size: 10, weight: .medium)) }
+        HStack(spacing: 5) { Circle().fill(color).frame(width: 5, height: 5); Text(D(text)).font(.system(size: 10, weight: .medium)) }
             .foregroundStyle(color).padding(.horizontal, 8).padding(.vertical, 5)
             .background(color.opacity(0.10), in: Capsule())
     }
@@ -59,7 +59,7 @@ struct Sparkline: View {
                 .interpolationMethod(.monotone)
             LineMark(x: .value("Campione", item.offset), y: .value("Percentuale", item.element)).foregroundStyle(color).lineStyle(.init(lineWidth: 1.6)).interpolationMethod(.monotone)
         }.chartXAxis(.hidden).chartYAxis(.hidden).chartYScale(domain: 0...100).frame(height: 48)
-            .accessibilityLabel("Storico, ultimi \(values.count) campioni")
+            .accessibilityLabel(L("Storico, ultimi \(values.count) campioni"))
     }
 }
 
@@ -70,16 +70,18 @@ struct MetricCard: View {
     var body: some View {
         DeckCard {
             VStack(alignment: .leading, spacing: 12) {
-                HStack { Image(systemName: symbol).foregroundStyle(color); Text(title).foregroundStyle(DeckTheme.muted); Spacer() }.font(.system(size: 11, weight: .medium))
+                HStack { Image(systemName: symbol).foregroundStyle(color); Text(D(title)).foregroundStyle(DeckTheme.muted); Spacer() }.font(.system(size: 11, weight: .medium))
                 Text(value).font(.system(size: 34, weight: .semibold, design: .rounded)).monospacedDigit().tracking(-1)
                 Sparkline(values: history, color: color)
-                Text(detail).font(.system(size: 10)).foregroundStyle(DeckTheme.muted).lineLimit(2).frame(height: 26, alignment: .topLeading)
+                Text(D(detail)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted).lineLimit(2).frame(height: 26, alignment: .topLeading)
             }
         }
     }
 }
 
 struct UsageCard: View {
+    @EnvironmentObject var store: DeckStore
+    @State private var showClaudeHelp = false
     let usage: SubscriptionUsage
     var compact = false
     var body: some View {
@@ -90,22 +92,26 @@ struct UsageCard: View {
                         .font(.system(size: 19, weight: .medium)).foregroundStyle(usage.provider == "Claude" ? DeckTheme.amber : DeckTheme.mint)
                         .frame(width: 34, height: 34).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(usage.provider).font(.system(size: 15, weight: .semibold))
-                        Text(usage.provider == "Claude" ? "Claude Code" : "Codex" + (usage.plan.map { " · " + $0.capitalized } ?? ""))
+                        Text(D(usage.provider)).font(.system(size: 15, weight: .semibold))
+                        Text(D(usage.provider == "Claude" ? "Claude Code" : "Codex" + (usage.plan.map { " · " + $0.capitalized } ?? "")))
                             .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                     }
                     Spacer()
-                    if !usage.windows.isEmpty { StatusPill(text: usage.stale || usage.message != nil ? "Da aggiornare" : "Collegato", color: usage.stale || usage.message != nil ? DeckTheme.amber : DeckTheme.mint) }
+                    if !usage.windows.isEmpty {
+                        if usage.provider == "Claude" {
+                            Button { showClaudeHelp = true } label: { StatusPill(text: D(usage.needsRefresh ? "Da aggiornare" : "Collegato"), color: usage.needsRefresh ? DeckTheme.amber : DeckTheme.mint) }.buttonStyle(.plain).help(L("Come aggiornare le quote di Claude Code"))
+                        } else { StatusPill(text: D(usage.needsRefresh ? "Da aggiornare" : "Collegato"), color: usage.needsRefresh ? DeckTheme.amber : DeckTheme.mint) }
+                    }
                 }
                 if usage.windows.isEmpty {
-                    Text(usage.message ?? "Quote non disponibili").font(.system(size: 12)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: compact ? 30 : 87, alignment: .topLeading)
+                    Text(D(usage.message ?? "Quote non disponibili")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: compact ? 30 : 87, alignment: .topLeading)
                 } else {
                     ForEach(usage.windows) { window in
                         VStack(alignment: .leading, spacing: 7) {
                             HStack {
-                                Text(window.title).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                                Text(D(window.title)).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                                 Spacer()
-                                Text(window.isExpired ? "Da aggiornare" : "\(DeckFormat.percent(window.usedPercent)) usato")
+                                Text(D(window.isExpired ? "Da aggiornare" : "\(DeckFormat.percent(window.usedPercent)) usato"))
                                     .font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(window.isExpired ? DeckTheme.muted : DeckTheme.foreground)
                             }
                             GeometryReader { geo in
@@ -114,23 +120,31 @@ struct UsageCard: View {
                             }.frame(height: 5)
                             if let reset = window.resetsAt {
                                 HStack(spacing: 3) {
-                                    Text(window.isExpired ? "Reset passato · attendi nuovi dati" : "Reset")
+                                    Text(D(window.isExpired ? "Reset passato · attendi nuovi dati" : "Reset"))
                                     if !window.isExpired { Text(reset, style: .relative) }
                                 }.font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
-                                .help(reset.formatted(date: .complete, time: .shortened))
+                                .help(D(reset.formatted(date: .complete, time: .shortened)))
                             }
                         }
                     }
-                    if let message = usage.message { Text(message).font(.system(size: 10)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
+                    if let message = usage.message { Text(D(message)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
                 }
                 if !compact {
                     HStack(spacing: 4) {
-                        Text(usage.source)
+                        Text(D(usage.source))
                         Spacer(minLength: 0)
                         if let date = usage.updatedAt { Text(date, style: .time).monospacedDigit() }
                     }.font(.system(size: 9)).foregroundStyle(DeckTheme.muted)
                 }
+                if usage.provider == "Claude" {
+                    HStack {
+                        Button { showClaudeHelp = true } label: { Label(L("Come aggiornare"), systemImage: "questionmark.circle") }
+                        Spacer()
+                        Button(L("Rileggi dati")) { if !store.demo { store.claude = ClaudeUsage.read() }; showClaudeHelp = true }
+                    }.font(.system(size: 10)).buttonStyle(.bordered)
+                }
             }
         }.frame(maxHeight: .infinity, alignment: .top)
+            .sheet(isPresented: $showClaudeHelp) { ClaudeRefreshView().environmentObject(store) }
     }
 }

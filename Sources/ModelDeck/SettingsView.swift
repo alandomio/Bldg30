@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var unslothURL = UserDefaults.standard.string(forKey: "unslothURL") ?? "http://127.0.0.1:8888"
     @AppStorage("sampleInterval") private var interval = 2.0
     @AppStorage("appearance") private var appearance = DeckAppearance.system.rawValue
+    @AppStorage("interfaceLanguage") private var language = DeckLanguage.automatic.rawValue
     @State private var token = ""
     @State private var tokenEdited = false
     @State private var unslothToken = ""
@@ -22,31 +23,40 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             DeckCard {
                 HStack {
-                    Text("Aspetto").font(.system(size: 15, weight: .semibold))
+                    Text(L("Aspetto")).font(.system(size: 15, weight: .semibold))
                     Spacer()
-                    Picker("Tema", selection: $appearance) {
-                        ForEach(DeckAppearance.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                    Picker(L("Tema"), selection: $appearance) {
+                        ForEach(DeckAppearance.allCases, id: \.rawValue) { Text(D($0.title)).tag($0.rawValue) }
                     }.pickerStyle(.segmented).frame(width: 280, height: 26)
+                }
+            }
+            DeckCard {
+                HStack {
+                    Text(L("Lingua")).font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                    Picker(L("Lingua dell’interfaccia"), selection: $language) {
+                        ForEach(DeckLanguage.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                    }.labelsHidden().pickerStyle(.segmented).frame(width: 280, height: 26)
                 }
             }
             MenuBarSettingsView()
             DeckCard {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Server locali").font(.system(size: 15, weight: .semibold))
+                    Text(L("Server locali")).font(.system(size: 15, weight: .semibold))
                     field("Ollama", value: $ollamaURL)
                     field("LM Studio", value: $lmStudioURL)
                     field("Unsloth", value: $unslothURL)
                     HStack {
-                        Text("Token LM Studio").frame(width: 115, alignment: .leading)
-                        SecureField("Opzionale · salvato nel Portachiavi", text: $token).textFieldStyle(.roundedBorder).onChange(of: token) { _, _ in tokenEdited = true }
+                        Text(L("Token LM Studio")).frame(width: 115, alignment: .leading)
+                        SecureField(L("Opzionale · salvato nel Portachiavi"), text: $token).textFieldStyle(.roundedBorder).onChange(of: token) { _, _ in tokenEdited = true }
                     }.font(.system(size: 11))
                     HStack {
-                        Text("API key Unsloth").frame(width: 115, alignment: .leading)
-                        SecureField("Opzionale · salvata nel Portachiavi", text: $unslothToken).textFieldStyle(.roundedBorder).onChange(of: unslothToken) { _, _ in unslothTokenEdited = true }
+                        Text(L("API key Unsloth")).frame(width: 115, alignment: .leading)
+                        SecureField(L("Opzionale · salvata nel Portachiavi"), text: $unslothToken).textFieldStyle(.roundedBorder).onChange(of: unslothToken) { _, _ in unslothTokenEdited = true }
                     }.font(.system(size: 11))
-                    Text("Sono ammessi solo localhost e indirizzi loopback. Nessuna scansione della rete.")
+                    Text(L("Sono ammessi solo localhost e indirizzi loopback. Nessuna scansione della rete."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
-                    Button("Salva e verifica") {
+                    Button(L("Salva e verifica")) {
                         do {
                             _ = try LocalHTTP.endpoint(ollamaURL); _ = try LocalHTTP.endpoint(lmStudioURL)
                             _ = try LocalHTTP.endpoint(unslothURL)
@@ -63,43 +73,43 @@ struct SettingsView: View {
             }
             DeckCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Cartelle dei modelli").font(.system(size: 15, weight: .semibold))
-                    Text("Incluse le cartelle standard di Ollama, LM Studio, Unsloth Studio e la cache Hugging Face condivisa. Aggiungi qui percorsi personalizzati o dischi esterni.")
+                    Text(L("Cartelle dei modelli")).font(.system(size: 15, weight: .semibold))
+                    Text(L("Incluse le cartelle standard di Ollama, LM Studio, Unsloth Studio e la cache Hugging Face condivisa. Aggiungi qui percorsi personalizzati o dischi esterni."))
                         .font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                     ForEach(folders, id: \.self) { folder in
                         HStack {
                             Image(systemName: "folder").foregroundStyle(DeckTheme.purple)
                             Text(folder.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")).font(.system(size: 10, design: .monospaced)).lineLimit(1)
                             Spacer()
-                            Button { folders.removeAll { $0 == folder }; saveFolders() } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain).help("Rimuovi cartella dall’inventario")
+                            Button { folders.removeAll { $0 == folder }; saveFolders() } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain).help(L("Rimuovi cartella dall’inventario"))
                         }
                     }
                     ForEach(unslothFolders, id: \.self) { folder in
                         HStack {
-                            Text("Unsloth").foregroundStyle(DeckTheme.amber)
+                            Text(L("Unsloth")).foregroundStyle(DeckTheme.amber)
                             Text(folder.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")).lineLimit(1)
                             Spacer()
                             Button { unslothFolders.removeAll { $0 == folder }; saveFolders() } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
                         }.font(.system(size: 10, design: .monospaced))
                     }
                     HStack {
-                        Button("Aggiungi cartella…") { chooseFolder(unsloth: false) }
-                        Button("Aggiungi cartella Unsloth…") { chooseFolder(unsloth: true) }
+                        Button(L("Aggiungi cartella…")) { chooseFolder(unsloth: false) }
+                        Button(L("Aggiungi cartella Unsloth…")) { chooseFolder(unsloth: true) }
                     }.buttonStyle(.bordered)
-                    Text("La cache Hugging Face può essere usata da più applicazioni; i suoi pesi sono raggruppati sotto Unsloth.")
+                    Text(L("La cache Hugging Face può essere usata da più applicazioni; i suoi pesi sono raggruppati sotto Unsloth."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
             }
             DeckCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Quote degli abbonamenti").font(.system(size: 15, weight: .semibold))
-                    Text("Codex usa l’account già collegato alla CLI. Accedi con codex login se la quota non compare. Non vengono avviate conversazioni né richieste ai modelli.")
+                    Text(L("Quote degli abbonamenti")).font(.system(size: 15, weight: .semibold))
+                    Text(L("Codex usa l’account già collegato alla CLI. Accedi con codex login se la quota non compare. Non vengono avviate conversazioni né richieste ai modelli."))
                         .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                     Divider()
-                    Text("Claude Code aggiorna le quote dopo le risposte. Il collegamento modifica ~/.claude/settings.json, conserva la status line attuale e salva solo percentuali e orari di reset. Il ripristino rimuove il collegamento.")
+                    Text(L("Claude Code aggiorna le quote dopo le risposte. Il collegamento modifica ~/.claude/settings.json, conserva la status line attuale e salva solo percentuali e orari di reset. Il ripristino rimuove il collegamento."))
                         .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                     HStack {
-                        Button(bridgeInstalled ? "Ripristina status line" : "Collega Claude Code") {
+                        Button(D(bridgeInstalled ? "Ripristina status line" : "Collega Claude Code")) {
                             do {
                                 if bridgeInstalled { try ClaudeBridge.uninstall() }
                                 else { try ClaudeBridge.install(executable: Bundle.main.executableURL!) }
@@ -107,31 +117,31 @@ struct SettingsView: View {
                                 feedback = bridgeInstalled ? "Collegato. Riavvia la sessione Claude Code e invia un messaggio." : "Status line precedente ripristinata."
                             } catch { feedback = error.localizedDescription }
                         }.buttonStyle(.bordered)
-                        Link("Documentazione", destination: URL(string: "https://code.claude.com/docs/en/statusline")!).font(.system(size: 11))
+                        Link(L("Documentazione"), destination: URL(string: "https://code.claude.com/docs/en/statusline")!).font(.system(size: 11))
                     }
-                    Text("Le quote di Codex non rappresentano tutti i limiti dell’app ChatGPT. Non sono costi API né percentuali di contesto.")
+                    Text(L("Le quote di Codex non rappresentano tutti i limiti dell’app ChatGPT. Non sono costi API né percentuali di contesto."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
             }
             DeckCard {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Text("Aggiornamento metriche").font(.system(size: 11)); Spacer()
-                        Picker("Intervallo", selection: $interval) { Text("2 secondi").tag(2.0); Text("5 secondi").tag(5.0); Text("10 secondi").tag(10.0) }.labelsHidden().frame(width: 150)
+                        Text(L("Aggiornamento metriche")).font(.system(size: 11)); Spacer()
+                        Picker(L("Intervallo"), selection: $interval) { Text(L("2 secondi")).tag(2.0); Text(L("5 secondi")).tag(5.0); Text(L("10 secondi")).tag(10.0) }.labelsHidden().frame(width: 150)
                     }
-                    Toggle("Apri all’accesso al Mac", isOn: $loginEnabled).font(.system(size: 11)).onChange(of: loginEnabled) { _, value in
+                    Toggle(L("Apri all’accesso al Mac"), isOn: $loginEnabled).font(.system(size: 11)).onChange(of: loginEnabled) { _, value in
                         do { if value { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
                         catch { feedback = error.localizedDescription; loginEnabled = SMAppService.mainApp.status == .enabled }
                     }
-                    Text("Modelli: ogni 30 s. Quote Codex: ogni 90 s. La disponibilità della metrica GPU dipende dal Mac; temperature e consumi non vengono stimati.")
+                    Text(L("Modelli: ogni 30 s. Quote Codex: ogni 90 s. La disponibilità della metrica GPU dipende dal Mac; temperature e consumi non vengono stimati."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
             }
-            if let feedback { Text(feedback).font(.system(size: 12)).foregroundStyle(DeckTheme.amber).textSelection(.enabled) }
+            if let feedback { Text(D(feedback)).font(.system(size: 12)).foregroundStyle(DeckTheme.amber).textSelection(.enabled) }
         }.tint(DeckTheme.mint)
     }
     private func field(_ label: String, value: Binding<String>) -> some View {
-        HStack { Text(label).frame(width: 115, alignment: .leading); TextField("", text: value).textFieldStyle(.roundedBorder) }.font(.system(size: 11))
+        HStack { Text(D(label)).frame(width: 115, alignment: .leading); TextField(L(""), text: value).textFieldStyle(.roundedBorder) }.font(.system(size: 11))
     }
     private func chooseFolder(unsloth: Bool) {
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = true

@@ -28,23 +28,23 @@ struct HubSearchView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                TextField("Nome parziale, autore/modello o link Hugging Face", text: $query)
+                TextField(L("Nome parziale, autore/modello o link Hugging Face"), text: $query)
                     .textFieldStyle(.roundedBorder).onSubmit { submit() }
                     .onChange(of: query) { _, _ in clearSearch() }
-                Button(searching ? "Ricerca…" : "Cerca", action: search).disabled(searching || query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
-                Button("Importa ID/link") { if let id = exactRepository { choose(id) } }.disabled(exactRepository == nil || searching)
+                Button(D(searching ? "Ricerca…" : "Cerca"), action: search).disabled(searching || query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+                Button(L("Importa ID/link")) { if let id = exactRepository { choose(id) } }.disabled(exactRepository == nil || searching)
             }
             HStack {
-                Picker("Formato", selection: $format) {
-                    ForEach(HubSearchFormat.allCases, id: \.self) { Text($0.title).tag($0) }
+                Picker(L("Formato"), selection: $format) {
+                    ForEach(HubSearchFormat.allCases, id: \.self) { Text(D($0.title)).tag($0) }
                 }.pickerStyle(.segmented).frame(width: 245)
                     .onChange(of: format) { _, _ in if searched || searching { search() } }
                 Spacer()
-                if importing { ProgressView().controlSize(.small); Text("Importazione metadati…").font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
+                if importing { ProgressView().controlSize(.small); Text(L("Importazione metadati…")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
             }
-            if let error { Text(error).font(.system(size: 11)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
+            if let error { Text(D(error)).font(.system(size: 11)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
             if !results.isEmpty {
-                Text("\(results.count) risultati · ordinati per download").font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+                Text(L("\(results.count) risultati · ordinati per download")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         ForEach(results) { model in
@@ -52,27 +52,27 @@ struct HubSearchView: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: "cube").foregroundStyle(DeckTheme.purple)
                                     VStack(alignment: .leading, spacing: 5) {
-                                        Text(model.repository).font(.system(size: 12, weight: .medium)).foregroundStyle(DeckTheme.foreground).lineLimit(1)
-                                        Text([model.format, model.task, model.gated ? "Accesso riservato" : nil].compactMap { $0 }.joined(separator: " · "))
+                                        Text(D(model.repository)).font(.system(size: 12, weight: .medium)).foregroundStyle(DeckTheme.foreground).lineLimit(1)
+                                        Text(D([model.format, model.task, model.gated ? "Accesso riservato" : nil].compactMap { $0 }.joined(separator: " · ")))
                                             .font(.system(size: 9)).foregroundStyle(DeckTheme.muted).lineLimit(1)
                                     }
                                     Spacer(minLength: 8)
                                     if let downloads = model.downloads {
-                                        Label(downloads.formatted(.number.notation(.compactName)), systemImage: "arrow.down")
-                                            .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).help("Download riportati da Hugging Face")
+                                        Label(D(downloads.formatted(.number.notation(.compactName))), systemImage: "arrow.down")
+                                            .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).help(L("Download riportati da Hugging Face"))
                                     }
-                                    Text("Seleziona").font(.system(size: 10, weight: .medium)).foregroundStyle(DeckTheme.mint)
+                                    Text(L("Seleziona")).font(.system(size: 10, weight: .medium)).foregroundStyle(DeckTheme.mint)
                                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
                                     .background(DeckTheme.subtle.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
                                     .contentShape(Rectangle())
-                            }.buttonStyle(.plain).help("Importa i metadati di " + model.repository)
+                            }.buttonStyle(.plain).help(D("Importa i metadati di " + model.repository))
                         }
                     }
                 }.frame(height: min(220, CGFloat(results.count) * 58))
             } else if searched && !searching && error == nil {
-                Text("Nessun modello trovato. Prova un nome più corto o cambia formato.").font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                Text(L("Nessun modello trovato. Prova un nome più corto o cambia formato.")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
             } else if !searching {
-                Text("Cerca anche solo “qwen”, “llama” o “gemma”, poi seleziona un risultato. Per un repository preciso usa Importa ID/link.")
+                Text(L("Cerca anche solo “qwen”, “llama” o “gemma”, poi seleziona un risultato. Per un repository preciso usa Importa ID/link."))
                     .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
             }
         }.disabled(importing).onDisappear { request?.cancel() }

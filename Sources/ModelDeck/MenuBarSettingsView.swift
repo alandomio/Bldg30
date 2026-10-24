@@ -10,28 +10,28 @@ struct MenuBarSettingsView: View {
     var body: some View {
         DeckCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Barra dei menu").font(.system(size: 15, weight: .semibold))
-                Text("Scegli i valori da affiancare all’icona. Disattivali tutti per mostrare solo l’icona.")
+                Text(L("Barra dei menu")).font(.system(size: 15, weight: .semibold))
+                Text(L("Scegli i valori da affiancare all’icona. Disattivali tutti per mostrare solo l’icona."))
                     .font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3), alignment: .leading, spacing: 10) {
-                    ForEach(MenuBarMetric.allCases, id: \.self) { metric in Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox) }
+                    ForEach(MenuBarMetric.allCases, id: \.self) { metric in Toggle(D(metric.title), isOn: metricBinding(metric)).toggleStyle(.checkbox) }
                 }.font(.system(size: 11))
                 HStack {
-                    Text("Disposizione").frame(width: 115, alignment: .leading)
-                    Picker("Disposizione", selection: optionBinding(\.layout)) {
-                        ForEach(MenuBarLayout.allCases, id: \.self) { Text($0.title).tag($0) }
+                    Text(L("Disposizione")).frame(width: 115, alignment: .leading)
+                    Picker(L("Disposizione"), selection: optionBinding(\.layout)) {
+                        ForEach(MenuBarLayout.allCases, id: \.self) { Text(D($0.title)).tag($0) }
                     }.pickerStyle(.segmented).labelsHidden().frame(width: 300)
                 }.font(.system(size: 11))
                 HStack {
-                    Text("Valore RAM").frame(width: 115, alignment: .leading)
-                    Picker("Valore RAM", selection: optionBinding(\.memoryStyle)) {
-                        ForEach(MenuBarMemoryStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                    Text(L("Valore RAM")).frame(width: 115, alignment: .leading)
+                    Picker(L("Valore RAM"), selection: optionBinding(\.memoryStyle)) {
+                        ForEach(MenuBarMemoryStyle.allCases, id: \.self) { Text(D($0.title)).tag($0) }
                     }.labelsHidden().disabled(!options.metrics.contains(.memory))
                 }.font(.system(size: 11))
                 HStack {
-                    Text("Percentuale quote").frame(width: 115, alignment: .leading)
-                    Picker("Percentuale quote", selection: optionBinding(\.quotaStyle)) {
-                        ForEach(MenuBarQuotaStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                    Text(L("Percentuale quote")).frame(width: 115, alignment: .leading)
+                    Picker(L("Percentuale quote"), selection: optionBinding(\.quotaStyle)) {
+                        ForEach(MenuBarQuotaStyle.allCases, id: \.self) { Text(D($0.title)).tag($0) }
                     }.pickerStyle(.segmented).labelsHidden().frame(width: 240)
                 }.font(.system(size: 11))
                 windowPicker("Finestra Claude", metric: .claude, usage: store.claude, selection: optionBinding(\.claudeWindowID))
@@ -41,15 +41,15 @@ struct MenuBarSettingsView: View {
                         Image(nsImage: MenuBarBadge.image(for: summary)).renderingMode(.template).fixedSize()
                     } else {
                         Image(systemName: "square.stack.3d.up")
-                        if !summary.title.isEmpty { Text(summary.title).monospacedDigit() }
+                        if !summary.title.isEmpty { Text(D(summary.title)).monospacedDigit() }
                     }
                     Spacer(minLength: 0)
                 }.font(.system(size: 11, weight: .medium)).padding(12)
-                    .background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 9)).help(summary.tooltip)
-                    .accessibilityLabel("Anteprima barra dei menu. " + summary.tooltip)
-                Text("Automatica mostra il limite più restrittivo disponibile. h = ore · g = giorni. * = ultimo dato da aggiornare; — = non disponibile. Il clic sull’icona apre il pannello; i valori restano nella barra.")
+                    .background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 9)).help(D(summary.tooltip))
+                    .accessibilityLabel(D("Anteprima barra dei menu. " + summary.tooltip))
+                Text(L("Automatica mostra il limite più restrittivo disponibile. h = ore · g = giorni. * = ultimo dato da aggiornare; — = non disponibile. Il clic sull’icona apre il pannello; i valori restano nella barra."))
                     .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
-                Text("Quote \(options.quotaStyle == .used ? "utilizzate" : "rimanenti"). Nelle viste compatta e su due righe, finestra e dettagli compaiono passando il puntatore sull’icona.")
+                Text(L("Quote \(options.quotaStyle == .used ? "utilizzate" : "rimanenti"). Nelle viste compatta e su due righe, finestra e dettagli compaiono passando il puntatore sull’icona."))
                     .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -70,12 +70,12 @@ struct MenuBarSettingsView: View {
     private func windowPicker(_ title: String, metric: MenuBarMetric, usage: SubscriptionUsage, selection: Binding<String>) -> some View {
         let automatic = MenuBarSummary.selectedWindow(in: usage, id: "", provider: metric)
         return HStack {
-            Text(title).frame(width: 115, alignment: .leading)
-            Picker(title, selection: selection) {
-                Text("Automatica · più restrittiva" + (automatic.map { " · " + $0.title } ?? "")).tag("")
-                ForEach(usage.windows) { window in Text(window.title).tag(window.id) }
+            Text(D(title)).frame(width: 115, alignment: .leading)
+            Picker(D(title), selection: selection) {
+                Text(D("Automatica · più restrittiva" + (automatic.map { " · " + $0.title } ?? ""))).tag("")
+                ForEach(usage.windows) { window in Text(D(window.title)).tag(window.id) }
                 if !selection.wrappedValue.isEmpty, !usage.windows.contains(where: { $0.id == selection.wrappedValue }) {
-                    Text("Finestra salvata · in attesa di dati").tag(selection.wrappedValue)
+                    Text(L("Finestra salvata · in attesa di dati")).tag(selection.wrappedValue)
                 }
             }.labelsHidden().disabled(!options.metrics.contains(metric))
         }.font(.system(size: 11))

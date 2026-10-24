@@ -4,6 +4,15 @@ import ModelDeckCore
 @main enum Launcher {
     @MainActor static func main() {
         let args = CommandLine.arguments
+        if args.contains("--check-services") {
+            Task {
+                let report = await PortInspector.read()
+                let result: [String: Any] = ["ports": report.ports.count, "services": report.services.count, "running": report.services.filter(\.running).count, "disabled": report.services.filter { $0.disabled == true }.count, "errors": report.errors]
+                if let data = try? JSONSerialization.data(withJSONObject: result, options: .sortedKeys) { print(String(decoding: data, as: UTF8.self)) }
+                exit(report.errors.isEmpty ? 0 : 1)
+            }
+            RunLoop.main.run(); return
+        }
         if let index = args.firstIndex(of: "--check-search"), args.indices.contains(index + 1) {
             Task {
                 do {
@@ -99,18 +108,28 @@ import ModelDeckCore
     @MainActor private static func renderPreview(to url: URL) {
         _ = NSApplication.shared
         let store = DeckStore(); store.useDemo()
-        let section = CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
+        let resource: ProcessSort = CommandLine.arguments.contains("--gpu") ? .gpu : CommandLine.arguments.contains("--memory") ? .memory : .cpu
+        if CommandLine.arguments.contains("--gpu-unattributed") || CommandLine.arguments.contains("--gpu-unavailable") {
+            store.processes = store.processes.map { process in var copy = process; copy.gpu = nil; return copy }
+            if CommandLine.arguments.contains("--gpu-unavailable") { store.snapshot.gpu = nil }
+        }
+        let section = CommandLine.arguments.contains("--services") ? "services" : CommandLine.arguments.contains("--disk") ? "disk" : CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
         let theme: DeckAppearance = CommandLine.arguments.contains("--light") ? .light : .dark
         let fit = CommandLine.arguments.contains("--fit")
+        if CommandLine.arguments.contains("--stale-claude") { store.claude.updatedAt = Date().addingTimeInterval(-7200); store.claude.windows[0].resetsAt = Date().addingTimeInterval(-3600) }
+        if CommandLine.arguments.contains("--claude-help") {
+            let hosting = NSHostingView(rootView: ClaudeRefreshView().environmentObject(store).deckAppearance(theme))
+            writePreview(hosting, to: url, width: 680, height: 660); return
+        }
         if CommandLine.arguments.contains("--menu-bar") {
             let hosting = NSHostingView(rootView: MenuBarLayoutsPreview().environmentObject(store))
             writePreview(hosting, to: url, width: 650, height: 490); return
         }
         if fit { store.machine.memory = UInt64(16 * gibibyte); store.machine.metalWorkingSet = UInt64(12 * gibibyte); store.snapshot.memoryTotal = store.machine.memory; store.snapshot.memoryUsed = UInt64(8 * gibibyte) }
-        let content: AnyView = fit ? AnyView(ModelFitView(demonstration: true, demonstrateSearch: CommandLine.arguments.contains("--search"), appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT"))) : AnyView(Dashboard(initialSection: section, appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT")))
+        let content: AnyView = fit ? AnyView(ModelFitView(demonstration: true, demonstrateSearch: CommandLine.arguments.contains("--search"), appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT"))) : AnyView(Dashboard(initialSection: section, initialProcessSort: resource, appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT")))
         let hosting = NSHostingView(rootView: content)
-        let height = fit ? 850 : section == "processes" ? 940 : section == "settings" ? 1500 : section == "credits" ? 850 : 1360
-        writePreview(hosting, to: url, width: fit ? 840 : 1180, height: CGFloat(height))
+        let height = fit ? 850 : section == "processes" ? 1580 : section == "settings" ? 1500 : section == "credits" ? 850 : 1360
+        writePreview(hosting, to: url, width: fit ? 840 : CommandLine.arguments.contains("--narrow") ? 940 : 1180, height: CGFloat(height))
     }
     @MainActor private static func writePreview<Content: View>(_ hosting: NSHostingView<Content>, to url: URL, width: CGFloat, height: CGFloat) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -137,7 +156,7 @@ struct MenuPanel: View {
             VStack(spacing: 14) {
                 HStack {
                     Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint)
-                    Text("ModelDeck").font(.system(size: 16, weight: .semibold)); Spacer()
+                    Text(L("ModelDeck")).font(.system(size: 16, weight: .semibold)); Spacer()
                     Text(store.machine.chip).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
                 HStack(spacing: 10) {
@@ -148,25 +167,25 @@ struct MenuPanel: View {
                 UsageCard(usage: store.claude, compact: true)
                 UsageCard(usage: store.codex, compact: true)
                 HStack {
-                    Label("\(store.inventory.models.count) modelli locali", systemImage: "cube").font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                    Label(L("\(store.inventory.models.count) modelli locali"), systemImage: "cube").font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                     Spacer()
-                    if let battery = store.snapshot.battery { Label(DeckFormat.percent(battery), systemImage: store.snapshot.charging ? "battery.100percent.bolt" : "battery.75percent").font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
+                    if let battery = store.snapshot.battery { Label(D(DeckFormat.percent(battery)), systemImage: store.snapshot.charging ? "battery.100percent.bolt" : "battery.75percent").font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
                 }
                 HStack {
-                    Button("Apri cruscotto", action: openDashboard).buttonStyle(.borderedProminent).tint(DeckTheme.mint)
-                    Button("Processi", action: openProcesses).buttonStyle(.bordered)
+                    Button(L("Apri cruscotto"), action: openDashboard).buttonStyle(.borderedProminent).tint(DeckTheme.mint)
+                    Button(L("Processi"), action: openProcesses).buttonStyle(.bordered)
                 }
                 HStack {
-                    Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.help("Impostazioni")
+                    Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.help(L("Impostazioni"))
                     Spacer()
-                    Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.help("Esci da ModelDeck")
+                    Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.help(L("Esci da ModelDeck"))
                 }.buttonStyle(.plain).foregroundStyle(DeckTheme.muted)
             }.padding(18)
         }.frame(width: 420, height: 680).background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).deckAppearance().onAppear { store.start() }
     }
     private func mini(_ title: String, _ value: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 9)).foregroundStyle(DeckTheme.muted)
+            Text(D(title)).font(.system(size: 9)).foregroundStyle(DeckTheme.muted)
             Text(value).font(.system(size: 25, weight: .semibold, design: .rounded)).foregroundStyle(color).monospacedDigit()
         }.frame(maxWidth: .infinity, alignment: .leading).padding(14).background(DeckTheme.card, in: RoundedRectangle(cornerRadius: 12))
     }

@@ -9,6 +9,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Validate English translations
+        run: python3 scripts/check-localization.py
       - name: Test parsers, privacy and configuration recovery
         run: swift test
       - name: Build macOS application

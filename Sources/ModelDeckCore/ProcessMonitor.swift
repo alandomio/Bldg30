@@ -4,6 +4,27 @@ import IOKit
 
 public enum ProcessSort: String, CaseIterable, Sendable {
     case cpu = "CPU", memory = "Memoria", gpu = "GPU"
+
+    public func sorted(_ processes: [RunningProcess], descending: Bool = true) -> [RunningProcess] {
+        processes.sorted { lhs, rhs in
+            switch (value(for: lhs), value(for: rhs)) {
+            case let (a?, b?) where a != b: return descending ? a > b : a < b
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return lhs.pid < rhs.pid
+            }
+        }
+    }
+
+    public func value(for process: RunningProcess) -> Double? {
+        let value: Double?
+        switch self {
+        case .cpu: value = process.cpu
+        case .memory: value = process.memory.map { Double($0) }
+        case .gpu: value = process.gpu
+        }
+        return value.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+    }
 }
 
 public struct ProcessIdentity: Hashable, Sendable {
@@ -26,13 +47,86 @@ public struct RunningProcess: Identifiable, Sendable {
     public let gpuClient: Bool
     public let threads: Int?
     public var pid: Int32 { id.pid }
+    public var appBundlePath: String? {
+        guard let path, path.hasPrefix("/") else { return nil }
+        let components = URL(fileURLWithPath: path).pathComponents
+        guard let index = components.firstIndex(where: { $0.lowercased().hasSuffix(".app") }) else { return nil }
+        return NSString.path(withComponents: Array(components.prefix(index + 1)))
+    }
+    public var resourceGroupID: String {
+        appBundlePath.map { "app:\($0)" } ?? "process:\(pid):\(id.startedSeconds):\(id.startedMicroseconds)"
+    }
     public var isMine: Bool { userID == geteuid() }
     public var canTerminate: Bool {
         isMine && pid > 1 && pid != getpid() && !["loginwindow", "WindowServer", "launchd", "kernel_task"].contains(name)
     }
+    public func memoryPercent(totalMemory: UInt64) -> Double? {
+        guard let memory, totalMemory > 0 else { return nil }
+        return Double(memory) / Double(totalMemory) * 100
+    }
+    public func highUsageResources(totalMemory: UInt64) -> [ProcessSort] {
+        var resources: [ProcessSort] = []
+        // CPU percentages use one core; memory uses the Mac's physical RAM.
+        if let cpu, cpu.isFinite, cpu >= 80 { resources.append(.cpu) }
+        if let percent = memoryPercent(totalMemory: totalMemory), percent >= 10 { resources.append(.memory) }
+        if let gpu, gpu.isFinite, gpu >= 50 { resources.append(.gpu) }
+        return resources
+    }
     public init(id: ProcessIdentity, name: String, path: String?, userID: UInt32, cpu: Double?, memory: UInt64?, gpu: Double?, gpuClient: Bool, threads: Int?) {
         self.id = id; self.name = name; self.path = path; self.userID = userID; self.cpu = cpu
         self.memory = memory; self.gpu = gpu; self.gpuClient = gpuClient; self.threads = threads
+    }
+}
+
+public struct ProcessResourceGroup: Identifiable, Sendable {
+    public let id: String
+    public let name: String
+    public let bundlePath: String?
+    public let processes: [RunningProcess]
+    /// Sum of readable resident sizes, not exclusive physical RAM or memory freed on quit.
+    public var memory: UInt64? {
+        let known = processes.compactMap(\.memory)
+        guard !known.isEmpty else { return nil }
+        return known.reduce(0) { sum, bytes in
+            let result = sum.addingReportingOverflow(bytes)
+            return result.overflow ? .max : result.partialValue
+        }
+    }
+    public func value(for resource: ProcessSort) -> Double? {
+        if resource == .memory { return memory.map { Double($0) } }
+        let known = processes.compactMap { resource.value(for: $0) }
+        guard !known.isEmpty else { return nil }
+        let total = known.reduce(0, +)
+        return total.isFinite ? total : nil
+    }
+    public func unavailableCount(for resource: ProcessSort) -> Int {
+        processes.filter { (resource != .gpu || $0.gpuClient) && resource.value(for: $0) == nil }.count
+    }
+    public func isRelevant(for resource: ProcessSort) -> Bool {
+        value(for: resource) != nil || (resource == .gpu && processes.contains(where: \.gpuClient))
+    }
+    /// CPU is normalized to all logical cores; the raw process value remains one-core based.
+    public func capacityPercent(for resource: ProcessSort, totalMemory: UInt64, cores: Int) -> Double? {
+        guard let value = value(for: resource) else { return nil }
+        switch resource {
+        case .cpu: return cores > 0 ? value / Double(cores) : nil
+        case .memory: return totalMemory > 0 ? value / Double(totalMemory) * 100 : nil
+        case .gpu: return value
+        }
+    }
+    public static func groups(_ processes: [RunningProcess], sortedBy resource: ProcessSort = .memory) -> [ProcessResourceGroup] {
+        Dictionary(grouping: processes, by: \.resourceGroupID).map { id, members in
+            let ordered = members.sorted { $0.pid < $1.pid }
+            let path = ordered[0].appBundlePath
+            return ProcessResourceGroup(id: id, name: path.map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent } ?? ordered[0].name, bundlePath: path, processes: ordered)
+        }.sorted { lhs, rhs in
+            switch (lhs.value(for: resource), rhs.value(for: resource)) {
+            case let (a?, b?) where a != b: return a > b
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return lhs.id < rhs.id
+            }
+        }
     }
 }
 

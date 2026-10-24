@@ -18,5 +18,5 @@ struct DeckAppearanceModifier: ViewModifier {
 }
 
 extension View {
-    func deckAppearance(_ override: DeckAppearance? = nil) -> some View { modifier(DeckAppearanceModifier(override: override)) }
+    func deckAppearance(_ override: DeckAppearance? = nil) -> some View { modifier(DeckAppearanceModifier(override: override)).deckLanguage() }
 }

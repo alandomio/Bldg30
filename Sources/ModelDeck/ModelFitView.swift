@@ -46,76 +46,76 @@ struct ModelFitView: View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Questo modello sta nel tuo Mac?").font(.system(size: 24, weight: .semibold)).tracking(-0.7)
-                    Text("Stima per inferenza · pesi + cache KV + margine del runtime").font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                    Text(L("Questo modello sta nel tuo Mac?")).font(.system(size: 24, weight: .semibold)).tracking(-0.7)
+                    Text(L("Stima per inferenza · pesi + cache KV + margine del runtime")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                 }
                 Spacer()
-                Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 20)).foregroundStyle(DeckTheme.muted) }.buttonStyle(.plain).help("Chiudi")
+                Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 20)).foregroundStyle(DeckTheme.muted) }.buttonStyle(.plain).help(L("Chiudi"))
             }.padding(24)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 8) {
-                        StatusPill(text: store.machine.chip)
-                        Text("RAM " + MemoryEstimator.gib(Double(store.machine.memory))).font(.system(size: 11))
+                        StatusPill(text: D(store.machine.chip))
+                        Text(D("RAM " + MemoryEstimator.gib(Double(store.machine.memory)))).font(.system(size: 11))
                         Spacer()
                         if let limit = store.machine.metalWorkingSet, store.machine.unifiedMemory {
-                            Text("Budget consigliato Metal " + MemoryEstimator.gib(Double(limit))).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+                            Text(D("Budget consigliato Metal " + MemoryEstimator.gib(Double(limit)))).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                         }
                     }
-                    if store.demo { StatusPill(text: "ANTEPRIMA · DATI FITTIZI", color: DeckTheme.amber) }
+                    if store.demo { StatusPill(text: L("ANTEPRIMA · DATI FITTIZI"), color: DeckTheme.amber) }
                     if let model = localModel {
                         HStack {
                             Image(systemName: "cube.fill").foregroundStyle(DeckTheme.purple)
                             Text(model.name).font(.system(size: 13, weight: .medium)).lineLimit(2)
                             Spacer()
-                            Text(DeckFormat.bytes(model.bytes)).font(.system(size: 11, design: .monospaced))
+                            Text(D(DeckFormat.bytes(model.bytes))).font(.system(size: 11, design: .monospaced))
                         }
                     }
                     DeckCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Metadati da Hugging Face").font(.system(size: 14, weight: .semibold))
+                            Text(L("Metadati da Hugging Face")).font(.system(size: 14, weight: .semibold))
                             HubSearchView(initialQuery: localModel?.name ?? "", importing: loading, demonstration: demonstrateSearch, onSelect: lookup)
-                            if let hub { Text("Modello selezionato · " + hub.repository).font(.system(size: 11, weight: .medium)).textSelection(.enabled) }
+                            if let hub { Text(D("Modello selezionato · " + hub.repository)).font(.system(size: 11, weight: .medium)).textSelection(.enabled) }
                             if let hub, !hub.variants.isEmpty {
-                                Picker("Pesi / quantizzazione", selection: $variantID) {
+                                Picker(L("Pesi / quantizzazione"), selection: $variantID) {
                                     ForEach(hub.variants) { variant in Text(variant.name + " · " + DeckFormat.bytes(variant.bytes)).tag(variant.id) }
                                 }.onChange(of: variantID) { _, _ in applyVariant() }
                             }
-                            Text(source).font(.system(size: 10)).foregroundStyle(DeckTheme.muted).textSelection(.enabled)
-                            if let error { Text(error).font(.system(size: 11)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
+                            Text(D(source)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted).textSelection(.enabled)
+                            if let error { Text(D(error)).font(.system(size: 11)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true) }
                         }
                     }
                     DeckCard {
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
-                                Text("Dimensione dei pesi").font(.system(size: 14, weight: .semibold))
+                                Text(L("Dimensione dei pesi")).font(.system(size: 14, weight: .semibold))
                                 Spacer()
-                                Toggle("Stima dai parametri", isOn: $estimateWeights).toggleStyle(.checkbox).font(.system(size: 10))
+                                Toggle(L("Stima dai parametri"), isOn: $estimateWeights).toggleStyle(.checkbox).font(.system(size: 10))
                             }
                             if estimateWeights {
                                 HStack(spacing: 20) {
                                     number("Parametri totali (miliardi)", value: $parametersB)
                                     number("Bit effettivi per peso", value: $bitsPerWeight)
                                 }
-                                Text("Usa i parametri totali anche per i modelli MoE. 4,5 bit/peso è un’ipotesi modificabile; la dimensione di un file quantizzato reale è preferibile.")
+                                Text(L("Usa i parametri totali anche per i modelli MoE. 4,5 bit/peso è un’ipotesi modificabile; la dimensione di un file quantizzato reale è preferibile."))
                                     .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                             } else { number("Pesi (GiB) · da file o inserimento manuale", value: $weightsGiB) }
                             HStack(spacing: 20) {
                                 integer("Contesto totale (token)", value: $context)
                                 Stepper("Sequenze: \(sequences)", value: $sequences, in: 1...8).font(.system(size: 11)).frame(maxWidth: .infinity)
                             }
-                            Picker("Cache KV", selection: $precision) { ForEach(KVPrecision.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.font(.system(size: 11))
-                            if precision != .fp16 { Text("Cache quantizzata: verifica il supporto del backend e del modello. La stima include i blocchi Q8_0/Q4_0 di llama.cpp.").font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
+                            Picker(L("Cache KV"), selection: $precision) { ForEach(KVPrecision.allCases, id: \.self) { Text(D($0.rawValue)).tag($0) } }.font(.system(size: 11))
+                            if precision != .fp16 { Text(L("Cache quantizzata: verifica il supporto del backend e del modello. La stima include i blocchi Q8_0/Q4_0 di llama.cpp.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
                             DisclosureGroup("Architettura e margini · \(profile.source)") {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack(spacing: 14) { integer("Layer con cache KV", value: $profile.layers); integer("Teste KV", value: $profile.kvHeads) }
                                     HStack(spacing: 14) { integer("Dimensione testa K", value: $profile.keyDimension); integer("Dimensione testa V", value: $profile.valueDimension) }
                                     HStack(spacing: 14) { number("Riserva macOS (GiB)", value: $reserveGiB); number("Memoria extra (GiB)", value: $extraGiB) }
-                                    Toggle("Usa il budget Metal consigliato", isOn: $useMetal).font(.system(size: 11)).disabled(!store.machine.unifiedMemory)
+                                    Toggle(L("Usa il budget Metal consigliato"), isOn: $useMetal).font(.system(size: 11)).disabled(!store.machine.unifiedMemory)
                                     if let caveat = profile.caveat {
-                                        Text(caveat).font(.system(size: 11)).foregroundStyle(DeckTheme.amber)
-                                        Toggle("Assumi questi parametri come attenzione standard", isOn: $assumeStandard).font(.system(size: 10))
+                                        Text(D(caveat)).font(.system(size: 11)).foregroundStyle(DeckTheme.amber)
+                                        Toggle(L("Assumi questi parametri come attenzione standard"), isOn: $assumeStandard).font(.system(size: 10))
                                     }
                                 }.padding(.top, 10)
                             }.font(.system(size: 11))
@@ -125,9 +125,9 @@ struct ModelFitView: View {
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Image(systemName: result.verdict == .fits ? "checkmark.circle.fill" : result.verdict == .tooLarge ? "xmark.circle.fill" : "questionmark.circle.fill").foregroundStyle(verdictColor)
-                                Text(result.verdict.rawValue).font(.system(size: 18, weight: .semibold))
+                                Text(D(result.verdict.rawValue)).font(.system(size: 18, weight: .semibold))
                                 Spacer()
-                                Text(MemoryEstimator.gib(result.total ?? result.minimum)).font(.system(size: 22, weight: .semibold, design: .rounded))
+                                Text(D(MemoryEstimator.gib(result.total ?? result.minimum))).font(.system(size: 22, weight: .semibold, design: .rounded))
                             }
                             breakdown
                             HStack {
@@ -137,24 +137,24 @@ struct ModelFitView: View {
                                 Spacer()
                                 part("Budget modello", result.budget, DeckTheme.mint)
                             }
-                            Text(result.note).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
+                            Text(D(result.note)).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                             if result.verdict == .fits || result.verdict == .tight,
                                localModel?.loaded != true,
                                let total = result.total,
                                total > max(0, Double(store.snapshot.memoryTotal) - Double(store.snapshot.memoryUsed)) {
-                                Text("Con il carico attuale potrebbe servire liberare altra RAM, se questo modello non è già caricato.").font(.system(size: 11)).foregroundStyle(DeckTheme.amber)
+                                Text(L("Con il carico attuale potrebbe servire liberare altra RAM, se questo modello non è già caricato.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber)
                             }
-                            if result.verdict == .incomplete { Text("Il totale mostrato è parziale o basato su ipotesi non confermate.").font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
-                            Text("Margine runtime: 15% dei pesi, minimo 1 GiB, più la memoria extra. La disponibilità attuale è circa \(MemoryEstimator.gib(max(0, Double(store.snapshot.memoryTotal) - Double(store.snapshot.memoryUsed)))): altre app e modelli caricati condividono la RAM.")
+                            if result.verdict == .incomplete { Text(L("Il totale mostrato è parziale o basato su ipotesi non confermate.")).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
+                            Text(L("Margine runtime: 15% dei pesi, minimo 1 GiB, più la memoria extra. La disponibilità attuale è circa \(MemoryEstimator.gib(max(0, Double(store.snapshot.memoryTotal) - Double(store.snapshot.memoryUsed)))): altre app e modelli caricati condividono la RAM."))
                                 .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     HStack {
-                        Link("Come si calcola la cache KV", destination: URL(string: "https://huggingface.co/blog/kv-cache-quantization")!)
+                        Link(L("Come si calcola la cache KV"), destination: URL(string: "https://huggingface.co/blog/kv-cache-quantization")!)
                         Spacer()
-                        Link("Apri il calcolatore ApX", destination: URL(string: "https://apxml.com/tools/vram-calculator")!)
+                        Link(L("Apri il calcolatore ApX"), destination: URL(string: "https://apxml.com/tools/vram-calculator")!)
                     }.font(.system(size: 10))
-                    Text("Stima per inferenza testuale. Encoder, proiettori e input multimodali vanno aggiunti come memoria extra. Non misura velocità, qualità, compatibilità del software o memoria per fine-tuning.").font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
+                    Text(L("Stima per inferenza testuale. Encoder, proiettori e input multimodali vanno aggiunti come memoria extra. Non misura velocità, qualità, compatibilità del software o memoria per fine-tuning.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                 }.padding(24)
             }
         }.frame(width: 840, height: 850).background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).tint(DeckTheme.mint).deckAppearance(appearanceOverride)
@@ -186,13 +186,13 @@ struct ModelFitView: View {
         }.frame(height: 9)
     }
     private func part(_ title: String, _ bytes: Double?, _ color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 5) { Text(title).font(.system(size: 9)).foregroundStyle(DeckTheme.muted); Text(bytes.map(MemoryEstimator.gib) ?? "Da calcolare").font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(color) }
+        VStack(alignment: .leading, spacing: 5) { Text(D(title)).font(.system(size: 9)).foregroundStyle(DeckTheme.muted); Text(D(bytes.map(MemoryEstimator.gib) ?? "Da calcolare")).font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(color) }
     }
     private func number(_ label: String, value: Binding<Double>) -> some View {
-        VStack(alignment: .leading, spacing: 6) { Text(label).font(.system(size: 10)).foregroundStyle(DeckTheme.muted); TextField(label, value: value, format: .number.precision(.fractionLength(0...3))).textFieldStyle(.roundedBorder).labelsHidden() }.frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: 6) { Text(D(label)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted); TextField(D(label), value: value, format: .number.precision(.fractionLength(0...3))).textFieldStyle(.roundedBorder).labelsHidden() }.frame(maxWidth: .infinity)
     }
     private func integer(_ label: String, value: Binding<Int>) -> some View {
-        VStack(alignment: .leading, spacing: 6) { Text(label).font(.system(size: 10)).foregroundStyle(DeckTheme.muted); TextField(label, value: value, format: .number.grouping(.never)).textFieldStyle(.roundedBorder).labelsHidden() }.frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: 6) { Text(D(label)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted); TextField(D(label), value: value, format: .number.grouping(.never)).textFieldStyle(.roundedBorder).labelsHidden() }.frame(maxWidth: .infinity)
     }
     private func lookup(_ repository: String) {
         guard !loading else { return }; loading = true; error = nil

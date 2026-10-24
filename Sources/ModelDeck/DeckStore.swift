@@ -74,8 +74,9 @@ import Security
         demo = true
         machine.chip = "Apple M4 Pro"; machine.memory = 48_000_000_000; machine.cores = 12
         machine.unifiedMemory = true; machine.metalWorkingSet = 36_000_000_000
-        snapshot.cpu = 33; snapshot.gpu = 72; snapshot.memoryTotal = machine.memory
+        snapshot.cpu = 33; snapshot.cpuUser = 25; snapshot.cpuSystem = 8; snapshot.gpu = 72; snapshot.memoryTotal = machine.memory
         snapshot.memoryUsed = 36_800_000_000; snapshot.swapUsed = 6_500_000_000
+        snapshot.memoryWired = 5_200_000_000; snapshot.memoryCompressed = 4_800_000_000; snapshot.memorySampleAvailable = true
         snapshot.diskTotal = 2_000_000_000_000; snapshot.diskAvailable = 1_021_000_000_000
         snapshot.download = 2_600_000; snapshot.upload = 174_000; snapshot.battery = 84
         cpuHistory = (0..<70).map { index -> Double in
@@ -95,7 +96,9 @@ import Security
         processes = [
             RunningProcess(id: .init(pid: 101, startedSeconds: 1, startedMicroseconds: 0), name: "Local Inference", path: "/Applications/Local Inference.app", userID: 501, cpu: 154, memory: 8_400_000_000, gpu: 65, gpuClient: true, threads: 24),
             RunningProcess(id: .init(pid: 102, startedSeconds: 1, startedMicroseconds: 0), name: "Editor", path: "/Applications/Editor.app", userID: 501, cpu: 28, memory: 1_200_000_000, gpu: nil, gpuClient: true, threads: 12),
-            RunningProcess(id: .init(pid: 103, startedSeconds: 1, startedMicroseconds: 0), name: "Browser", path: "/Applications/Browser.app", userID: 501, cpu: 16, memory: 2_600_000_000, gpu: nil, gpuClient: true, threads: 18)
+            RunningProcess(id: .init(pid: 103, startedSeconds: 1, startedMicroseconds: 0), name: "Browser", path: "/Applications/Browser.app/Contents/MacOS/Browser", userID: 501, cpu: 16, memory: 2_600_000_000, gpu: nil, gpuClient: true, threads: 18),
+            RunningProcess(id: .init(pid: 104, startedSeconds: 1, startedMicroseconds: 0), name: "Browser Helper (Renderer)", path: "/Applications/Browser.app/Contents/Frameworks/Browser Helper.app/Contents/MacOS/Browser Helper", userID: 501, cpu: 4, memory: 3_200_000_000, gpu: nil, gpuClient: true, threads: 14),
+            RunningProcess(id: .init(pid: 105, startedSeconds: 1, startedMicroseconds: 0), name: "WindowServer", path: "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer", userID: 88, cpu: 7, memory: 850_000_000, gpu: nil, gpuClient: true, threads: 8)
         ]
         inventory.runtimes = [.init(name: "Ollama", online: true, detail: "2 modelli · API locale"), .init(name: "LM Studio", online: true, detail: "2 modelli · API locale")]
         codex = .init(provider: "OpenAI", plan: "Pro", windows: [.init(id: "codex-primary", title: "5 ore", usedPercent: 34, resetsAt: Date().addingTimeInterval(9500), durationMinutes: 300), .init(id: "codex-secondary", title: "7 giorni", usedPercent: 58, resetsAt: Date().addingTimeInterval(240000), durationMinutes: 10080)], updatedAt: Date(), source: "Codex · app server")

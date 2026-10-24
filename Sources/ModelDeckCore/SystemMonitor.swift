@@ -44,7 +44,11 @@ public actor SystemMonitor {
                 // CPU tick counters are 32-bit and can wrap on long-running machines.
                 let delta = zip(ticks, old).map { UInt64(UInt32(truncatingIfNeeded: $0) &- UInt32(truncatingIfNeeded: $1)) }
                 let total = delta.reduce(0, +)
-                if total > 0 { result.cpu = Double(total - delta[Int(CPU_STATE_IDLE)]) / Double(total) * 100 }
+                if total > 0 {
+                    result.cpu = Double(total - delta[Int(CPU_STATE_IDLE)]) / Double(total) * 100
+                    result.cpuUser = Double(delta[Int(CPU_STATE_USER)] + delta[Int(CPU_STATE_NICE)]) / Double(total) * 100
+                    result.cpuSystem = Double(delta[Int(CPU_STATE_SYSTEM)]) / Double(total) * 100
+                }
             }
             previousCPU = ticks
         }
@@ -54,10 +58,11 @@ public actor SystemMonitor {
             $0.withMemoryRebound(to: integer_t.self, capacity: Int(vmCount)) { host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &vmCount) }
         }
         if vmStatus == KERN_SUCCESS {
+            result.memorySampleAvailable = true
             let page = UInt64(vm_kernel_page_size)
             result.memoryWired = UInt64(vm.wire_count) * page
             result.memoryCompressed = UInt64(vm.compressor_page_count) * page
-            // Active + wired + compressed, minus purgeable pages; excludes file cache.
+            // Active + inactive + wired + compressed, minus file cache and purgeable pages.
             let usedPages = UInt64(vm.active_count) + UInt64(vm.inactive_count) + UInt64(vm.wire_count) + UInt64(vm.compressor_page_count)
             let cachePages = UInt64(vm.external_page_count) + UInt64(vm.purgeable_count)
             result.memoryUsed = min(result.memoryTotal, (usedPages > cachePages ? usedPages - cachePages : 0) * page)

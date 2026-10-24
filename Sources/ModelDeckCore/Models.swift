@@ -1,5 +1,7 @@
 import Foundation
 
+public enum DeckVersion { public static let current = "0.7.0" }
+
 public struct MachineInfo: Sendable {
     public var chip = "Mac"
     public var cores = ProcessInfo.processInfo.processorCount
@@ -14,11 +16,14 @@ public struct MachineInfo: Sendable {
 
 public struct SystemSnapshot: Sendable {
     public var cpu: Double?
+    public var cpuUser: Double?
+    public var cpuSystem: Double?
     public var gpu: Double?
     public var memoryUsed: UInt64 = 0
     public var memoryTotal = ProcessInfo.processInfo.physicalMemory
     public var memoryWired: UInt64 = 0
     public var memoryCompressed: UInt64 = 0
+    public var memorySampleAvailable = false
     public var swapUsed: UInt64 = 0
     public var diskTotal: UInt64 = 0
     public var diskAvailable: UInt64 = 0
@@ -31,6 +36,29 @@ public struct SystemSnapshot: Sendable {
     public var timestamp = Date()
     public init() {}
     public var memoryPercent: Double { memoryTotal > 0 ? Double(memoryUsed) / Double(memoryTotal) * 100 : 0 }
+    public var memoryBreakdown: MemoryBreakdown? {
+        memorySampleAvailable ? MemoryBreakdown(total: memoryTotal, used: memoryUsed, wired: memoryWired, compressed: memoryCompressed) : nil
+    }
+}
+
+/// A partition of the system sample, independent of per-process resident sizes.
+public struct MemoryBreakdown: Sendable {
+    public let total: UInt64
+    public let used: UInt64
+    public let appAndServices: UInt64
+    public let wired: UInt64
+    public let compressed: UInt64
+    public let reusable: UInt64
+    public init?(total: UInt64, used: UInt64, wired: UInt64, compressed: UInt64) {
+        guard total > 0 else { return nil }
+        self.total = total
+        self.used = min(used, total)
+        self.wired = min(wired, self.used)
+        self.compressed = min(compressed, self.used - self.wired)
+        appAndServices = self.used - self.wired - self.compressed
+        reusable = total - self.used
+    }
+    public func percent(_ bytes: UInt64) -> Double { Double(bytes) / Double(total) * 100 }
 }
 
 public enum ModelSource: String, CaseIterable, Codable, Sendable {
@@ -92,6 +120,7 @@ public struct SubscriptionUsage: Sendable {
     public var source: String
     public var message: String?
     public var stale: Bool { updatedAt.map { Date().timeIntervalSince($0) > 600 } ?? true }
+    public var needsRefresh: Bool { stale || message != nil || windows.contains(where: \.isExpired) }
     public init(provider: String, plan: String? = nil, windows: [UsageWindow] = [], updatedAt: Date? = nil, source: String, message: String? = nil) {
         self.provider = provider; self.plan = plan; self.windows = windows
         self.updatedAt = updatedAt; self.source = source; self.message = message

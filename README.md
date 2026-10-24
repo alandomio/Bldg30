@@ -29,7 +29,13 @@ The screenshot uses **synthetic demonstration data**, not a real account or a pe
 
 [Light appearance](docs/dashboard-light.png) · [Process detail](docs/processes.png) · [Hardware fit estimator](docs/model-fit.png) · [Credits](docs/credits.png). All previews use synthetic data.
 
+[Disk explorer](docs/disk.png) · [Services & ports](docs/services-english.png) · [English settings](docs/settings-english.png) · [Claude refresh guide](docs/claude-refresh.png).
+
 The project name and icon are provisional while the feature set is being developed.
+
+## Interface language
+
+Open **Settings → Language** (**Impostazioni → Lingua**) to choose **Automatic**, **Italiano** or **English**. The preference is saved and applied immediately to the interface, native menus and help. Automatic follows the preferred macOS language, using English when Italian is not selected. File names, model names and paths are retained. Regional number formats can continue to follow macOS settings.
 
 ## Menu bar values
 
@@ -61,6 +67,8 @@ open ~/Applications/ModelDeck.app
 ```
 
 The local build is ad hoc signed. There is no Developer ID signature, notarization, automatic updater or App Store distribution in this initial version. CI produces an app archive for its runner's architecture; it is not a universal binary.
+
+The Command Line Tools can build the application; the XCTest suite requires the full Xcode test frameworks and an accepted Xcode license. To build with installed Command Line Tools without changing the global developer selection, use `env DEVELOPER_DIR=/Library/Developer/CommandLineTools bash scripts/build.sh`.
 
 For development, `swift run ModelDeck` works. A generated `ModelDeck.xcodeproj` is also included. To regenerate it after changing targets, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run `xcodegen generate`.
 
@@ -95,6 +103,8 @@ Three model-directory preferences (`hugging_face_cache_home`, `hugging_face_cach
 ### Claude / Claude Code
 
 In Settings, choose **Collega Claude Code**, then restart Claude Code and send a message. A compatible Claude subscription and a Claude Code version exposing [`rate_limits` in status line JSON](https://code.claude.com/docs/en/statusline) are required. Quotas arrive after responses and may be absent for some account types or windows.
+
+Click **Needs refresh / Da aggiornare** or **How to refresh / Come aggiornare** on the Claude card for connection status and step-by-step instructions. **Read latest data / Rileggi dati** rereads data already received; it does not query Claude or start a conversation. If the timestamp does not change, wait for a response in a Claude Code terminal session, and check the connection or project-specific status line overrides. Expired windows require refresh even when the capture timestamp is recent.
 
 The bridge updates `~/.claude/settings.json`, preserves other settings, and chains your previous status line command with its original input. It stores the previous status line configuration in `~/Library/Application Support/ModelDeck/claude-bridge.json`. Use **Ripristina status line** before uninstalling ModelDeck. If another tool changes the status line after installation, restoration refuses to overwrite it; the backup remains available.
 
@@ -134,23 +144,53 @@ GPU registry counters are not a stable cross-model API; unsupported Macs display
 
 ## Process inspection and termination
 
-Open **Processi**, or click a CPU/memory/GPU metric card. The process list refreshes every three seconds while visible and supports name/PID search, CPU/memory/GPU sorting, and a current-user filter. Process CPU is measured from cumulative nanosecond deltas: **100% is one core**, so a process can exceed 100%. Process memory is resident RAM and need not sum to the dashboard's memory figure.
+The dashboard's memory card shows the used percentage, with used/total memory and swap in the detail line.
 
-GPU client connections are identified from IORegistry. A connection is not proof of current GPU activity. Per-process GPU time is sampled through Mach `TASK_POWER_INFO_V2` only where permissions and driver counters permit it. Unsupported or constant-zero counters display **Client** / `—`, without distributing the total GPU percentage across processes. The GPU filter lists detected clients even when percentages are unavailable.
+Select **CPU**, **RAM** or **GPU** in Processi to show only that resource's explanation and app ranking. The dashboard metric cards open the matching resource directly. Clicking a different resource column also changes the overview and clears any focused app group; the resource selector is above the overview so it stays easy to reach.
+
+**Dove va la CPU** shows overall usage divided into user-space app/services, kernel/system work and idle capacity, using the same CPU tick interval. The app ranking sums each app's processes with **100% = one core**, and also shows its share of all logical cores. This keeps a multi-core app's 240% distinct from 20% of a 12-core Mac. System and process sampling intervals differ, so app totals need not reproduce overall usage.
+
+**Dove va la RAM** separates the same system sample into app/services (a residual estimate), wired system memory, compressed memory, and the remaining free/reclaimable memory including excluded file cache. The first three sum to used RAM. Swap is shown separately as disk space. Missing VM samples show an unavailable message. A high used percentage or the amount of existing swap alone does not establish current memory pressure.
+
+**Dove va la GPU** shows device utilization separately from per-process attribution, with counts of measured processes and detected clients. Apps with valid GPU counters are ranked first, including real measured zero values. Client-only apps follow with **Client / Senza %**, without an estimated percentage or usage bar. If app percentages or overall device usage are unavailable, the overview says so explicitly and keeps detected clients accessible. Group GPU totals are not a partition of the device's overall utilization.
+
+The ranking shows up to five app/service groups for the selected resource across all users. Processes whose executable lives inside the same outermost `.app` bundle are combined, including nested helper apps. Processes outside a bundle remain separate; association is based on executable paths, not guessed from similar names or parent processes. Click a group to filter its individual processes and sort them by the selected resource; **Mostra tutti i processi** clears the group filter. This selection resets search, current-user and high-usage filters so the whole group is visible. Partial group totals are marked `≥` and unreadable counters are counted per resource. Resident memory totals can include shared pages and exclude compressed memory, so they cannot reconcile the system total or predict memory freed by quitting.
+
+Open **Processi**, or click a CPU/memory/GPU metric card. The process list refreshes every three seconds while visible and supports name/PID search and a current-user filter. Click the CPU, Memoria or GPU column header to sort by highest consumption first; click again to reverse the order, or use the arrow above the list. Unavailable values remain at the bottom in either direction. Changing the resource resets to highest consumption first. Process CPU is measured from cumulative nanosecond deltas: **100% is one core**, so a process can exceed 100%. Process memory shows resident RAM plus its percentage of physical memory and need not sum to the dashboard's memory figure.
+
+Rows with CPU **≥80% of one core**, resident memory **≥10% of physical RAM**, or measured GPU usage **≥50%** are highlighted in amber, with a label naming the resources. The count and **Solo consumi elevati** filter follow the current search and current-user filter. These indications use the latest sample and are informational; no process is stopped automatically.
+
+GPU client connections are identified from IORegistry. A connection is not proof of current GPU activity. Per-process GPU time is sampled through Mach `TASK_POWER_INFO_V2` only where permissions and driver counters permit it. Unsupported or constant-zero counters display **Client** / `—`, without distributing the total GPU percentage across processes. Sorting by GPU keeps all processes in the list, places measured values first, and does not treat a client connection as elevated GPU usage.
 
 Selecting a row shows PID, executable path, owner UID and thread count. **Arresta…** offers graceful termination or forced termination, each with an in-app confirmation. ModelDeck verifies the process's PID plus start time immediately before signalling and permits only processes owned by the current user. PID 1, critical named system processes and ModelDeck itself are protected. No administrator helper or privilege escalation is used. Termination can lose unsaved changes in the selected application.
 
 ## Privacy and development
 
+### Services and ports
+
+**Servizi e porte / Services & ports** lists TCP listeners and bound UDP ports with protocol, address, process name and PID. It also reads the visible user GUI and system launchd domains, distinguishing running jobs, idle loaded jobs, explicit disabled overrides and overrides for jobs that are not loaded. A loaded job without a PID is idle, not automatically disabled. Disabled configuration can coexist with a process that is still running, and that state is labelled explicitly.
+
+The page supports search and status filters and refreshes every five seconds while visible. Reads use the system `lsof` and `launchctl print` commands with bounded output and execution time. No services, firewall settings or other processes are changed. macOS permissions can limit visibility into other users’ processes; incomplete command results are reported. TCP client connections are outside the listener view. Fixtures cover IPv4/IPv6, UDP, duplicate descriptors and launchd status distinctions; `--check-services` is an optional local read-only smoke check.
+
+### Disk space
+
+The dashboard's **Disk / Disco** card opens a read-only space explorer. It starts on the home volume's Data root when available; **Home folder** and **Choose folder…** narrow the scope or select another disk. Capacity figures follow the selected folder's volume. Click folders to drill down, use the parent arrow to go back, or reveal files in Finder. The first 80 child entries and the largest 20 files are shown in descending allocated-size order.
+
+Scans run off the main actor, can be cancelled, and stop after 300,000 visited entries or approximately 30 seconds. Breadth-first traversal gives top-level folders a chance to be represented before a large subtree consumes the budget. Hard links are counted once in each scan. Symbolic links and other mounted volumes are not followed. Inaccessible paths and unfinished totals are explicitly marked; no files are deleted. APFS clones, snapshots, shared container space and protected folders prevent these estimates from being an exact partition of used disk space. Drilling into a directory starts a new scan of that scope.
+
 System and inventory reads stay local. Local HTTP endpoints are restricted to loopback and redirects are refused. Public model metadata is fetched from Hugging Face only when requested in the hardware calculator; credentials and cookies are not used, and redirects are limited to HTTPS on huggingface.co. Codex CLI makes its own authenticated request to OpenAI to fetch quotas. ModelDeck has no analytics or update service. The app is not sandboxed because it needs model folder access and CLI execution; no administrator privileges are required.
 
 ```sh
 swift test
+python3 scripts/check-localization.py
 swift run ModelDeck --diagnostics
 swift run ModelDeck --demo
 .build/debug/ModelDeck --preview docs/dashboard.png
 .build/debug/ModelDeck --preview docs/dashboard-light.png --light
 .build/debug/ModelDeck --preview docs/processes.png --processes
+.build/debug/ModelDeck --preview docs/processes-memory.png --processes --memory
+.build/debug/ModelDeck --preview docs/processes-gpu.png --processes --gpu
+.build/debug/ModelDeck --preview /tmp/processes-gpu-unattributed.png --processes --gpu --gpu-unattributed --light --narrow
 .build/debug/ModelDeck --preview docs/model-fit.png --fit
 .build/debug/ModelDeck --preview docs/credits.png --credits
 .build/debug/ModelDeck --preview docs/model-search.png --fit --search
@@ -161,6 +201,23 @@ swift run ModelDeck --demo
 ```
 
 Tests cover API formats, unavailable versus zero values, multi-bucket quotas, sanitized quota persistence, HF cache symlinks/revisions, Unsloth settings read-only behavior, endpoint restrictions, reversible Claude status line installation, CPU delta units and process termination identity checks. Calculator tests cover KV scaling/precision, budgets, unsupported architectures, incomplete shard sets and bounded GGUF parsing. Search tests cover request encoding, fixed-host restrictions, result validation and limits. Menu bar tests cover selection, quota windows, remaining percentages, stale/expired values, missing samples and exhausted weekly quotas. Tests use fixtures without external services. The process termination test creates and stops only its own disposable child process. `--check-menu` exercises native panel opening/closing, template icon configuration, dashboard reopening, image-plus-text mode, live value changes, icon-only mode and title persistence while the panel opens/closes. `--check-fit` and `--check-search` are optional live public-metadata checks.
+
+Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, symlink exclusion, cancellation, limits and invalid roots. Localization tests cover Italian/English labels, interpolation and expired Claude windows; the catalog check rejects duplicate keys and mismatched interpolation counts.
+
+## Versioning and release tags
+
+The current release is **0.7.0**; changes are listed in [CHANGELOG.md](CHANGELOG.md). Update `VERSION`, `DeckVersion.current` and `project.yml` together. The build reads `VERSION`, includes the localization resource bundle and writes the app's version metadata. Regenerate the Xcode project after adding files or changing its version:
+
+```sh
+xcodegen generate
+swift test
+python3 scripts/check-localization.py
+bash scripts/build.sh
+# Commit the reviewed release, then create its annotated tag:
+bash scripts/tag-release.sh
+```
+
+The tagging helper refuses a dirty worktree, inconsistent version numbers or an existing tag; it never moves tags or pushes changes. Git commits, tags and any later GitHub publication remain distinct steps.
 
 ## Credits
 

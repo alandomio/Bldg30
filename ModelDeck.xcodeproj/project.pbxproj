@@ -7,38 +7,49 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0ADE36C8A9E36381D5A75AFC /* PortInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 905BE0B71D6EFF99C6A87302 /* PortInspectorTests.swift */; };
 		0B031342C52C474697502545 /* ClaudeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D299C6CDCEFF2C17D50DCF8 /* ClaudeBridge.swift */; };
 		0E665DB6AC58A8ED76E0B580 /* HubSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0040B4711B4069323B538BA /* HubSearchTests.swift */; };
 		17C368DBC36D9DFCCE6F6016 /* Dashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71E2D9F992FFCCFD38FB3E55 /* Dashboard.swift */; };
 		1CC42CF125FC9BBF2CD90BC0 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7FFD07762D0570FAD69A4E /* Models.swift */; };
 		242DE1EEE92E28092D0220C9 /* SystemMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFD6FBE08E70E94F6C76AEC8 /* SystemMonitor.swift */; };
 		2AC7B8C8B5A57450C0A0E9F7 /* ModelFitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B8349924829D9EA4651E0F8 /* ModelFitView.swift */; };
+		2B6FE28DAAD78C386A36938E /* PortInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AE0E18D1A276A2DF5D5ACFA /* PortInspector.swift */; };
 		2BE23284E643440FBE9CB19F /* ProcessMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0980C761DA9691E806C424 /* ProcessMonitor.swift */; };
+		2C6BB13E96F2AEC8BEE7599A /* DiskUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C4EB50241C91D3D59291AA /* DiskUsageView.swift */; };
+		2E544B8D559F0EF886AED1A4 /* ServicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C2D0FC13714AF58004B699 /* ServicesView.swift */; };
 		307CDEB46B815B4E4F227DD3 /* ModelDeckCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 090E5A029031F3E0F4FA3763 /* ModelDeckCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		33A0A93EED1F68A4B49C0A41 /* ModelDeckCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 090E5A029031F3E0F4FA3763 /* ModelDeckCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		3E5BD55E2AD29871B85E633C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A4C3B2C1B7E26D32DF4752 /* Localization.swift */; };
 		3E88C370FD143C4905AFE9B7 /* MenuBarSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA053BF933B73B727874589A /* MenuBarSummary.swift */; };
 		4C57323267EDDF9E97B27205 /* ModelDeckCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 090E5A029031F3E0F4FA3763 /* ModelDeckCore.framework */; };
 		4E611A55A42354AD96C3C768 /* ProcessList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8EF94F8A97F7B8EAC7E5C9 /* ProcessList.swift */; };
 		513C6E96CAFDCC1439F03077 /* ModelFitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86909E5C96C4AAB25746465 /* ModelFitTests.swift */; };
+		557EB6B228836E236C3FAEA9 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99AC71D7098EBCE94707E1FE /* Language.swift */; };
 		6EBE2804806442FE8F2A3328 /* UsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A21D90CE3804D615C40DF07 /* UsageTests.swift */; };
 		7179166FA68C46A607DA34B9 /* DeckStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8847ABA9267FF9144A793E56 /* DeckStore.swift */; };
 		80D9FDE6CFD9AF2C6ECEF32A /* HubSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CC3F3EA5F49E47C30FEC875 /* HubSearchView.swift */; };
 		84B198AF11D23AAB5611ED9D /* LocalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1459BD6583F822422214C4 /* LocalModels.swift */; };
 		8B9AE488386EF6063F229ACF /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2380DF6C0C8CA0558F8CF66 /* IntegrationTests.swift */; };
 		8ED4CEF217DA796CB655382E /* Appearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C054D8986B03664663BEE8 /* Appearance.swift */; };
+		9056D5AD410B2829BF6AAE32 /* ClaudeRefreshView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAABD271C363EAA6176A9F4 /* ClaudeRefreshView.swift */; };
 		91B75EF1A9159E7704196676 /* ProcessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93320D85D45DF98BE034AEC5 /* ProcessTests.swift */; };
 		91FED39DE313941D5672BB92 /* CreditsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA7C83AD642CB6A09B8EFC6 /* CreditsView.swift */; };
 		A10B3A87991B988588702813 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B77AB449C18F0787A830D1C /* SettingsView.swift */; };
 		A1FF1DAE4269B6A12419D5A5 /* DeckApplicationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 173CC4C5EADAF662548769F0 /* DeckApplicationDelegate.swift */; };
 		A9803DB9D233F0DE7D536B75 /* ModelDeckCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 090E5A029031F3E0F4FA3763 /* ModelDeckCore.framework */; };
 		AC31464A2C465CF229E19214 /* HubSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365BAE1459C7902C0173C0B1 /* HubSearch.swift */; };
+		B12BC75FCD8D1902B5BF9933 /* English.json in Resources */ = {isa = PBXBuildFile; fileRef = E5C0EFAA9B6C4F6B98BF3782 /* English.json */; };
 		BA651E64870F8526A1CC23CC /* HuggingFaceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3C532BAE4A30DE03973199 /* HuggingFaceCatalog.swift */; };
 		BEB16BE585F5381C2A7493DF /* ModelDeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDFFF41BC02F33CCCD221C7F /* ModelDeckApp.swift */; };
 		C681CFF451A12E26239FE92A /* MenuBarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014F75A36AA6D58E0081E138 /* MenuBarSettingsView.swift */; };
+		C90840E6E5275B09FF252C68 /* DiskUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F0491A85B63D3908D017D35 /* DiskUsage.swift */; };
 		CDD1FF1B9888CB2BB8CD164C /* Subscriptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C03885BB6F72805587519CF /* Subscriptions.swift */; };
 		CE56F0F18063F54C96CE63A5 /* MenuBarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94EBD7C9D2A3F54EEB2B8E0 /* MenuBarTests.swift */; };
+		E224BB7F4FC701221898F8CD /* DiskUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1312783B9BF4DE2EAC1F79 /* DiskUsageTests.swift */; };
 		EBE0C9B096020AC8C8E3FDAE /* ModelFit.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE4F54B209EC972CFC9FC3B0 /* ModelFit.swift */; };
 		F0DD57ABBCFA526A18D385C6 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B555EA917E833FBADB4B645 /* Components.swift */; };
+		F6E1B1BF80366A7635BF4719 /* LocalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18E4716CB0D4E4D506DCBBB6 /* LocalizationTests.swift */; };
 		FF5585D9FED5C94842ED6569 /* MenuBarBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8344A9F05E7D3D451CF00C /* MenuBarBadge.swift */; };
 /* End PBXBuildFile section */
 
@@ -89,7 +100,9 @@
 		090E5A029031F3E0F4FA3763 /* ModelDeckCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ModelDeckCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D299C6CDCEFF2C17D50DCF8 /* ClaudeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeBridge.swift; sourceTree = "<group>"; };
 		0D3C532BAE4A30DE03973199 /* HuggingFaceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceCatalog.swift; sourceTree = "<group>"; };
+		13C4EB50241C91D3D59291AA /* DiskUsageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsageView.swift; sourceTree = "<group>"; };
 		173CC4C5EADAF662548769F0 /* DeckApplicationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckApplicationDelegate.swift; sourceTree = "<group>"; };
+		18E4716CB0D4E4D506DCBBB6 /* LocalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationTests.swift; sourceTree = "<group>"; };
 		1A940838555AA553F1F40BF9 /* ModelDeckCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ModelDeckCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B7FFD07762D0570FAD69A4E /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		21C054D8986B03664663BEE8 /* Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Appearance.swift; sourceTree = "<group>"; };
@@ -98,25 +111,34 @@
 		2C03885BB6F72805587519CF /* Subscriptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subscriptions.swift; sourceTree = "<group>"; };
 		365BAE1459C7902C0173C0B1 /* HubSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubSearch.swift; sourceTree = "<group>"; };
 		3A1459BD6583F822422214C4 /* LocalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModels.swift; sourceTree = "<group>"; };
+		3AE0E18D1A276A2DF5D5ACFA /* PortInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortInspector.swift; sourceTree = "<group>"; };
 		3C8344A9F05E7D3D451CF00C /* MenuBarBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarBadge.swift; sourceTree = "<group>"; };
 		5B8349924829D9EA4651E0F8 /* ModelFitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFitView.swift; sourceTree = "<group>"; };
+		5F0491A85B63D3908D017D35 /* DiskUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsage.swift; sourceTree = "<group>"; };
 		6CA7C83AD642CB6A09B8EFC6 /* CreditsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsView.swift; sourceTree = "<group>"; };
 		71E2D9F992FFCCFD38FB3E55 /* Dashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dashboard.swift; sourceTree = "<group>"; };
 		7A21D90CE3804D615C40DF07 /* UsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageTests.swift; sourceTree = "<group>"; };
 		7CC3F3EA5F49E47C30FEC875 /* HubSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubSearchView.swift; sourceTree = "<group>"; };
+		83C2D0FC13714AF58004B699 /* ServicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServicesView.swift; sourceTree = "<group>"; };
 		8847ABA9267FF9144A793E56 /* DeckStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckStore.swift; sourceTree = "<group>"; };
+		89A4C3B2C1B7E26D32DF4752 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		8B77AB449C18F0787A830D1C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		905BE0B71D6EFF99C6A87302 /* PortInspectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortInspectorTests.swift; sourceTree = "<group>"; };
 		93320D85D45DF98BE034AEC5 /* ProcessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTests.swift; sourceTree = "<group>"; };
+		99AC71D7098EBCE94707E1FE /* Language.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Language.swift; sourceTree = "<group>"; };
 		A86909E5C96C4AAB25746465 /* ModelFitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFitTests.swift; sourceTree = "<group>"; };
+		AA1312783B9BF4DE2EAC1F79 /* DiskUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsageTests.swift; sourceTree = "<group>"; };
 		AE0980C761DA9691E806C424 /* ProcessMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessMonitor.swift; sourceTree = "<group>"; };
 		B0040B4711B4069323B538BA /* HubSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubSearchTests.swift; sourceTree = "<group>"; };
 		BE4F54B209EC972CFC9FC3B0 /* ModelFit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFit.swift; sourceTree = "<group>"; };
 		C94EBD7C9D2A3F54EEB2B8E0 /* MenuBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarTests.swift; sourceTree = "<group>"; };
 		D2380DF6C0C8CA0558F8CF66 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		DF4EE857AAC664BA2E3AB09E /* ModelDeck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ModelDeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5C0EFAA9B6C4F6B98BF3782 /* English.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = English.json; sourceTree = "<group>"; };
 		EDFFF41BC02F33CCCD221C7F /* ModelDeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDeckApp.swift; sourceTree = "<group>"; };
 		FA053BF933B73B727874589A /* MenuBarSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarSummary.swift; sourceTree = "<group>"; };
 		FA8EF94F8A97F7B8EAC7E5C9 /* ProcessList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessList.swift; sourceTree = "<group>"; };
+		FBAABD271C363EAA6176A9F4 /* ClaudeRefreshView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeRefreshView.swift; sourceTree = "<group>"; };
 		FFD6FBE08E70E94F6C76AEC8 /* SystemMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -153,10 +175,13 @@
 		28BD5375A920BD2D3A2C0D4D /* ModelDeckCoreTests */ = {
 			isa = PBXGroup;
 			children = (
+				AA1312783B9BF4DE2EAC1F79 /* DiskUsageTests.swift */,
 				B0040B4711B4069323B538BA /* HubSearchTests.swift */,
 				D2380DF6C0C8CA0558F8CF66 /* IntegrationTests.swift */,
+				18E4716CB0D4E4D506DCBBB6 /* LocalizationTests.swift */,
 				C94EBD7C9D2A3F54EEB2B8E0 /* MenuBarTests.swift */,
 				A86909E5C96C4AAB25746465 /* ModelFitTests.swift */,
+				905BE0B71D6EFF99C6A87302 /* PortInspectorTests.swift */,
 				93320D85D45DF98BE034AEC5 /* ProcessTests.swift */,
 				7A21D90CE3804D615C40DF07 /* UsageTests.swift */,
 			);
@@ -168,37 +193,53 @@
 			isa = PBXGroup;
 			children = (
 				21C054D8986B03664663BEE8 /* Appearance.swift */,
+				FBAABD271C363EAA6176A9F4 /* ClaudeRefreshView.swift */,
 				2B555EA917E833FBADB4B645 /* Components.swift */,
 				6CA7C83AD642CB6A09B8EFC6 /* CreditsView.swift */,
 				71E2D9F992FFCCFD38FB3E55 /* Dashboard.swift */,
 				173CC4C5EADAF662548769F0 /* DeckApplicationDelegate.swift */,
 				8847ABA9267FF9144A793E56 /* DeckStore.swift */,
+				13C4EB50241C91D3D59291AA /* DiskUsageView.swift */,
 				7CC3F3EA5F49E47C30FEC875 /* HubSearchView.swift */,
 				28394E1EBBF61A174B6B3A55 /* Info.plist */,
+				99AC71D7098EBCE94707E1FE /* Language.swift */,
 				3C8344A9F05E7D3D451CF00C /* MenuBarBadge.swift */,
 				014F75A36AA6D58E0081E138 /* MenuBarSettingsView.swift */,
 				EDFFF41BC02F33CCCD221C7F /* ModelDeckApp.swift */,
 				5B8349924829D9EA4651E0F8 /* ModelFitView.swift */,
 				FA8EF94F8A97F7B8EAC7E5C9 /* ProcessList.swift */,
+				83C2D0FC13714AF58004B699 /* ServicesView.swift */,
 				8B77AB449C18F0787A830D1C /* SettingsView.swift */,
 			);
 			name = ModelDeck;
 			path = Sources/ModelDeck;
 			sourceTree = "<group>";
 		};
+		7F26E2B8F6C2CE41A0A2E848 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E5C0EFAA9B6C4F6B98BF3782 /* English.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		E235BD55F76ECC43DE4E56BB /* ModelDeckCore */ = {
 			isa = PBXGroup;
 			children = (
 				0D299C6CDCEFF2C17D50DCF8 /* ClaudeBridge.swift */,
+				5F0491A85B63D3908D017D35 /* DiskUsage.swift */,
 				365BAE1459C7902C0173C0B1 /* HubSearch.swift */,
 				0D3C532BAE4A30DE03973199 /* HuggingFaceCatalog.swift */,
+				89A4C3B2C1B7E26D32DF4752 /* Localization.swift */,
 				3A1459BD6583F822422214C4 /* LocalModels.swift */,
 				FA053BF933B73B727874589A /* MenuBarSummary.swift */,
 				BE4F54B209EC972CFC9FC3B0 /* ModelFit.swift */,
 				1B7FFD07762D0570FAD69A4E /* Models.swift */,
+				3AE0E18D1A276A2DF5D5ACFA /* PortInspector.swift */,
 				AE0980C761DA9691E806C424 /* ProcessMonitor.swift */,
 				2C03885BB6F72805587519CF /* Subscriptions.swift */,
 				FFD6FBE08E70E94F6C76AEC8 /* SystemMonitor.swift */,
+				7F26E2B8F6C2CE41A0A2E848 /* Resources */,
 			);
 			name = ModelDeckCore;
 			path = Sources/ModelDeckCore;
@@ -222,6 +263,7 @@
 			buildConfigurationList = 46CB62023461DF8A21847A3A /* Build configuration list for PBXNativeTarget "ModelDeckCore" */;
 			buildPhases = (
 				831802E90E514F7A148BC2B7 /* Sources */,
+				94B40893ABA45D09C926D308 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -315,15 +357,29 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		94B40893ABA45D09C926D308 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B12BC75FCD8D1902B5BF9933 /* English.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		05D8CF3FB1064E6CCF344157 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E224BB7F4FC701221898F8CD /* DiskUsageTests.swift in Sources */,
 				0E665DB6AC58A8ED76E0B580 /* HubSearchTests.swift in Sources */,
 				8B9AE488386EF6063F229ACF /* IntegrationTests.swift in Sources */,
+				F6E1B1BF80366A7635BF4719 /* LocalizationTests.swift in Sources */,
 				CE56F0F18063F54C96CE63A5 /* MenuBarTests.swift in Sources */,
 				513C6E96CAFDCC1439F03077 /* ModelFitTests.swift in Sources */,
+				0ADE36C8A9E36381D5A75AFC /* PortInspectorTests.swift in Sources */,
 				91B75EF1A9159E7704196676 /* ProcessTests.swift in Sources */,
 				6EBE2804806442FE8F2A3328 /* UsageTests.swift in Sources */,
 			);
@@ -334,17 +390,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				8ED4CEF217DA796CB655382E /* Appearance.swift in Sources */,
+				9056D5AD410B2829BF6AAE32 /* ClaudeRefreshView.swift in Sources */,
 				F0DD57ABBCFA526A18D385C6 /* Components.swift in Sources */,
 				91FED39DE313941D5672BB92 /* CreditsView.swift in Sources */,
 				17C368DBC36D9DFCCE6F6016 /* Dashboard.swift in Sources */,
 				A1FF1DAE4269B6A12419D5A5 /* DeckApplicationDelegate.swift in Sources */,
 				7179166FA68C46A607DA34B9 /* DeckStore.swift in Sources */,
+				2C6BB13E96F2AEC8BEE7599A /* DiskUsageView.swift in Sources */,
 				80D9FDE6CFD9AF2C6ECEF32A /* HubSearchView.swift in Sources */,
+				557EB6B228836E236C3FAEA9 /* Language.swift in Sources */,
 				FF5585D9FED5C94842ED6569 /* MenuBarBadge.swift in Sources */,
 				C681CFF451A12E26239FE92A /* MenuBarSettingsView.swift in Sources */,
 				BEB16BE585F5381C2A7493DF /* ModelDeckApp.swift in Sources */,
 				2AC7B8C8B5A57450C0A0E9F7 /* ModelFitView.swift in Sources */,
 				4E611A55A42354AD96C3C768 /* ProcessList.swift in Sources */,
+				2E544B8D559F0EF886AED1A4 /* ServicesView.swift in Sources */,
 				A10B3A87991B988588702813 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -354,12 +414,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				0B031342C52C474697502545 /* ClaudeBridge.swift in Sources */,
+				C90840E6E5275B09FF252C68 /* DiskUsage.swift in Sources */,
 				AC31464A2C465CF229E19214 /* HubSearch.swift in Sources */,
 				BA651E64870F8526A1CC23CC /* HuggingFaceCatalog.swift in Sources */,
 				84B198AF11D23AAB5611ED9D /* LocalModels.swift in Sources */,
+				3E5BD55E2AD29871B85E633C /* Localization.swift in Sources */,
 				3E88C370FD143C4905AFE9B7 /* MenuBarSummary.swift in Sources */,
 				EBE0C9B096020AC8C8E3FDAE /* ModelFit.swift in Sources */,
 				1CC42CF125FC9BBF2CD90BC0 /* Models.swift in Sources */,
+				2B6FE28DAAD78C386A36938E /* PortInspector.swift in Sources */,
 				2BE23284E643440FBE9CB19F /* ProcessMonitor.swift in Sources */,
 				CDD1FF1B9888CB2BB8CD164C /* Subscriptions.swift in Sources */,
 				242DE1EEE92E28092D0220C9 /* SystemMonitor.swift in Sources */,
@@ -458,7 +521,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.tommasinigiovanni.ModelDeck;
 				PRODUCT_NAME = ModelDeck;
 				SDKROOT = macosx;
@@ -516,7 +579,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.tommasinigiovanni.ModelDeck;
 				PRODUCT_NAME = ModelDeck;
 				SDKROOT = macosx;

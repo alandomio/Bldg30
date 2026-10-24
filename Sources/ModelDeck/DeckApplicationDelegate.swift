@@ -24,20 +24,21 @@ import ModelDeckCore
         let main = NSMenu()
         let appItem = NSMenuItem(); main.addItem(appItem)
         let app = NSMenu(); appItem.submenu = app
-        app.addItem(withTitle: "Impostazioni…", action: #selector(openSettingsAction), keyEquivalent: ",").target = self
+        app.addItem(withTitle: L("Impostazioni…"), action: #selector(openSettingsAction), keyEquivalent: ",").target = self
         app.addItem(.separator())
-        app.addItem(withTitle: "Nascondi ModelDeck", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        app.addItem(withTitle: "Esci da ModelDeck", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        let editItem = NSMenuItem(title: "Modifica", action: nil, keyEquivalent: ""); main.addItem(editItem)
-        let edit = NSMenu(title: "Modifica"); editItem.submenu = edit
+        app.addItem(withTitle: L("Nascondi ModelDeck"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: L("Esci da ModelDeck"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let editItem = NSMenuItem(title: L("Modifica"), action: nil, keyEquivalent: ""); main.addItem(editItem)
+        let edit = NSMenu(title: L("Modifica")); editItem.submenu = edit
         for (title, selector, key) in [("Taglia", #selector(NSText.cut(_:)), "x"), ("Copia", #selector(NSText.copy(_:)), "c"), ("Incolla", #selector(NSText.paste(_:)), "v"), ("Seleziona tutto", #selector(NSText.selectAll(_:)), "a")] {
-            edit.addItem(withTitle: title, action: selector, keyEquivalent: key)
+            edit.addItem(withTitle: D(title), action: selector, keyEquivalent: key)
         }
-        let windowItem = NSMenuItem(title: "Finestra", action: nil, keyEquivalent: ""); main.addItem(windowItem)
-        let windows = NSMenu(title: "Finestra"); windowItem.submenu = windows
-        windows.addItem(withTitle: "Chiudi", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        windows.addItem(withTitle: "Riduci a icona", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        let windowItem = NSMenuItem(title: L("Finestra"), action: nil, keyEquivalent: ""); main.addItem(windowItem)
+        let windows = NSMenu(title: L("Finestra")); windowItem.submenu = windows
+        windows.addItem(withTitle: L("Chiudi"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windows.addItem(withTitle: L("Riduci a icona"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         NSApp.mainMenu = main; NSApp.windowsMenu = windows
+        settings?.title = L("Impostazioni · ModelDeck")
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showDashboard(); return true }
@@ -61,7 +62,7 @@ import ModelDeckCore
             self?.updateStatusItem(snapshot: values.0, claude: values.1, openAI: values.2)
         }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
+            .receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem(); self?.configureMainMenu() }.store(in: &subscriptions)
     }
 
     private func refreshStatusItem() { updateStatusItem(snapshot: store.snapshot, claude: store.claude, openAI: store.codex) }
@@ -76,10 +77,10 @@ import ModelDeckCore
         } else {
             button.image = MenuBarBadge.icon()
             button.imagePosition = summary.title.isEmpty ? .imageOnly : .imageLeading
-            button.title = summary.title.isEmpty ? "" : " " + summary.title
+            button.title = summary.title.isEmpty ? "" : " " + DeckLocalization.menuText(summary.title)
         }
-        button.toolTip = summary.tooltip
-        button.setAccessibilityLabel(summary.tooltip.replacingOccurrences(of: "\n", with: ", "))
+        button.toolTip = DeckLocalization.menuText(summary.tooltip)
+        button.setAccessibilityLabel(DeckLocalization.menuText(summary.tooltip).replacingOccurrences(of: "\n", with: ", "))
     }
 
     @objc func togglePopover() {
@@ -88,7 +89,7 @@ import ModelDeckCore
             popover.performClose(nil)
             let menu = NSMenu()
             for (title, selector) in [("Apri cruscotto", #selector(openDashboardAction)), ("Processi", #selector(openProcessesAction)), ("Impostazioni…", #selector(openSettingsAction)), ("Esci da ModelDeck", #selector(quitAction))] {
-                let item = NSMenuItem(title: title, action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
+                let item = NSMenuItem(title: D(title), action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
             }
             menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
         } else if popover.isShown { popover.performClose(nil) }
@@ -117,7 +118,7 @@ import ModelDeckCore
         popover.performClose(nil)
         if settings == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 800), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-            window.title = "Impostazioni · ModelDeck"; window.isReleasedWhenClosed = false; window.center()
+            window.title = L("Impostazioni · ModelDeck"); window.isReleasedWhenClosed = false; window.center()
             window.contentViewController = NSHostingController(rootView: ScrollView { SettingsView().padding(24) }.background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).environmentObject(store).deckAppearance())
             settings = window
         }
@@ -131,7 +132,7 @@ import ModelDeckCore
         options.layout = .detailed
         menuOptionsOverride = options; refreshStatusItem()
         let text = statusItem?.button?.title ?? ""
-        let showsValues = text.contains("CPU 33%") && text.contains("RAM") && text.contains("Claude 7g 41% usato") && text.contains("OpenAI 7g 58% usato")
+        let showsValues = text.contains("CPU 33%") && text.contains("RAM") && text.contains(DeckLocalization.menuText("Claude 7g 41% usato")) && text.contains(DeckLocalization.menuText("OpenAI 7g 58% usato"))
         let imageAndText = statusItem?.button?.imagePosition == .imageLeading && statusItem?.length == NSStatusItem.variableLength
         store.snapshot.cpu = 41
         let updatesValues = statusItem?.button?.title.contains("CPU 41%") == true

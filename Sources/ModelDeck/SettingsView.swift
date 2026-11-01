@@ -15,6 +15,9 @@ struct SettingsView: View {
     @State private var unslothToken = ""
     @State private var unslothTokenEdited = false
     @AppStorage("boardEnabled") private var boardEnabled = false
+    @AppStorage("companionEnabled") private var companionEnabled = false
+    @AppStorage("companionFeedPath") private var companionFeedPath = ""
+    @AppStorage("companionInboxPath") private var companionInboxPath = ""
     @State private var linearKey = ""
     @State private var linearKeyEdited = false
     @State private var linearKeySaved = DeckKeychain.read(account: "linear") != nil
@@ -101,6 +104,21 @@ struct SettingsView: View {
                             } catch { feedback = error.localizedDescription }
                         }.disabled(!linearKeySaved)
                     }.buttonStyle(.bordered).disabled(!boardEnabled)
+                }
+            }
+            DeckCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Toggle(L("Companion"), isOn: $companionEnabled).font(.system(size: 15, weight: .semibold))
+                    Text(L("Spento di default. Legge un file feed JSON scritto dal tuo assistente e scrive note JSON in una cartella inbox. Non contatta nessun servizio."))
+                        .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Text(L("File feed")).frame(width: 115, alignment: .leading)
+                        TextField(CompanionFeed.defaultPath, text: $companionFeedPath).textFieldStyle(.roundedBorder)
+                    }.font(.system(size: 11)).disabled(!companionEnabled)
+                    HStack {
+                        Text(L("Cartella inbox")).frame(width: 115, alignment: .leading)
+                        TextField(L("Obbligatoria per inviare azioni"), text: $companionInboxPath).textFieldStyle(.roundedBorder)
+                    }.font(.system(size: 11)).disabled(!companionEnabled)
                 }
             }
             DeckCard {

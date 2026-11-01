@@ -17,6 +17,10 @@ import Security
     @Published var settingsMessage: String?
     @Published var demo = false
     @Published var processes: [RunningProcess] = []
+    @Published var companionFeed: CompanionFeed?
+    @Published var companionError: String?
+    @Published var companionNotes: [String: URL] = [:]
+    @Published var companionStatuses: [String: CompanionClickStatus] = [:]
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()
@@ -40,6 +44,9 @@ import Security
         }
         Task { [weak self] in
             while !Task.isCancelled, let self { await refreshUsage(); try? await Task.sleep(for: .seconds(90)) }
+        }
+        Task { [weak self] in
+            while !Task.isCancelled, let self { refreshCompanion(); try? await Task.sleep(for: .seconds(10)) }
         }
     }
     private func append(_ value: Double, to history: inout [Double]) {
@@ -72,6 +79,7 @@ import Security
     }
     func useDemo() {
         demo = true
+        companionFeed = try? CompanionFeed.decode(Data(CompanionFixture.json().utf8))
         machine.chip = "Apple M4 Pro"; machine.memory = 48_000_000_000; machine.cores = 12
         machine.unifiedMemory = true; machine.metalWorkingSet = 36_000_000_000
         snapshot.cpu = 33; snapshot.cpuUser = 25; snapshot.cpuSystem = 8; snapshot.gpu = 72; snapshot.memoryTotal = machine.memory

@@ -23,6 +23,7 @@ struct Dashboard: View {
                     else if section == "credits" { CreditsView() }
                     else if section == "disk" { DiskUsageView() }
                     else if section == "services" { ServicesView() }
+                    else if section == "companion" { CompanionView() }
                     else if section == "processes" {
                         ProcessList(sort: $processSort) { scrollProxy.scrollTo(ProcessSectionAnchor.table, anchor: .top) }
                     }
@@ -65,6 +66,7 @@ struct Dashboard: View {
             nav("disk", "Disco", "internaldrive")
             nav("services", "Servizi e porte", "server.rack")
             nav("subscriptions", "Abbonamenti", "chart.bar.xaxis")
+            nav("companion", "Companion", "tray.full")
             nav("settings", "Impostazioni", "slider.horizontal.3")
             nav("credits", "Crediti", "info.circle")
             Spacer()
@@ -88,9 +90,9 @@ struct Dashboard: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 7) {
-                Text(D(section == "services" ? "Servizi e porte del tuo Mac." : section == "disk" ? "Chi occupa spazio sul disco." : section == "credits" ? "Le persone e il progetto." : section == "processes" ? "Chi sta usando il tuo Mac." : section == "models" ? "La tua libreria locale." : section == "subscriptions" ? "Le tue quote, in chiaro." : section == "settings" ? "Tutto al posto giusto." : "Tutto sotto controllo."))
+                Text(D(section == "companion" ? "Cosa ti aspetta." : section == "services" ? "Servizi e porte del tuo Mac." : section == "disk" ? "Chi occupa spazio sul disco." : section == "credits" ? "Le persone e il progetto." : section == "processes" ? "Chi sta usando il tuo Mac." : section == "models" ? "La tua libreria locale." : section == "subscriptions" ? "Le tue quote, in chiaro." : section == "settings" ? "Tutto al posto giusto." : "Tutto sotto controllo."))
                     .font(.system(size: 29, weight: .semibold)).tracking(-1)
-                Text(D(section == "services" ? "Servizi attivi, servizi disabilitati e porte occupate." : section == "disk" ? "Cartelle e file più grandi, con accesso diretto al Finder." : section == "credits" ? "Autore, codice sorgente e riferimenti." : section == "processes" ? "Seleziona CPU, RAM o GPU per vedere dove vanno le risorse e quali app le usano." : section == "overview" ? "Il tuo Mac, i tuoi modelli e le quote AI. In un solo posto." : section == "models" ? "Modelli installati, formati e stato di caricamento." : section == "subscriptions" ? "Percentuali utilizzate e prossimi reset di Claude Code e Codex." : "Sorgenti locali e collegamenti ai tuoi strumenti."))
+                Text(D(section == "companion" ? "Decisioni, MR e ticket dal feed del tuo assistente." : section == "services" ? "Servizi attivi, servizi disabilitati e porte occupate." : section == "disk" ? "Cartelle e file più grandi, con accesso diretto al Finder." : section == "credits" ? "Autore, codice sorgente e riferimenti." : section == "processes" ? "Seleziona CPU, RAM o GPU per vedere dove vanno le risorse e quali app le usano." : section == "overview" ? "Il tuo Mac, i tuoi modelli e le quote AI. In un solo posto." : section == "models" ? "Modelli installati, formati e stato di caricamento." : section == "subscriptions" ? "Percentuali utilizzate e prossimi reset di Claude Code e Codex." : "Sorgenti locali e collegamenti ai tuoi strumenti."))
                     .font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                 if store.demo { StatusPill(text: L("ANTEPRIMA · DATI FITTIZI"), color: DeckTheme.amber) }
             }

@@ -14,6 +14,10 @@ struct SettingsView: View {
     @State private var tokenEdited = false
     @State private var unslothToken = ""
     @State private var unslothTokenEdited = false
+    @AppStorage("boardEnabled") private var boardEnabled = false
+    @State private var linearKey = ""
+    @State private var linearKeyEdited = false
+    @State private var linearKeySaved = DeckKeychain.read(account: "linear") != nil
     @State private var folders: [String] = UserDefaults.standard.stringArray(forKey: "modelFolders") ?? []
     @State private var unslothFolders: [String] = UserDefaults.standard.stringArray(forKey: "unslothFolders") ?? []
     @State private var bridgeInstalled = ClaudeBridge.isInstalled()
@@ -69,6 +73,34 @@ struct SettingsView: View {
                             Task { await store.refreshModels() }
                         } catch { feedback = error.localizedDescription }
                     }.buttonStyle(.bordered)
+                }
+            }
+            DeckCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Toggle(L("Bacheca Linear"), isOn: $boardEnabled).font(.system(size: 15, weight: .semibold))
+                    Text(L("Spenta di default. Se attiva, legge i tuoi ticket aperti da api.linear.app con una API key personale."))
+                        .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Text(L("API key Linear")).frame(width: 115, alignment: .leading)
+                        SecureField(D(linearKeySaved ? "Salvata nel Portachiavi" : "Incolla la chiave · salvata nel Portachiavi"), text: $linearKey).textFieldStyle(.roundedBorder).onChange(of: linearKey) { _, _ in linearKeyEdited = true }
+                    }.font(.system(size: 11)).disabled(!boardEnabled)
+                    HStack {
+                        Button(L("Salva chiave")) {
+                            do {
+                                if linearKeyEdited { try DeckKeychain.save(linearKey.trimmingCharacters(in: .whitespacesAndNewlines), account: "linear") }
+                                linearKey = ""; linearKeyEdited = false
+                                linearKeySaved = DeckKeychain.read(account: "linear") != nil
+                                feedback = linearKeySaved ? "Chiave Linear salvata." : "Chiave Linear rimossa."
+                            } catch { feedback = error.localizedDescription }
+                        }
+                        Button(L("Rimuovi chiave")) {
+                            do {
+                                try DeckKeychain.save("", account: "linear")
+                                linearKey = ""; linearKeyEdited = false; linearKeySaved = false
+                                feedback = "Chiave Linear rimossa."
+                            } catch { feedback = error.localizedDescription }
+                        }.disabled(!linearKeySaved)
+                    }.buttonStyle(.bordered).disabled(!boardEnabled)
                 }
             }
             DeckCard {

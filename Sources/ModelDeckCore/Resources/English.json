@@ -437,5 +437,14 @@
   "Aggiornamento ogni 5 secondi, solo mentre questa pagina è aperta.": "Refreshes every 5 seconds while this page is open.",
   "Lettura delle porte incompleta o non disponibile.": "Port data is incomplete or unavailable.",
   "Servizi utente: lettura incompleta o non disponibile.": "User service data is incomplete or unavailable.",
-  "Servizi di sistema: lettura incompleta o non disponibile.": "System service data is incomplete or unavailable."
+  "Servizi di sistema: lettura incompleta o non disponibile.": "System service data is incomplete or unavailable.",
+  "Bacheca Linear": "Linear board",
+  "Spenta di default. Se attiva, legge i tuoi ticket aperti da api.linear.app con una API key personale.": "Off by default. When on, it reads your open tickets from api.linear.app with a personal API key.",
+  "API key Linear": "Linear API key",
+  "Salvata nel Portachiavi": "Saved in Keychain",
+  "Incolla la chiave · salvata nel Portachiavi": "Paste the key · saved in Keychain",
+  "Salva chiave": "Save key",
+  "Rimuovi chiave": "Remove key",
+  "Chiave Linear salvata.": "Linear key saved.",
+  "Chiave Linear rimossa.": "Linear key removed."
 }

@@ -1,4 +1,8 @@
-# ModelDeck
+# ShipDeck
+
+> **ShipDeck (formerly ModelDeck).** The app is now called ShipDeck, with bundle identifier `io.github.alandomio.ShipDeck`. The Swift package, product and module names (`ModelDeck`, `ModelDeckCore`) are unchanged, so `swift run ModelDeck` still works. Settings are copied once from the old app on first launch. Application Support (`~/Library/Application Support/ModelDeck`) and Keychain items keep their old names, so they are read as before.
+>
+> **Reconnect Claude Code after installing ShipDeck.** The status line bridge points at the old `ModelDeck.app` executable. Use **Ripristina status line** in the old app (or `~/Applications/ModelDeck.app/Contents/MacOS/ModelDeck --disconnect-claude`), then run **Collega Claude Code** in ShipDeck. Delete the old `ModelDeck.app` afterwards.
 
 A native macOS dashboard for your Mac, local LLMs, and Claude Code / Codex subscription quotas.
 
@@ -55,15 +59,15 @@ Install Xcode (or the Command Line Tools) with a Swift 5.10+ toolchain, then:
 git clone https://github.com/tommasinigiovanni/ModelDeck.git
 cd ModelDeck
 bash scripts/build.sh
-open build/ModelDeck.app
+open build/ShipDeck.app
 ```
 
-To keep the app installed, copy `build/ModelDeck.app` to `~/Applications` **before connecting Claude Code**. The status line references the executable in its installed location. Moving the app later requires restoring and reconnecting the bridge.
+To keep the app installed, copy `build/ShipDeck.app` to `~/Applications` **before connecting Claude Code**. The status line references the executable in its installed location. Moving the app later requires restoring and reconnecting the bridge.
 
 ```sh
 mkdir -p ~/Applications
-ditto build/ModelDeck.app ~/Applications/ModelDeck.app
-open ~/Applications/ModelDeck.app
+ditto build/ShipDeck.app ~/Applications/ShipDeck.app
+open ~/Applications/ShipDeck.app
 ```
 
 The local build is ad hoc signed. There is no Developer ID signature, notarization, automatic updater or App Store distribution in this initial version. CI produces an app archive for its runner's architecture; it is not a universal binary.
@@ -108,14 +112,14 @@ In Settings, choose **Collega Claude Code**, then restart Claude Code and send a
 
 Click **Needs refresh / Da aggiornare** or **How to refresh / Come aggiornare** on the Claude card for connection status and step-by-step instructions. **Read latest data / Rileggi dati** rereads data already received; it does not query Claude or start a conversation. If the timestamp does not change, wait for a response in a Claude Code terminal session, and check the connection or project-specific status line overrides. Expired windows require refresh even when the capture timestamp is recent.
 
-The bridge updates `~/.claude/settings.json`, preserves other settings, and chains your previous status line command with its original input. It stores the previous status line configuration in `~/Library/Application Support/ModelDeck/claude-bridge.json`. Use **Ripristina status line** before uninstalling ModelDeck. If another tool changes the status line after installation, restoration refuses to overwrite it; the backup remains available.
+The bridge updates `~/.claude/settings.json`, preserves other settings, and chains your previous status line command with its original input. It stores the previous status line configuration in `~/Library/Application Support/ModelDeck/claude-bridge.json`. Use **Ripristina status line** before uninstalling ShipDeck. If another tool changes the status line after installation, restoration refuses to overwrite it; the backup remains available.
 
 The same reversible setup is available from the installed app's command line:
 
 ```sh
-~/Applications/ModelDeck.app/Contents/MacOS/ModelDeck --connect-claude
+~/Applications/ShipDeck.app/Contents/MacOS/ShipDeck --connect-claude
 # To restore the previous status line:
-~/Applications/ModelDeck.app/Contents/MacOS/ModelDeck --disconnect-claude
+~/Applications/ShipDeck.app/Contents/MacOS/ShipDeck --disconnect-claude
 ```
 
 Only quota percentages, reset timestamps and capture time are written to `claude-usage.json` in the same application support directory (permissions `0600`). No prompts, transcript paths, tokens, email addresses or account identifiers are stored. The bridge does not make network requests. Claude's quota display updates from active sessions; it is not independent background polling. Project-specific status line overrides may take precedence over the user settings bridge.

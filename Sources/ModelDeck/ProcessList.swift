@@ -110,7 +110,7 @@ struct ProcessList: View {
                         }
                         if let path = process.path { Text(D(path)).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted).textSelection(.enabled) }
                         if process.gpuClient, process.gpu == nil { Text(L("Client GPU rilevato; macOS non espone una percentuale valida per questo processo.")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
-                        if !process.canTerminate { Text(L("Arresto non disponibile per processi protetti, altri utenti o ModelDeck.")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
+                        if !process.canTerminate { Text(L("Arresto non disponibile per processi protetti, altri utenti o ShipDeck.")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
                     }
                 }
             }

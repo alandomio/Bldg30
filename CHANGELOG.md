@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Rename the app to ShipDeck (bundle `ShipDeck.app`, identifier `io.github.alandomio.ShipDeck`); settings migrate once, Keychain and Application Support are unchanged. Reconnect the Claude Code bridge after installing.
+- Add the companion feed panels, click notes and decisions badge, and a Microsoft Defender CPU stat.
+
 ## 0.7.1 — 2026-10-24
 
 - Complete English menu bar tooltips, including quota durations, used/remaining labels and freshness messages.

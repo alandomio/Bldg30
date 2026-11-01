@@ -49,7 +49,7 @@ public enum CodexUsage {
                     guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
                     guard (object["id"] as? Int) == id else {
                         if let requestID = object["id"], object["method"] != nil {
-                            try send(["id": requestID, "error": ["code": -32601, "message": "ModelDeck supports account reads only"]])
+                            try send(["id": requestID, "error": ["code": -32601, "message": "ShipDeck supports account reads only"]])
                         }
                         continue
                     }
@@ -66,7 +66,7 @@ public enum CodexUsage {
                 guard buffer.count < 2_000_000 else { throw DeckError.invalidResponse }
             }
         }
-        try send(["id": 0, "method": "initialize", "params": ["clientInfo": ["name": "modeldeck", "title": "ModelDeck", "version": DeckVersion.current]]])
+        try send(["id": 0, "method": "initialize", "params": ["clientInfo": ["name": "modeldeck", "title": "ShipDeck", "version": DeckVersion.current]]])
         _ = try response(0)
         try send(["method": "initialized", "params": [:]])
         try send(["id": 1, "method": "account/rateLimits/read", "params": [:]])

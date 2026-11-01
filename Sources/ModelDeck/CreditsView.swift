@@ -16,7 +16,7 @@ struct CreditsView: View {
                     HStack(spacing: 15) {
                         Image(systemName: "square.stack.3d.up.fill").font(.system(size: 38)).foregroundStyle(DeckTheme.mint)
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(L("ModelDeck")).font(.system(size: 25, weight: .semibold)).tracking(-0.7)
+                            Text(L("ShipDeck")).font(.system(size: 25, weight: .semibold)).tracking(-0.7)
                             Text(L("Il Mac, i modelli locali e i tuoi strumenti AI.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted)
                         }
                     }

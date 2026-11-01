@@ -19,21 +19,21 @@ if [[ ! "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 "$swift_tool" build -c "$configuration" "${swift_build_args[@]}" --product ModelDeck
 binary_dir="$("$swift_tool" build -c "$configuration" "${swift_build_args[@]}" --show-bin-path)"
-app="build/ModelDeck.app"
+app="build/ShipDeck.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$binary_dir/ModelDeck" "$app/Contents/MacOS/ModelDeck"
+cp "$binary_dir/ModelDeck" "$app/Contents/MacOS/ShipDeck"
 ditto "$binary_dir/ModelDeck_ModelDeckCore.bundle" "$app/Contents/Resources/ModelDeck_ModelDeckCore.bundle"
-"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift build/ModelDeck.iconset
-iconutil -c icns build/ModelDeck.iconset -o "$app/Contents/Resources/AppIcon.icns"
+"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift build/ShipDeck.iconset
+iconutil -c icns build/ShipDeck.iconset -o "$app/Contents/Resources/AppIcon.icns"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>ModelDeck</string>
-<key>CFBundleIdentifier</key><string>io.github.tommasinigiovanni.ModelDeck</string>
-<key>CFBundleName</key><string>ModelDeck</string>
+<key>CFBundleExecutable</key><string>ShipDeck</string>
+<key>CFBundleIdentifier</key><string>io.github.alandomio.ShipDeck</string>
+<key>CFBundleName</key><string>ShipDeck</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleDisplayName</key><string>ModelDeck</string>
+<key>CFBundleDisplayName</key><string>ShipDeck</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$app_version</string>
 <key>CFBundleVersion</key><string>1</string>

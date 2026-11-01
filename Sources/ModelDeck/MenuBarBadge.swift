@@ -5,7 +5,7 @@ import ModelDeckCore
 
 @MainActor enum MenuBarBadge {
     static func icon() -> NSImage? {
-        let icon = NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: "ModelDeck")
+        let icon = NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: "ShipDeck")
         icon?.isTemplate = true; icon?.size = NSSize(width: 17, height: 18)
         return icon
     }

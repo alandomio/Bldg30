@@ -57,7 +57,7 @@ import ModelDeckCore
                 do {
                     try process.run(); try? pipe.fileHandleForWriting.write(contentsOf: input); try? pipe.fileHandleForWriting.close()
                     process.waitUntilExit()
-                } catch { print("ModelDeck") }
+                } catch { print("ShipDeck") }
             } else {
                 let usage = ClaudeUsage.read()
                 let text = usage.windows.filter { !$0.isExpired }.map { "\($0.title): \(DeckFormat.percent($0.usedPercent))" }.joined(separator: " · ")
@@ -91,6 +91,7 @@ import ModelDeckCore
         }
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)
+        DeckMigration.run()
         let store = DeckStore()
         if args.contains("--demo") || args.contains("--check-menu") { store.useDemo() }
         let delegate = DeckApplicationDelegate(store: store)
@@ -156,7 +157,7 @@ struct MenuPanel: View {
             VStack(spacing: 14) {
                 HStack {
                     Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint)
-                    Text(L("ModelDeck")).font(.system(size: 16, weight: .semibold)); Spacer()
+                    Text(L("ShipDeck")).font(.system(size: 16, weight: .semibold)); Spacer()
                     Text(store.machine.chip).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
                 HStack(spacing: 10) {
@@ -178,7 +179,7 @@ struct MenuPanel: View {
                 HStack {
                     Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.help(L("Impostazioni"))
                     Spacer()
-                    Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.help(L("Esci da ModelDeck"))
+                    Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.help(L("Esci da ShipDeck"))
                 }.buttonStyle(.plain).foregroundStyle(DeckTheme.muted)
             }.padding(18)
         }.frame(width: 420, height: 680).background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).deckAppearance().onAppear { store.start() }

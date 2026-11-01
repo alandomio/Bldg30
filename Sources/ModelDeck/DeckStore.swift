@@ -121,6 +121,7 @@ import Security
 }
 
 enum DeckKeychain {
+    /// Kept from the ModelDeck name so existing Keychain items stay readable.
     static let service = "io.github.tommasinigiovanni.ModelDeck"
     static func read(account: String = "lmstudio") -> String? {
         var value: CFTypeRef?

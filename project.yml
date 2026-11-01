@@ -25,15 +25,15 @@ targets:
       - target: ModelDeckCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.tommasinigiovanni.ModelDeck
-        PRODUCT_NAME: ModelDeck
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.alandomio.ShipDeck
+        PRODUCT_NAME: ShipDeck
         MARKETING_VERSION: 0.7.1
         CURRENT_PROJECT_VERSION: 1
         ENABLE_APP_SANDBOX: NO
     info:
       path: Sources/ModelDeck/Info.plist
       properties:
-        CFBundleDisplayName: ModelDeck
+        CFBundleDisplayName: ShipDeck
         CFBundleShortVersionString: $(MARKETING_VERSION)
         LSMinimumSystemVersion: '14.0'
         NSHighResolutionCapable: true

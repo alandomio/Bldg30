@@ -522,8 +522,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.7.1;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.tommasinigiovanni.ModelDeck;
-				PRODUCT_NAME = ModelDeck;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.alandomio.ShipDeck;
+				PRODUCT_NAME = ShipDeck;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -580,8 +580,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.7.1;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.tommasinigiovanni.ModelDeck;
-				PRODUCT_NAME = ModelDeck;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.alandomio.ShipDeck;
+				PRODUCT_NAME = ShipDeck;
 				SDKROOT = macosx;
 			};
 			name = Debug;

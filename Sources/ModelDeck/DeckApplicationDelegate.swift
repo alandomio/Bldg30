@@ -26,8 +26,8 @@ import ModelDeckCore
         let app = NSMenu(); appItem.submenu = app
         app.addItem(withTitle: L("Impostazioni…"), action: #selector(openSettingsAction), keyEquivalent: ",").target = self
         app.addItem(.separator())
-        app.addItem(withTitle: L("Nascondi ModelDeck"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        app.addItem(withTitle: L("Esci da ModelDeck"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: L("Nascondi ShipDeck"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: L("Esci da ShipDeck"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let editItem = NSMenuItem(title: L("Modifica"), action: nil, keyEquivalent: ""); main.addItem(editItem)
         let edit = NSMenu(title: L("Modifica")); editItem.submenu = edit
         for (title, selector, key) in [("Taglia", #selector(NSText.cut(_:)), "x"), ("Copia", #selector(NSText.copy(_:)), "c"), ("Incolla", #selector(NSText.paste(_:)), "v"), ("Seleziona tutto", #selector(NSText.selectAll(_:)), "a")] {
@@ -38,7 +38,7 @@ import ModelDeckCore
         windows.addItem(withTitle: L("Chiudi"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         windows.addItem(withTitle: L("Riduci a icona"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         NSApp.mainMenu = main; NSApp.windowsMenu = windows
-        settings?.title = L("Impostazioni · ModelDeck")
+        settings?.title = L("Impostazioni · ShipDeck")
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showDashboard(); return true }
@@ -47,7 +47,7 @@ import ModelDeckCore
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let image = MenuBarBadge.icon()
-        item.button?.image = image; item.button?.toolTip = "ModelDeck"
+        item.button?.image = image; item.button?.toolTip = "ShipDeck"
         item.button?.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
         item.button?.target = self; item.button?.action = #selector(togglePopover)
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -90,7 +90,7 @@ import ModelDeckCore
         if NSApp.currentEvent?.type == .rightMouseUp {
             popover.performClose(nil)
             let menu = NSMenu()
-            for (title, selector) in [("Apri cruscotto", #selector(openDashboardAction)), ("Processi", #selector(openProcessesAction)), ("Impostazioni…", #selector(openSettingsAction)), ("Esci da ModelDeck", #selector(quitAction))] {
+            for (title, selector) in [("Apri cruscotto", #selector(openDashboardAction)), ("Processi", #selector(openProcessesAction)), ("Impostazioni…", #selector(openSettingsAction)), ("Esci da ShipDeck", #selector(quitAction))] {
                 let item = NSMenuItem(title: D(title), action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
             }
             menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
@@ -106,7 +106,7 @@ import ModelDeckCore
         popover.performClose(nil)
         if dashboard == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 1000), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
-            window.title = "ModelDeck"; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = true
+            window.title = "ShipDeck"; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false; window.minSize = NSSize(width: 940, height: 700)
             window.center(); dashboard = window
             setDashboardContent(section: section ?? "overview")
@@ -120,7 +120,7 @@ import ModelDeckCore
         popover.performClose(nil)
         if settings == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 800), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-            window.title = L("Impostazioni · ModelDeck"); window.isReleasedWhenClosed = false; window.center()
+            window.title = L("Impostazioni · ShipDeck"); window.isReleasedWhenClosed = false; window.center()
             window.contentViewController = NSHostingController(rootView: ScrollView { SettingsView().padding(24) }.background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).environmentObject(store).deckAppearance())
             settings = window
         }

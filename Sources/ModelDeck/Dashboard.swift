@@ -37,7 +37,7 @@ struct Dashboard: View {
                     HStack {
                         if store.demo { Text(L("ANTEPRIMA · DATI FITTIZI")) }
                         Spacer()
-                        Text("ModelDeck \(DeckVersion.current)")
+                        Text("ShipDeck \(DeckVersion.current)")
                     }.font(.system(size: 9, design: .monospaced)).foregroundStyle(DeckTheme.muted)
                 }.padding(28).frame(maxWidth: 1200)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,7 +57,7 @@ struct Dashboard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint).font(.system(size: 23))
-                Text(L("ModelDeck")).font(.system(size: 18, weight: .semibold)).tracking(-0.6)
+                Text(L("ShipDeck")).font(.system(size: 18, weight: .semibold)).tracking(-0.6)
             }.padding(.bottom, 6)
             Text(L("IL TUO SPAZIO AI")).font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(2).foregroundStyle(DeckTheme.muted).padding(.bottom, 34)
             nav("overview", "Panoramica", "rectangle.grid.2x2")

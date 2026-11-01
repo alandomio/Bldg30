@@ -13,9 +13,9 @@ struct ClaudeRefreshView: View {
                 Spacer()
                 Button { dismiss() } label: { Image(systemName: "xmark") }.buttonStyle(.plain).help(L("Chiudi"))
             }
-            Text(L("ModelDeck riceve le quote dalle sessioni di Claude Code nel terminale. Le nuove percentuali arrivano dopo una risposta, se il piano e la versione di Claude Code le rendono disponibili."))
+            Text(L("ShipDeck riceve le quote dalle sessioni di Claude Code nel terminale. Le nuove percentuali arrivano dopo una risposta, se il piano e la versione di Claude Code le rendono disponibili."))
                 .font(.system(size: 12)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
-            step("1", "Verifica il collegamento", installed ? "Claude Code è collegato a ModelDeck." : "Collega Claude Code per consentire l’arrivo dei dati delle quote.")
+            step("1", "Verifica il collegamento", installed ? "Claude Code è collegato a ShipDeck." : "Collega Claude Code per consentire l’arrivo dei dati delle quote.")
             if !installed {
                 Button(L("Collega Claude Code")) {
                     do {
@@ -25,8 +25,8 @@ struct ClaudeRefreshView: View {
                     } catch { feedback = error.localizedDescription }
                 }.buttonStyle(.bordered).disabled(store.demo)
             }
-            step("2", "Usa Claude Code", "Apri o riprendi una sessione nel terminale. Se hai appena collegato ModelDeck, riapri la sessione. Invia una richiesta e attendi la risposta.")
-            step("3", "Torna in ModelDeck", "Le quote vengono lette automaticamente. Puoi anche premere Rileggi dati: controlla i dati già ricevuti, senza avviare richieste a Claude.")
+            step("2", "Usa Claude Code", "Apri o riprendi una sessione nel terminale. Se hai appena collegato ShipDeck, riapri la sessione. Invia una richiesta e attendi la risposta.")
+            step("3", "Torna in ShipDeck", "Le quote vengono lette automaticamente. Puoi anche premere Rileggi dati: controlla i dati già ricevuti, senza avviare richieste a Claude.")
             if let date = store.claude.updatedAt {
                 HStack { Text(L("Ultimi dati ricevuti:")); Text(date, style: .date); Text(date, style: .time) }
                     .font(.system(size: 11)).foregroundStyle(DeckTheme.muted)

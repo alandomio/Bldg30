@@ -84,7 +84,7 @@ public struct MenuBarSummary: Sendable {
     }
 
     public static func render(options: MenuBarOptions, snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage, decisionsWaiting: Int = 0, defender: DefenderUsage? = nil, now: Date = Date()) -> MenuBarSummary {
-        var readings: [MenuBarReading] = [], details = ["ModelDeck"]
+        var readings: [MenuBarReading] = [], details = ["ShipDeck"]
         func percentage(_ value: Double?) -> String {
             guard let value, value.isFinite, value >= 0 else { return "—" }
             return DeckFormat.percent(value)

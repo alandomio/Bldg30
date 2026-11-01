@@ -16,8 +16,8 @@ jobs:
       - name: Build macOS application
         run: bash scripts/build.sh
       - name: Package application
-        run: ditto -c -k --sequesterRsrc --keepParent build/ModelDeck.app build/ModelDeck-macOS.zip
+        run: ditto -c -k --sequesterRsrc --keepParent build/ShipDeck.app build/ShipDeck-macOS.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: ModelDeck-macOS
-          path: build/ModelDeck-macOS.zip
+          name: ShipDeck-macOS
+          path: build/ShipDeck-macOS.zip

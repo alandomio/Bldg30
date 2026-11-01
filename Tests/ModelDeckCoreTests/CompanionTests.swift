@@ -20,18 +20,21 @@ final class CompanionTests: XCTestCase {
         let value = try CompanionFeed.decode(try Data(contentsOf: path))
         XCTAssertEqual(value.decisions.map(\.id), ["dec-1", "dec-2"])
     }
-    func testRejectsWrongSchemaUnknownVerdictAndInsecureUrl() throws {
+    func testRejectsWrongSchemaAndBrokenTopLevelButSkipsBadRows() throws {
         XCTAssertThrowsError(try CompanionFeed.decode(try feed { $0["schema"] = "companion-feed.v2" })) { XCTAssertEqual($0 as? CompanionError, .unsupportedSchema("companion-feed.v2")) }
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["verdict"] = "maybe"; root["mrs"] = mrs }))
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["url"] = "http://example.com/x"; root["mrs"] = mrs }))
         XCTAssertThrowsError(try CompanionFeed.decode(Data("not json".utf8)))
         XCTAssertThrowsError(try CompanionFeed.decode(try feed { $0.removeValue(forKey: "generated_at") }))
+        let unknownVerdict = try CompanionFeed.decode(try feed { root in
+            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["verdict"] = "maybe"; root["mrs"] = mrs })
+        XCTAssertEqual(unknownVerdict.mrs.count, 1); XCTAssertEqual(unknownVerdict.skipped.count, 1)
+        let insecure = try CompanionFeed.decode(try feed { root in
+            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["url"] = "http://example.com/x"; root["mrs"] = mrs })
+        XCTAssertEqual(insecure.mrs.count, 1); XCTAssertEqual(insecure.skipped.count, 1)
     }
-    func testRejectsDuplicateDecisionIDs() throws {
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var items = root["decisions"] as! [[String: Any]]; items[1]["id"] = items[0]["id"]; root["decisions"] = items }))
+    func testDuplicateDecisionIDsSkipTheSecondRow() throws {
+        let value = try CompanionFeed.decode(try feed { root in
+            var items = root["decisions"] as! [[String: Any]]; items[1]["id"] = items[0]["id"]; root["decisions"] = items })
+        XCTAssertEqual(value.decisions.count, 1); XCTAssertEqual(value.skipped.count, 1)
     }
     func testStaleness() throws {
         let value = try CompanionFeed.decode(try feed())

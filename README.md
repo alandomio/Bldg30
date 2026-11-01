@@ -212,7 +212,7 @@ Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, 
 
 ## Versioning and release tags
 
-The current release is **0.7.1**; changes are listed in [CHANGELOG.md](CHANGELOG.md). Update `VERSION`, `DeckVersion.current` and `project.yml` together. The build reads `VERSION`, includes the localization resource bundle and writes the app's version metadata. Regenerate the Xcode project after adding files or changing its version:
+The current release is **1.1.0**; changes are listed in [CHANGELOG.md](CHANGELOG.md). Update `VERSION`, `DeckVersion.current` and `project.yml` together. The build reads `VERSION`, includes the localization resource bundle and writes the app's version metadata. Regenerate the Xcode project after adding files or changing its version:
 
 ```sh
 xcodegen generate

@@ -2,9 +2,11 @@ import Foundation
 
 public struct BoardMR: Equatable, Sendable, Identifiable {
     public var id: String { ref }
-    public let ref: String, title: String, role: String, pipeline: String, label: String, nextOwner: String
+    public let ref: String, title: String, role: String
+    public let pipeline: String?
+    public let label: String, nextOwner: String
     public let url: URL
-    public let openThreads: Int
+    public let openThreads: Int?
     /// nil when firstmate never judged this MR (it only exists in the raw poll).
     public let verdict: String?
     public let verdictStale: Bool
@@ -30,7 +32,7 @@ public enum CompanionBoard {
         var rawByURL = Dictionary(raw?.mrs.map { (key($0.url), $0) } ?? [], uniquingKeysWith: { first, _ in first })
         var rows: [BoardMR] = []
         for mr in feed?.mrs ?? [] {
-            var pipeline = mr.pipeline, threads = mr.openThreads, stale = false
+            var pipeline: String? = mr.pipeline, threads: Int? = mr.openThreads, stale = false
             if let raw, raw.gitlabOK, let generated = feed?.generatedAt, raw.fetchedAt > generated {
                 if let live = rawByURL[key(mr.url)] {
                     pipeline = live.pipeline; threads = live.openThreads

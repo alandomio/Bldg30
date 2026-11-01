@@ -1,6 +1,6 @@
 import Foundation
 
-public enum DeckVersion { public static let current = "0.7.1" }
+public enum DeckVersion { public static let current = "1.1.0" }
 
 public struct MachineInfo: Sendable {
     public var chip = "Mac"

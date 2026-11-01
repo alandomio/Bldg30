@@ -109,6 +109,7 @@ import ModelDeckCore
     @MainActor private static func renderPreview(to url: URL) {
         _ = NSApplication.shared
         let store = DeckStore(); store.useDemo()
+        if CommandLine.arguments.contains("--real-feed") { store.companionFeed = try? CompanionFeed.read(path: CompanionSettings.feedPath) }
         let resource: ProcessSort = CommandLine.arguments.contains("--gpu") ? .gpu : CommandLine.arguments.contains("--memory") ? .memory : .cpu
         if CommandLine.arguments.contains("--gpu-unattributed") || CommandLine.arguments.contains("--gpu-unavailable") {
             store.processes = store.processes.map { process in var copy = process; copy.gpu = nil; return copy }

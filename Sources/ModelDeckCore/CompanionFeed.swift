@@ -8,7 +8,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public static let verdicts: Set<String> = ["close", "notyet", "blocked", "hold"]
     public static let roles: Set<String> = ["author", "reviewer"]
 
-    public struct Option: Decodable, Equatable, Sendable { public let label: String; public let consequence: String }
+    public struct Option: Decodable, Equatable, Sendable { public let label: String; public let consequence: String; public let actionId: String?; public let outward: Bool? }
     public struct Decision: Decodable, Equatable, Sendable, Identifiable {
         public let id: String, title: String, project: String, whyNow: String, recommendation: String
         public let options: [Option]
@@ -19,9 +19,12 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }
     public struct MergeRequest: Decodable, Equatable, Sendable, Identifiable {
         public var id: String { ref }
-        public let ref: String, title: String, role: String, verdict: String, label: String, nextOwner: String, pipeline: String
+        public let ref: String, title: String, role: String, verdict: String, label: String, nextOwner: String
         public let url: URL
-        public let openThreads: Int
+        /// The schema allows null for both: the producer could not read them.
+        public let pipeline: String?
+        public let openThreads: Int?
+        public let decisionId: String?
         public let drafts: [Draft]
         public let actions: [Action]
     }
@@ -31,6 +34,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let identifier: String, title: String, status: String
         public let url: URL
         public let finish: Finish?
+        public let decisionId: String?
         public let linkedMrs: [String]
         public let actions: [Action]
     }
@@ -41,6 +45,63 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public let decisions: [Decision]
     public let mrs: [MergeRequest]
     public let tickets: [Ticket]
+    /// The producer's own `warnings` plus one line per row skipped here.
+    public let warnings: [String]
+    public let skipped: [String]
+
+    private enum CodingKeys: String, CodingKey { case schema, generatedAt, producer, decisions, mrs, tickets, warnings }
+    private struct Lossy<T: Decodable>: Decodable {
+        let value: T?, problem: String?
+        init(from decoder: Decoder) throws {
+            do { value = try T(from: decoder); problem = nil }
+            catch { value = nil; problem = CompanionFeed.describe(error) }
+        }
+    }
+    /// One bad row is skipped with a warning; schema, producer, generated_at and the three lists stay mandatory.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schema = try values.decode(String.self, forKey: .schema)
+        guard schema == Self.schema else { throw CompanionError.unsupportedSchema(schema) }
+        generatedAt = try values.decode(Date.self, forKey: .generatedAt)
+        producer = try values.decode(String.self, forKey: .producer)
+        var notes: [String] = []
+        func rows<T: Decodable>(_ key: CodingKeys, _ type: T.Type) throws -> [T?] {
+            let list = try values.decode([Lossy<T>].self, forKey: key)
+            for (index, row) in list.enumerated() { if let problem = row.problem { notes.append("\(key.stringValue)[\(index)]: \(problem)") } }
+            return list.map(\.value)
+        }
+        let decisionRows = try rows(CodingKeys.decisions, Decision.self), mrRows = try rows(CodingKeys.mrs, MergeRequest.self), ticketRows = try rows(CodingKeys.tickets, Ticket.self)
+        warnings = try values.decodeIfPresent([String].self, forKey: .warnings) ?? []
+        var seen = Set<String>()
+        func keep<T>(_ list: [T?], _ name: String, id: (T) -> String, check: (T) throws -> Void) -> [T] {
+            var kept: [T] = []
+            for (index, row) in list.enumerated() {
+                guard let row else { continue }
+                do {
+                    try check(row)
+                    guard seen.insert(name + ":" + id(row)).inserted else { throw CompanionError.invalid("duplicato \(id(row))") }
+                    kept.append(row)
+                } catch { notes.append("\(name)[\(index)]: \(Self.describe(error))") }
+            }
+            return kept
+        }
+        decisions = keep(decisionRows, "decisions", id: \.id, check: Self.check)
+        mrs = keep(mrRows, "mrs", id: \.ref, check: Self.check)
+        tickets = keep(ticketRows, "tickets", id: \.identifier, check: Self.check)
+        skipped = notes
+    }
+
+    static func describe(_ error: Error) -> String {
+        if case CompanionError.invalid(let detail) = error { return detail }
+        guard let error = error as? DecodingError else { return error.localizedDescription }
+        switch error {
+        case .keyNotFound(let key, _): return "campo mancante \(key.stringValue)"
+        case .valueNotFound(_, let context), .typeMismatch(_, let context), .dataCorrupted(let context):
+            let field = context.codingPath.map(\.stringValue).filter { Int($0) == nil }.joined(separator: ".")
+            return "valore non valido in " + (field.isEmpty ? "riga" : field)
+        @unknown default: return "riga non valida"
+        }
+    }
 
     public func age(now: Date = Date()) -> TimeInterval { max(0, now.timeIntervalSince(generatedAt)) }
     public func isStale(now: Date = Date()) -> Bool { age(now: now) > Self.staleAfter }
@@ -52,7 +113,6 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         do { feed = try decoder.decode(CompanionFeed.self, from: data) }
         catch let error as CompanionError { throw error }
         catch { throw CompanionError.invalid(String(describing: error)) }
-        try feed.validate()
         return feed
     }
 
@@ -71,31 +131,25 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         return decoder
     }
 
-    func validate() throws {
-        guard schema == Self.schema else { throw CompanionError.unsupportedSchema(schema) }
-        func need(_ value: String, _ name: String) throws { if value.trimmingCharacters(in: .whitespaces).isEmpty { throw CompanionError.invalid("\(name) mancante") } }
-        func secure(_ url: URL, _ name: String) throws { if url.scheme != "https" { throw CompanionError.invalid("\(name) non è https") } }
-        try need(producer, "producer")
-        var seen = Set<String>()
-        for decision in decisions {
-            try need(decision.id, "decisions.id"); try need(decision.title, "decisions.title")
-            guard seen.insert("d:" + decision.id).inserted else { throw CompanionError.invalid("decision duplicata \(decision.id)") }
-            for option in decision.options { try need(option.label, "options.label") }
-            for link in decision.links { try secure(link, "link") }
-        }
-        for mr in mrs {
-            try need(mr.ref, "mrs.ref"); try need(mr.title, "mrs.title"); try secure(mr.url, "mrs.url")
-            guard Self.verdicts.contains(mr.verdict) else { throw CompanionError.invalid("verdict sconosciuto \(mr.verdict)") }
-            guard Self.roles.contains(mr.role) else { throw CompanionError.invalid("role sconosciuto \(mr.role)") }
-            guard seen.insert("m:" + mr.ref).inserted else { throw CompanionError.invalid("mr duplicata \(mr.ref)") }
-            for action in mr.actions { try need(action.id, "actions.id") }
-            for draft in mr.drafts { try need(draft.id, "drafts.id"); try need(draft.text, "drafts.text") }
-        }
-        for ticket in tickets {
-            try need(ticket.identifier, "tickets.identifier"); try need(ticket.title, "tickets.title"); try secure(ticket.url, "tickets.url")
-            guard seen.insert("t:" + ticket.identifier).inserted else { throw CompanionError.invalid("ticket duplicato \(ticket.identifier)") }
-            for action in ticket.actions { try need(action.id, "actions.id") }
-        }
+    private static func need(_ value: String, _ name: String) throws { if value.trimmingCharacters(in: .whitespaces).isEmpty { throw CompanionError.invalid("\(name) mancante") } }
+    private static func secure(_ url: URL, _ name: String) throws { if url.scheme != "https" { throw CompanionError.invalid("\(name) non è https") } }
+    static func check(_ decision: Decision) throws {
+        try need(decision.id, "id"); try need(decision.title, "title")
+        guard !decision.options.isEmpty else { throw CompanionError.invalid("options vuote") }
+        for option in decision.options { try need(option.label, "options.label") }
+        // Decision links may also point at a local page on this Mac (http on loopback).
+        for link in decision.links where !(link.scheme == "http" && ["127.0.0.1", "localhost", "::1"].contains(link.host ?? "")) { try secure(link, "link") }
+    }
+    static func check(_ mr: MergeRequest) throws {
+        try need(mr.ref, "ref"); try secure(mr.url, "url")
+        guard verdicts.contains(mr.verdict) else { throw CompanionError.invalid("verdict sconosciuto \(mr.verdict)") }
+        guard roles.contains(mr.role) else { throw CompanionError.invalid("role sconosciuto \(mr.role)") }
+        for action in mr.actions { try need(action.id, "actions.id") }
+        for draft in mr.drafts { try need(draft.id, "drafts.id"); try need(draft.text, "drafts.text") }
+    }
+    static func check(_ ticket: Ticket) throws {
+        try need(ticket.identifier, "identifier"); try secure(ticket.url, "url")
+        for action in ticket.actions { try need(action.id, "actions.id") }
     }
 
     public static func read(path: String) throws -> CompanionFeed {

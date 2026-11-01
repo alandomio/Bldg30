@@ -527,5 +527,7 @@
   "Attenzione": "Watch out",
   "Cronologia": "Timeline",
   "Link": "Links",
-  "Spento di default. Legge un file feed JSON scritto dal tuo assistente e scrive note JSON in una cartella inbox. Con Linear o GitLab accesi interroga anche quei servizi, in sola lettura, ogni 2 minuti.": "Off by default. Reads a JSON feed file written by your assistant and writes JSON notes into an inbox folder. With Linear or GitLab on, it also queries those services, read-only, every 2 minutes."
+  "Spento di default. Legge un file feed JSON scritto dal tuo assistente e scrive note JSON in una cartella inbox. Con Linear o GitLab accesi interroga anche quei servizi, in sola lettura, ogni 2 minuti.": "Off by default. Reads a JSON feed file written by your assistant and writes JSON notes into an inbox folder. With Linear or GitLab on, it also queries those services, read-only, every 2 minutes.",
+  "n/d": "n/a",
+  "%@ righe saltate": "%@ rows skipped"
 }

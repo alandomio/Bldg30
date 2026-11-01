@@ -118,4 +118,27 @@ import Foundation
         let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as? [String: String])
         #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "add_context" && json["draft_text"] == "Waiting on infra" && json["target"] == "IN-1")
     }
+
+    @Test func nullPipelineAndThreadsDecodeAndOneBadRowIsSkippedWithAWarning() throws {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: t0).utf8)) as? [String: Any])
+        var mrs = try #require(root["mrs"] as? [[String: Any]])
+        mrs[0]["pipeline"] = NSNull(); mrs[0]["open_threads"] = NSNull()
+        var broken = mrs[1]; broken["ref"] = "bad !1"; broken["role"] = "owner"; mrs.append(broken)
+        var typo = mrs[1]; typo["ref"] = "bad !2"; typo["open_threads"] = "two"; mrs.append(typo)
+        root["mrs"] = mrs; root["warnings"] = ["producer note"]
+        let value = try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+        #expect(value.mrs.map(\.ref) == ["svc !12", "tool !7"])
+        #expect(value.mrs[0].pipeline == nil && value.mrs[0].openThreads == nil)
+        #expect(value.skipped.count == 2 && Set(value.skipped.map { String($0.prefix(6)) }) == ["mrs[2]", "mrs[3]"])
+        #expect(value.warnings == ["producer note"])
+        let row = CompanionBoard.mrs(feed: value, raw: nil)[0]
+        #expect(row.pipeline == nil && row.openThreads == nil)
+    }
+    @Test func realFeedDecodesWhenPresent() throws {
+        let path = NSString(string: CompanionFeed.defaultPath).expandingTildeInPath
+        guard let data = FileManager.default.contents(atPath: path) else { return }
+        let value = try CompanionFeed.decode(data)
+        #expect(!value.mrs.isEmpty && value.skipped.isEmpty)
+        print("REALFEED", value.decisions.count, value.mrs.count, value.tickets.count, "skipped", value.skipped)
+    }
 }

@@ -70,6 +70,9 @@ struct CompanionView: View {
                 StatusPill(text: "Dati diretti", color: DeckTheme.blue)
                 Text(L("Letti \(raw.fetchedAt.formatted(.relative(presentation: .named)))")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
             }
+            if let feed, !feed.skipped.isEmpty {
+                Text(L("\(feed.skipped.count) righe saltate")).font(.system(size: 10)).foregroundStyle(DeckTheme.amber).help(feed.skipped.joined(separator: "\n"))
+            }
             if let error = store.companionError { Text(D(error)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
             if let error = store.pollError { Text(D(error)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
             Spacer()
@@ -128,7 +131,7 @@ struct CompanionView: View {
                             Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted)
                         }
                         Text(mr.title).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
-                        Text(mr.verdict == nil ? L("pipeline \(mr.pipeline) · \(mr.openThreads) thread aperti") : L("\(mr.label) · prossimo: \(mr.nextOwner) · pipeline \(mr.pipeline) · \(mr.openThreads) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                        Text(mr.verdict == nil ? L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti") : L("\(mr.label) · prossimo: \(mr.nextOwner) · pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         if !mr.drafts.isEmpty {
                             Toggle(L("Bozze (\(mr.drafts.count))"), isOn: Binding(get: { openDrafts.contains(mr.ref) }, set: { if $0 { openDrafts.insert(mr.ref) } else { openDrafts.remove(mr.ref) } }))
                                 .toggleStyle(.checkbox).font(.system(size: 11))
@@ -183,6 +186,7 @@ struct CompanionView: View {
         if stale { StatusPill(text: "Verdetto superato", color: DeckTheme.amber) }
     }
 
+    private func unknown<T>(_ value: T?) -> String { value.map { String(describing: $0) } ?? D("n/d") }
     private func open(_ ref: String) { selected = ref; contextText = ""; feedback = nil }
 
     private func detail(_ row: Row) -> some View {
@@ -205,7 +209,7 @@ struct CompanionView: View {
                         switch row {
                         case .mr(let mr):
                             verdictPill(mr.verdict, stale: mr.verdictStale)
-                            Text(L("pipeline \(mr.pipeline) · \(mr.openThreads) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                            Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         case .ticket(let ticket):
                             StatusPill(text: ticket.status, color: DeckTheme.blue)
                             if ticket.finishStale { StatusPill(text: "Verdetto superato", color: DeckTheme.amber) }

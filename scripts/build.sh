@@ -34,6 +34,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <key>CFBundleIdentifier</key><string>io.github.alandomio.ShipDeck</string>
 <key>CFBundleName</key><string>ShipDeck</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundleIconName</key><string>AppIcon</string>
 <key>CFBundleDisplayName</key><string>ShipDeck</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$app_version</string>

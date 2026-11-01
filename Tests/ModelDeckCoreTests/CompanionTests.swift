@@ -89,4 +89,17 @@ final class CompanionTests: XCTestCase {
         XCTAssertNil(batcher.flush(now: now.addingTimeInterval(299)), "one flush per 5 minutes")
         XCTAssertNotNil(batcher.flush(now: now.addingTimeInterval(300)))
     }
+    func testDefenderSumsDaemonsByPrefixAndIsNilWhenAbsent() {
+        func proc(_ pid: Int32, _ name: String, cpu: Double?, memory: UInt64) -> RunningProcess {
+            RunningProcess(id: .init(pid: pid, startedSeconds: 1, startedMicroseconds: 0), name: name, path: nil, userID: 0, cpu: cpu, memory: memory, gpu: nil, gpuClient: false, threads: nil)
+        }
+        XCTAssertNil(DefenderUsage.summarize([proc(1, "Safari", cpu: 5, memory: 1)]))
+        let usage = DefenderUsage.summarize([proc(1, "wdavdaemon", cpu: 2.5, memory: 10), proc(2, "wdavdaemon_enterprise", cpu: 4, memory: 20), proc(3, "wdavdaemon_unprivileged", cpu: nil, memory: 5), proc(4, "Safari", cpu: 50, memory: 99)])
+        XCTAssertEqual(usage?.cpu, 6.5); XCTAssertEqual(usage?.memory, 35); XCTAssertEqual(usage?.processCount, 3)
+        XCTAssertNil(DefenderUsage.summarize([proc(1, "wdavdaemon", cpu: nil, memory: 1)])?.cpu)
+        var options = MenuBarOptions(); options.metrics = [.defender]; options.layout = .detailed
+        func title(_ value: DefenderUsage?) -> String { MenuBarSummary.render(options: options, snapshot: .init(), claude: .init(provider: "Claude", source: "x"), openAI: .init(provider: "OpenAI", source: "x"), defender: value, now: now).title }
+        XCTAssertEqual(title(nil), "Defender —")
+        XCTAssertEqual(title(usage), "Defender " + DeckFormat.percent(6.5))
+    }
 }

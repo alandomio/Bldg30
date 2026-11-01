@@ -17,6 +17,7 @@ import Security
     @Published var settingsMessage: String?
     @Published var demo = false
     @Published var processes: [RunningProcess] = []
+    @Published var defender: DefenderUsage?
     @Published var companionFeed: CompanionFeed?
     @Published var companionError: String?
     @Published var companionNotes: [String: URL] = [:]
@@ -24,6 +25,7 @@ import Security
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()
+    private let defenderMonitor = ProcessMonitor()
     private var started = false
 
     func start() {
@@ -44,6 +46,9 @@ import Security
         }
         Task { [weak self] in
             while !Task.isCancelled, let self { await refreshUsage(); try? await Task.sleep(for: .seconds(90)) }
+        }
+        Task { [weak self] in
+            while !Task.isCancelled, let self { defender = DefenderUsage.summarize(await defenderMonitor.sample()); try? await Task.sleep(for: .seconds(5)) }
         }
         Task { [weak self] in
             while !Task.isCancelled, let self { refreshCompanion(); try? await Task.sleep(for: .seconds(10)) }
@@ -79,6 +84,7 @@ import Security
     }
     func useDemo() {
         demo = true
+        defender = DefenderUsage(cpu: 6.5, memory: 640_000_000, processCount: 3)
         companionFeed = try? CompanionFeed.decode(Data(CompanionFixture.json().utf8))
         machine.chip = "Apple M4 Pro"; machine.memory = 48_000_000_000; machine.cores = 12
         machine.unifiedMemory = true; machine.metalWorkingSet = 36_000_000_000

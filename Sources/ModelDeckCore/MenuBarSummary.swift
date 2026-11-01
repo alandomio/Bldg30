@@ -1,9 +1,9 @@
 import Foundation
 
 public enum MenuBarMetric: String, CaseIterable, Codable, Sendable {
-    case cpu, memory, gpu, claude, openAI
+    case cpu, memory, gpu, claude, openAI, defender
     public var title: String {
-        switch self { case .cpu: "CPU"; case .memory: "RAM"; case .gpu: "GPU"; case .claude: "Claude"; case .openAI: "OpenAI (Codex)" }
+        switch self { case .cpu: "CPU"; case .memory: "RAM"; case .gpu: "GPU"; case .claude: "Claude"; case .openAI: "OpenAI (Codex)"; case .defender: "Defender" }
     }
 }
 
@@ -83,7 +83,7 @@ public struct MenuBarSummary: Sendable {
         return active.first ?? candidates.first
     }
 
-    public static func render(options: MenuBarOptions, snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage, decisionsWaiting: Int = 0, now: Date = Date()) -> MenuBarSummary {
+    public static func render(options: MenuBarOptions, snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage, decisionsWaiting: Int = 0, defender: DefenderUsage? = nil, now: Date = Date()) -> MenuBarSummary {
         var readings: [MenuBarReading] = [], details = ["ModelDeck"]
         func percentage(_ value: Double?) -> String {
             guard let value, value.isFinite, value >= 0 else { return "—" }
@@ -100,6 +100,10 @@ public struct MenuBarSummary: Sendable {
                 let value = available ? options.memoryStyle == .percent ? percentage(snapshot.memoryPercent) : DeckFormat.bytes(snapshot.memoryUsed) : "—"
                 readings.append(.init(name: "RAM", value: value))
                 details.append(available ? "RAM · \(DeckFormat.bytes(snapshot.memoryUsed)) / \(DeckFormat.bytes(snapshot.memoryTotal)) · \(percentage(snapshot.memoryPercent))" : "RAM · non disponibile")
+            case .defender:
+                let value = percentage(defender?.cpu)
+                readings.append(.init(name: metric.title, value: value))
+                details.append("Defender · " + (defender == nil ? "non installato" : "CPU " + value + " · RAM " + DeckFormat.bytes(defender?.memory ?? 0)))
             case .claude, .openAI:
                 let usage = metric == .claude ? claude : openAI
                 let id = metric == .claude ? options.claudeWindowID : options.openAIWindowID

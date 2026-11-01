@@ -492,5 +492,10 @@
   "Feed non valido: %@": "Invalid feed: %@",
   "Decisioni %@": "Decisions %@",
   "Decisioni": "Decisions",
-  "Decisioni in attesa": "Decisions waiting"
+  "Decisioni in attesa": "Decisions waiting",
+  "DEFENDER": "DEFENDER",
+  "Defender": "Defender",
+  "CPU somma di %@ processi · RAM %@": "CPU sum of %@ processes · RAM %@",
+  "Defender non installato": "Defender not installed",
+  "non installato": "not installed"
 }

@@ -61,6 +61,7 @@ import ModelDeckCore
         store.$snapshot.combineLatest(store.$claude, store.$codex).sink { [weak self] values in
             self?.updateStatusItem(snapshot: values.0, claude: values.1, openAI: values.2)
         }.store(in: &subscriptions)
+        store.$defender.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
         store.$companionFeed.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem(); self?.configureMainMenu() }.store(in: &subscriptions)
@@ -70,7 +71,7 @@ import ModelDeckCore
     private func updateStatusItem(snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage) {
         guard let item = statusItem, let button = item.button else { return }
         let options = menuOptionsOverride ?? .load()
-        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: store.companionFeed?.decisions.count ?? 0)
+        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: store.companionFeed?.decisions.count ?? 0, defender: store.defender)
         item.length = summary.title.isEmpty ? NSStatusItem.squareLength : NSStatusItem.variableLength
         if options.layout == .twoRows && !summary.readings.isEmpty {
             button.image = MenuBarBadge.image(for: summary, height: NSStatusBar.system.thickness - 2)

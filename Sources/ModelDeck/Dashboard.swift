@@ -56,17 +56,17 @@ struct Dashboard: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint).font(.system(size: 23))
+                DeckLogo(size: 30)
                 Text(L("ShipDeck")).font(.system(size: 18, weight: .semibold)).tracking(-0.6)
             }.padding(.bottom, 6)
-            Text(L("IL TUO SPAZIO AI")).font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(2).foregroundStyle(DeckTheme.muted).padding(.bottom, 34)
+            Text(L("IL PONTE DEL CAPITANO")).font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(2).foregroundStyle(DeckTheme.muted).padding(.bottom, 34)
             nav("overview", "Panoramica", "rectangle.grid.2x2")
+            nav("companion", "Command Bridge", "tray.full")
             nav("models", "Modelli locali", "cube.transparent")
             nav("processes", "Processi", "list.bullet.rectangle")
             nav("disk", "Disco", "internaldrive")
             nav("services", "Servizi e porte", "server.rack")
             nav("subscriptions", "Abbonamenti", "chart.bar.xaxis")
-            nav("companion", "Companion", "tray.full")
             nav("settings", "Impostazioni", "slider.horizontal.3")
             nav("credits", "Crediti", "info.circle")
             Spacer()

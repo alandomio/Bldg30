@@ -55,6 +55,7 @@ import ModelDeckCore
         popover.behavior = .transient; popover.animates = false; popover.delegate = self
         popover.contentSize = NSSize(width: 420, height: 680)
         let panel = MenuPanel(openDashboard: { [weak self] in self?.showDashboard() },
+                              openBridge: { [weak self] in self?.showDashboard(section: "companion") },
                               openProcesses: { [weak self] in self?.showDashboard(section: "processes") },
                               openSettings: { [weak self] in self?.showSettings() })
         popover.contentViewController = NSHostingController(rootView: panel.environmentObject(store).environment(\.locale, Locale(identifier: "it_IT")))
@@ -90,7 +91,7 @@ import ModelDeckCore
         if NSApp.currentEvent?.type == .rightMouseUp {
             popover.performClose(nil)
             let menu = NSMenu()
-            for (title, selector) in [("Apri cruscotto", #selector(openDashboardAction)), ("Processi", #selector(openProcessesAction)), ("Impostazioni…", #selector(openSettingsAction)), ("Esci da ShipDeck", #selector(quitAction))] {
+            for (title, selector) in [("Apri cruscotto", #selector(openDashboardAction)), ("Command Bridge", #selector(openBridgeAction)), ("Processi", #selector(openProcessesAction)), ("Impostazioni…", #selector(openSettingsAction)), ("Esci da ShipDeck", #selector(quitAction))] {
                 let item = NSMenuItem(title: D(title), action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
             }
             menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
@@ -98,6 +99,7 @@ import ModelDeckCore
         else { popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY); popover.contentViewController?.view.window?.makeKey() }
     }
     @objc private func openDashboardAction() { showDashboard() }
+    @objc private func openBridgeAction() { showDashboard(section: "companion") }
     @objc private func openProcessesAction() { showDashboard(section: "processes") }
     @objc private func openSettingsAction() { showSettings() }
     @objc private func quitAction() { NSApp.terminate(nil) }

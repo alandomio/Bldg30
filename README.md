@@ -4,7 +4,7 @@
 >
 > **Reconnect Claude Code after installing ShipDeck.** The status line bridge points at the old `ModelDeck.app` executable. Use **Ripristina status line** in the old app (or `~/Applications/ModelDeck.app/Contents/MacOS/ModelDeck --disconnect-claude`), then run **Collega Claude Code** in ShipDeck. Delete the old `ModelDeck.app` afterwards.
 
-A native macOS dashboard for your Mac, local LLMs, and Claude Code / Codex subscription quotas.
+**The captain's deck.** A native macOS dashboard for your Mac, local LLMs, and Claude Code / Codex subscription quotas, plus the Command Bridge for tickets and merge requests.
 
 Built with SwiftUI and Swift Charts. macOS 14 or later. No package dependencies, telemetry, browser cookies, or model inference requests.
 

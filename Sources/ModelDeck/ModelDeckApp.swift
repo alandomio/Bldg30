@@ -114,7 +114,7 @@ import ModelDeckCore
             store.processes = store.processes.map { process in var copy = process; copy.gpu = nil; return copy }
             if CommandLine.arguments.contains("--gpu-unavailable") { store.snapshot.gpu = nil }
         }
-        let section = CommandLine.arguments.contains("--services") ? "services" : CommandLine.arguments.contains("--disk") ? "disk" : CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
+        let section = CommandLine.arguments.contains("--bridge") ? "companion" : CommandLine.arguments.contains("--services") ? "services" : CommandLine.arguments.contains("--disk") ? "disk" : CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
         let theme: DeckAppearance = CommandLine.arguments.contains("--light") ? .light : .dark
         let fit = CommandLine.arguments.contains("--fit")
         if CommandLine.arguments.contains("--stale-claude") { store.claude.updatedAt = Date().addingTimeInterval(-7200); store.claude.windows[0].resetsAt = Date().addingTimeInterval(-3600) }
@@ -150,13 +150,14 @@ import ModelDeckCore
 struct MenuPanel: View {
     @EnvironmentObject var store: DeckStore
     var openDashboard: () -> Void
+    var openBridge: () -> Void
     var openProcesses: () -> Void
     var openSettings: () -> Void
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
                 HStack {
-                    Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint)
+                    DeckLogo(size: 22)
                     Text(L("ShipDeck")).font(.system(size: 16, weight: .semibold)); Spacer()
                     Text(store.machine.chip).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
@@ -174,6 +175,7 @@ struct MenuPanel: View {
                 }
                 HStack {
                     Button(L("Apri cruscotto"), action: openDashboard).buttonStyle(.borderedProminent).tint(DeckTheme.mint)
+                    Button(L("Command Bridge"), action: openBridge).buttonStyle(.bordered)
                     Button(L("Processi"), action: openProcesses).buttonStyle(.bordered)
                 }
                 HStack {

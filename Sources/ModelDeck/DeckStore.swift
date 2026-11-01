@@ -22,6 +22,11 @@ import Security
     @Published var companionError: String?
     @Published var companionNotes: [String: URL] = [:]
     @Published var companionStatuses: [String: CompanionClickStatus] = [:]
+    @Published var rawBoard: RawBoard?
+    @Published var pollError: String?
+    var batcher = CompanionEventBatcher()
+    var lastPoll: Date?
+    var polling = false
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()
@@ -51,7 +56,7 @@ import Security
             while !Task.isCancelled, let self { defender = DefenderUsage.summarize(await defenderMonitor.sample()); try? await Task.sleep(for: .seconds(5)) }
         }
         Task { [weak self] in
-            while !Task.isCancelled, let self { refreshCompanion(); try? await Task.sleep(for: .seconds(10)) }
+            while !Task.isCancelled, let self { refreshCompanion(); await pollBoard(); flushEvents(); try? await Task.sleep(for: .seconds(10)) }
         }
     }
     private func append(_ value: Double, to history: inout [Double]) {

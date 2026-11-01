@@ -40,7 +40,7 @@ struct MenuBarSettingsView: View {
                     if options.layout == .twoRows && !summary.readings.isEmpty {
                         Image(nsImage: MenuBarBadge.image(for: summary)).renderingMode(.template).fixedSize()
                     } else {
-                        Image(systemName: "square.stack.3d.up")
+                        Image(nsImage: MenuBarBadge.icon() ?? NSImage()).renderingMode(.template)
                         if !summary.title.isEmpty { Text(D(summary.title)).monospacedDigit() }
                     }
                     Spacer(minLength: 0)

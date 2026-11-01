@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Rename the app to ShipDeck (bundle `ShipDeck.app`, identifier `io.github.alandomio.ShipDeck`); settings migrate once, Keychain and Application Support are unchanged. Reconnect the Claude Code bridge after installing.
-- Add the companion feed panels, click notes and decisions badge, and a Microsoft Defender CPU stat.
+- Add the Command Bridge feed panels, click notes and decisions badge, and a Microsoft Defender CPU stat.
 
 ## 0.7.1 — 2026-10-24
 

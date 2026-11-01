@@ -47,6 +47,17 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
 
     /// Decodes and validates. Any malformed or unknown value throws, so a producer bug never reads as "nothing to do".
     public static func decode(_ data: Data) throws -> CompanionFeed {
+        let decoder = Self.jsonDecoder()
+        let feed: CompanionFeed
+        do { feed = try decoder.decode(CompanionFeed.self, from: data) }
+        catch let error as CompanionError { throw error }
+        catch { throw CompanionError.invalid(String(describing: error)) }
+        try feed.validate()
+        return feed
+    }
+
+    /// Snake-case keys and ISO 8601 dates, shared by the feed and the dossiers.
+    static func jsonDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -57,12 +68,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
             }
             throw CompanionError.invalid("data non valida: \(text)")
         }
-        let feed: CompanionFeed
-        do { feed = try decoder.decode(CompanionFeed.self, from: data) }
-        catch let error as CompanionError { throw error }
-        catch { throw CompanionError.invalid(String(describing: error)) }
-        try feed.validate()
-        return feed
+        return decoder
     }
 
     func validate() throws {

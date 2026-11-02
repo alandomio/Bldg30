@@ -564,5 +564,9 @@
   "In attesa di firstmate (il monitoraggio potrebbe essere fermo)": "Waiting for firstmate (monitoring may be down)",
   "Il feed non ha un'azione di invio per questa MR.": "The feed has no post action for this MR.",
   "Apri i dettagli": "Open details",
-  "Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.": "The feed is old: read with care. Clicks are saved and wait for firstmate."
+  "Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.": "The feed is old: read with care. Clicks are saved and wait for firstmate.",
+  "Ordine": "Order",
+  "Ordine del feed": "Feed order",
+  "Più vecchie prima": "Oldest first",
+  "1 giorno": "1 day"
 }

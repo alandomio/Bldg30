@@ -19,6 +19,7 @@ struct CompanionView: View {
     @State private var contextText = ""
     @State private var answers: [String: String] = [:]
     @State private var draftTexts: [String: String] = [:]
+    @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -36,7 +37,7 @@ struct CompanionView: View {
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
-                    if tab == "decisions" { decisions(feed?.decisions ?? [], locked: false) }
+                    if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(feed?.decisions ?? []) ?? feed?.decisions ?? [], locked: false) }
                     else if tab == "mrs" { mrs(store.boardMRs, locked: false) }
                     else { tickets(store.boardTickets, locked: false) }
                 }
@@ -56,6 +57,13 @@ struct CompanionView: View {
         }
     }
 
+    /// "11 set · 52 giorni" for a dated decision: amber after 14 days, red after 30.
+    private func ageLabel(_ decision: CompanionFeed.Decision) -> (text: String, color: Color)? {
+        guard let created = decision.created, let days = decision.ageDays() else { return nil }
+        let formatter = DateFormatter(); formatter.locale = DeckLanguage.current.locale; formatter.setLocalizedDateFormatFromTemplate("d MMM")
+        let age = days == 1 ? L("1 giorno") : L("\(days) giorni")
+        return (formatter.string(from: created) + " · " + age, days > 30 ? .red : days > 14 ? DeckTheme.amber : DeckTheme.muted)
+    }
     private func tabButton(_ id: String, _ title: String) -> some View {
         Button(title) { tab = id }.buttonStyle(DeckTabStyle(selected: tab == id))
     }
@@ -97,8 +105,13 @@ struct CompanionView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text(L("Decisione \(position + 1) di \(items.count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+                            if let age = ageLabel(item) { Text(age.text).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(age.color) }
                             if item.urgent { StatusPill(text: "Urgente", color: .red) }
                             Spacer()
+                            Picker(L("Ordine"), selection: $decisionOrder) {
+                                Text(L("Ordine del feed")).tag(DecisionOrder.feed.rawValue)
+                                Text(L("Più vecchie prima")).tag(DecisionOrder.oldestFirst.rawValue)
+                            }.labelsHidden().pickerStyle(.menu).frame(width: 170).onChange(of: decisionOrder) { _, _ in index = 0 }
                             Button { index = position - 1 } label: { Image(systemName: "chevron.left") }.disabled(position == 0)
                             Button { index = position + 1 } label: { Image(systemName: "chevron.right") }.disabled(position >= items.count - 1)
                         }.buttonStyle(DeckButtonStyle())

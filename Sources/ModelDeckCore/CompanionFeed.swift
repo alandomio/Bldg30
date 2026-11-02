@@ -14,6 +14,12 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let options: [Option]
         public let links: [URL]
         public let urgent: Bool
+        /// The day the decision was raised, YYYY-MM-DD; optional.
+        public let createdAt: String?
+        public var created: Date? { CompanionFeed.day(createdAt) }
+        public func ageDays(now: Date = Date()) -> Int? {
+            created.map { max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: $0), to: Calendar.current.startOfDay(for: now)).day ?? 0) }
+        }
     }
     public struct Draft: Decodable, Equatable, Sendable, Identifiable { public let id: String, targetUrl: String, text: String }
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }
@@ -39,6 +45,12 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
             if let date = formatter.date(from: text) { return date }
         }
         return nil
+    }
+    /// A `YYYY-MM-DD` day (a full ISO time is accepted too), nil when missing or unreadable.
+    public static func day(_ text: String?) -> Date? {
+        guard let text = text?.trimmingCharacters(in: .whitespaces), text.count >= 10 else { return nil }
+        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: String(text.prefix(10)))
     }
     public static func text(_ value: String?) -> String? {
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }

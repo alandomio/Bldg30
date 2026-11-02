@@ -105,3 +105,18 @@ public enum CompanionDiff {
         return (events, gone)
     }
 }
+
+public enum DecisionOrder: String, CaseIterable, Sendable { case feed, oldestFirst
+    /// Feed order, or oldest first with undated decisions last; the sort is stable.
+    public func apply(_ decisions: [CompanionFeed.Decision]) -> [CompanionFeed.Decision] {
+        guard self == .oldestFirst else { return decisions }
+        return decisions.enumerated().sorted { a, b in
+            switch (a.element.created, b.element.created) {
+            case let (x?, y?): return x != y ? x < y : a.offset < b.offset
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return a.offset < b.offset
+            }
+        }.map(\.element)
+    }
+}

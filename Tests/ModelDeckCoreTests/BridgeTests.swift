@@ -320,4 +320,20 @@ import Foundation
         #expect(CompanionRecommendation.optionIndex(recommendation: "option 7", options: options) == nil)
         #expect(CompanionRecommendation.optionIndex(recommendation: "", options: options) == nil)
     }
+
+    @Test func decisionDateAgeAndSortOrder() throws {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: t0).utf8)) as? [String: Any])
+        var decisions = try #require(root["decisions"] as? [[String: Any]])
+        var third = decisions[0]; third["id"] = "dec-3"; decisions.append(third)
+        decisions[0]["created_at"] = "2026-09-11"; decisions[1]["created_at"] = "not a date"; decisions[2]["created_at"] = "2026-08-01"
+        root["decisions"] = decisions
+        let value = try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+        #expect(value.skipped.isEmpty && value.decisions.count == 3)
+        let day = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
+        #expect(value.decisions[0].ageDays(now: day) == 52 && value.decisions[2].ageDays(now: day) == 93)
+        #expect(value.decisions[1].created == nil && value.decisions[1].ageDays(now: day) == nil)
+        #expect(DecisionOrder.feed.apply(value.decisions).map(\.id) == ["dec-1", "dec-2", "dec-3"])
+        #expect(DecisionOrder.oldestFirst.apply(value.decisions).map(\.id) == ["dec-3", "dec-1", "dec-2"])  // undated last
+        #expect(try CompanionFeed.decode(Data(CompanionFixture.json(generatedAt: t0).utf8)).decisions[0].createdAt == nil)
+    }
 }

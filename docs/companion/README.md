@@ -15,6 +15,9 @@ Demo mode shows `CompanionFixture`; `fixture-feed.json` is the same content for 
 - Click status is read from `replies/<idempotency_key>.json` (`companion-reply.v1`: queued, picked_up, done, rejected, with `text`) beside the feed. With no receipt after 2 minutes the card says "Waiting for firstmate (monitoring may be down)". Without a reply file it falls back to the file inference below: in the inbox is sent, moved to `handled/` is picked up, a `<name>.reply.json` beside it is done. The producer must follow this.
 - The JSON Schema files from the ai-skills worker did not exist yet; the code follows PLAN section 0.
 
+## Decision dates
+A decision may carry `created_at` (YYYY-MM-DD). The card header shows it with the age, for example "Sep 11 · 52 days": amber after 14 days, red after 30. A menu on the card sorts by age (oldest first, undated last); the default is the feed order, and the choice is remembered.
+
 ## Own polling (1.1)
 While the app is open and the Command Bridge is on, it polls every 2 minutes, read-only. Linear: the existing key in the Keychain (Settings, Linear). GitLab: host (https only, localhost may use http), optional username and a read-only personal token in the Keychain; it reads open MRs authored by you and waiting for your review (pipeline status, unresolved threads). A poll newer than the feed overrides pipeline, threads and ticket status; the verdict is then marked "Verdetto superato" and its action buttons are disabled. MRs and tickets only in the poll show with "Nessun verdetto". Failed sources keep their last rows and show the error.
 

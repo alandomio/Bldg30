@@ -118,11 +118,13 @@ struct CompanionView: View {
                         Text(item.title).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                         if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
                         if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true) }
-                        ForEach(Array(item.options.enumerated()), id: \.offset) { offset, option in
+                        let specific = Array(item.options.enumerated()).filter { !$0.element.isStandard }
+                        let recommendedOffset = CompanionRecommendation.optionIndex(recommendation: item.recommendation, options: specific.map(\.element)).map { specific[$0].offset }
+                        ForEach(specific, id: \.offset) { offset, option in
                             let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
                             HStack(alignment: .top, spacing: 12) {
                                 Button(option.label) { sendDecision(item, option: option, index: offset) }
-                                    .buttonStyle(DeckButtonStyle(primary: offset == CompanionRecommendation.optionIndex(recommendation: item.recommendation, options: item.options))).disabled(locked)
+                                    .buttonStyle(DeckButtonStyle(primary: offset == recommendedOffset)).disabled(locked)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                                     sentLabel(key)
@@ -130,7 +132,17 @@ struct CompanionView: View {
                             }
                         }
                         answerField(item, locked: locked)
-                        AddContextRow(ref: item.id).environmentObject(store)
+                        VStack(alignment: .leading, spacing: 6) {
+                            AddContextRow(ref: item.id, small: true) {
+                                ForEach(Array(item.options.enumerated()).filter { $0.element.isStandard }, id: \.offset) { offset, option in
+                                    Button(option.label) { sendDecision(item, option: option, index: offset) }
+                                        .buttonStyle(DeckButtonStyle(small: true)).disabled(locked).help(option.consequence)
+                                }
+                            }.environmentObject(store)
+                            ForEach(Array(item.options.enumerated()).filter { $0.element.isStandard }, id: \.offset) { offset, option in
+                                sentLabel(CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id)
+                            }
+                        }
                         ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
                     }
                 }
@@ -382,10 +394,15 @@ struct CompanionView: View {
 }
 
 /// "Add context" on a card: a button that opens a text box with Send and Cancel, like the Lavish board.
-struct AddContextRow: View {
+struct AddContextRow<Trailing: View>: View {
     @EnvironmentObject var store: DeckStore
     let ref: String
     var expanded = false
+    var small = false
+    let trailing: Trailing
+    init(ref: String, expanded: Bool = false, small: Bool = false, @ViewBuilder trailing: () -> Trailing) {
+        self.ref = ref; self.expanded = expanded; self.small = small; self.trailing = trailing()
+    }
     @State private var open = false
     @State private var text = ""
     @State private var feedback: String?
@@ -405,12 +422,19 @@ struct AddContextRow: View {
                     if !expanded { Button(L("Annulla")) { text = ""; open = false }.buttonStyle(DeckButtonStyle()) }
                 }
             } else {
-                Button(L("Aggiungi contesto")) { open = true }.buttonStyle(DeckButtonStyle())
+                HStack(spacing: 8) {
+                    Button(L("Aggiungi contesto")) { open = true }.buttonStyle(DeckButtonStyle(small: small))
+                    trailing
+                }
             }
             ClickStateLabel(key: key).environmentObject(store)
             if let feedback { Text(D(feedback)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
         }
     }
+}
+
+extension AddContextRow where Trailing == EmptyView {
+    init(ref: String, expanded: Bool = false) { self.init(ref: ref, expanded: expanded, small: false) { EmptyView() } }
 }
 
 /// What happened to a click: sent, queued, picked up, done or rejected, or a warning when firstmate has not answered in 2 minutes.

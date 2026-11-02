@@ -8,7 +8,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public static let verdicts: Set<String> = ["close", "notyet", "blocked", "hold"]
     public static let roles: Set<String> = ["author", "reviewer"]
 
-    public struct Option: Decodable, Equatable, Sendable { public let label: String; public let consequence: String; public let actionId: String?; public let outward: Bool? }
+    public struct Option: Decodable, Equatable, Sendable { public let label: String; public let consequence: String; public let actionId: String?; public let outward: Bool?; public let standard: Bool?
+        public var isStandard: Bool { standard ?? false } }
     public struct Decision: Decodable, Equatable, Sendable, Identifiable {
         public let id: String, title: String, project: String, whyNow: String, recommendation: String
         public let options: [Option]

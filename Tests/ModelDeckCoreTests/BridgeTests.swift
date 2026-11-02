@@ -200,11 +200,11 @@ import Foundation
         let option = fixture.options[1]
         let both = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "Only after Friday", now: t0, key: "k2"))
         #expect(both.actionID == "dec-1.opt-2" && both.draftText == "Only after Friday")  // the feed's own id, not a made-up one
-        let bareOption = CompanionFeed.Option(label: "Old", consequence: "c", actionId: nil, outward: nil)
+        let bareOption = CompanionFeed.Option(label: "Old", consequence: "c", actionId: nil, outward: nil, standard: nil)
         #expect(CompanionAnswer.click(decisionID: "dec-1", option: bareOption, optionIndex: 3, text: "")?.actionID == "decision:dec-1:option:3")  // only for feeds without ids
         let bare = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "  ", now: t0, key: "k3"))
         #expect(bare.draftText == option.label)
-        let custom = CompanionFeed.Option(label: "Go", consequence: "c", actionId: "act-9", outward: nil)
+        let custom = CompanionFeed.Option(label: "Go", consequence: "c", actionId: "act-9", outward: nil, standard: nil)
         #expect(CompanionAnswer.click(decisionID: "d", option: custom, text: "x")?.actionID == "act-9")
         #expect(CompanionAnswer.click(decisionID: "dec-1", text: " \n ") == nil)
         let inbox = FileManager.default.temporaryDirectory.appendingPathComponent("answer-\(UUID().uuidString)")
@@ -311,7 +311,7 @@ import Foundation
     }
 
     @Test func decisionRecommendationFindsTheOptionByLabelNumberOrWords() {
-        func option(_ label: String) -> CompanionFeed.Option { .init(label: label, consequence: "c", actionId: nil, outward: nil) }
+        func option(_ label: String) -> CompanionFeed.Option { .init(label: label, consequence: "c", actionId: nil, outward: nil, standard: nil) }
         let options = [option("retry the two CI jobs that failed on a runner TLS fault"), option("do not merge")]
         #expect(CompanionRecommendation.optionIndex(recommendation: "option 1, retry then merge.", options: options) == 0)
         #expect(CompanionRecommendation.optionIndex(recommendation: "Option 2", options: options) == 1)
@@ -335,5 +335,16 @@ import Foundation
         #expect(DecisionOrder.feed.apply(value.decisions).map(\.id) == ["dec-1", "dec-2", "dec-3"])
         #expect(DecisionOrder.oldestFirst.apply(value.decisions).map(\.id) == ["dec-3", "dec-1", "dec-2"])  // undated last
         #expect(try CompanionFeed.decode(Data(CompanionFixture.json(generatedAt: t0).utf8)).decisions[0].createdAt == nil)
+    }
+}
+
+@Suite struct StandardOptionTests {
+    @Test func standardFlagIsOptionalAndSplitsOptions() throws {
+        let json = #"{"label":"Drop it","consequence":"x","action_id":"d.opt-drop","standard":true}"#.data(using: .utf8)!
+        let decoder = JSONDecoder(); decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let standard = try decoder.decode(CompanionFeed.Option.self, from: json)
+        #expect(standard.isStandard)
+        let plain = try decoder.decode(CompanionFeed.Option.self, from: #"{"label":"Go","consequence":"x"}"#.data(using: .utf8)!)
+        #expect(!plain.isStandard)
     }
 }

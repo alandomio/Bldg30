@@ -26,11 +26,12 @@ enum DeckTheme {
 /// Neutral button with a mint edge on the primary one; replaces the white-on-green prominent style.
 struct DeckButtonStyle: ButtonStyle {
     var primary = false
+    var small = false
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: primary ? 14 : 13, weight: primary ? .semibold : .regular))
-            .padding(.horizontal, 12).padding(.vertical, 5).frame(minHeight: 30)
+            .font(.system(size: small ? 11 : primary ? 14 : 13, weight: primary ? .semibold : .regular))
+            .padding(.horizontal, small ? 9 : 12).padding(.vertical, small ? 3 : 5).frame(minHeight: small ? 24 : 30)
             .foregroundStyle(primary ? DeckTheme.buttonTextPrimary : DeckTheme.buttonTextOther)
             .background(DeckTheme.buttonFill, in: RoundedRectangle(cornerRadius: 6))
             .overlay { if primary { RoundedRectangle(cornerRadius: 6).strokeBorder(DeckTheme.mint, lineWidth: 1.5) } }

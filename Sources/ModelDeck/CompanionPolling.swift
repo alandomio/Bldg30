@@ -48,5 +48,14 @@ extension DeckStore {
         do { try CompanionEventFile.append(lines, to: path) } catch { pollError = error.localizedDescription }
     }
 
-    func dossier(for ref: String) -> Dossier.Lookup { Dossier.lookup(ref: ref, feedPath: CompanionSettings.feedPath) }
+    /// Re-reads a dossier only when its file changed, so a long card list does not hit the disk on every redraw.
+    func dossier(for ref: String) -> Dossier.Lookup {
+        let file = Dossier.directory(feedPath: CompanionSettings.feedPath).appendingPathComponent(Dossier.fileName(for: ref))
+        let modified = (try? FileManager.default.attributesOfItem(atPath: file.path)[.modificationDate]) as? Date
+        guard let modified else { dossierCache[ref] = nil; return .missing }
+        if let cached = dossierCache[ref], cached.modified == modified { return cached.lookup }
+        let lookup = Dossier.lookup(ref: ref, feedPath: CompanionSettings.feedPath)
+        dossierCache[ref] = (modified, lookup)
+        return lookup
+    }
 }

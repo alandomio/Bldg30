@@ -555,5 +555,9 @@
   "Basato su ModelDeck di Giovanni Tommasini (MIT)": "Based on ModelDeck by Giovanni Tommasini (MIT)",
   "Percentuali utilizzate e prossimi reset di Claude Code, Codex e Antigravity.": "Usage percentages and upcoming resets for Claude Code, Codex and Antigravity.",
   "La tua risposta o contesto": "Your answer or context",
-  "Invia manda solo il testo. Un pulsante opzione lo manda insieme a quell’opzione.": "Send sends the text alone. An option button sends it together with that option."
+  "Invia manda solo il testo. Un pulsante opzione lo manda insieme a quell’opzione.": "Send sends the text alone. An option button sends it together with that option.",
+  "Blocco: %@ · su %@": "Blocker: %@ · on %@",
+  "Prossima azione: %@": "Next action: %@",
+  "Ticket %@ · %@": "Ticket %@ · %@",
+  "Ultima attività %@": "Last activity %@"
 }

@@ -9,7 +9,7 @@ private struct PendingClick: Identifiable {
 
 struct CompanionView: View {
     @EnvironmentObject var store: DeckStore
-    @State private var tab = "decisions"
+    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : "decisions"
     @State private var index = 0
     @State private var openDrafts = Set<String>()
     @State private var confirm: PendingClick?
@@ -111,6 +111,7 @@ struct CompanionView: View {
                             }
                         }
                         answerField(item, locked: locked)
+                        AddContextRow(ref: item.id).environmentObject(store)
                         ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
                     }
                 }
@@ -154,7 +155,8 @@ struct CompanionView: View {
                             Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted)
                         }
                         Text(mr.title).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
-                        Text(mr.verdict == nil ? L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti") : L("\(mr.label) · prossimo: \(mr.nextOwner) · pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                        Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                        mrContext(mr)
                         if !mr.drafts.isEmpty {
                             Toggle(L("Bozze (\(mr.drafts.count))"), isOn: Binding(get: { openDrafts.contains(mr.ref) }, set: { if $0 { openDrafts.insert(mr.ref) } else { openDrafts.remove(mr.ref) } }))
                                 .toggleStyle(.checkbox).font(.system(size: 11))
@@ -172,6 +174,7 @@ struct CompanionView: View {
                             }
                         }
                         actions(mr.actions, target: mr.url.absoluteString, locked: locked)
+                        AddContextRow(ref: mr.ref).environmentObject(store)
                     }
                 }.contentShape(Rectangle()).onTapGesture { open(mr.ref) }
             }
@@ -198,9 +201,31 @@ struct CompanionView: View {
                         }
                         if !ticket.linkedMrs.isEmpty { Text(ticket.linkedMrs.joined(separator: " · ")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
                         actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale)
+                        AddContextRow(ref: ticket.identifier).environmentObject(store)
                     }
                 }.contentShape(Rectangle()).onTapGesture { open(ticket.identifier) }
             }
+        }
+    }
+
+    /// Role, blocker, next action, ticket, last activity and the top gotcha or open decision, from the feed and the dossier.
+    @ViewBuilder private func mrContext(_ mr: BoardMR) -> some View {
+        let dossier: Dossier? = { if case .loaded(let value) = store.dossier(for: mr.ref) { return value }; return nil }()
+        let ticket = store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }
+        let last = [mr.updatedAt, dossier?.timeline.last?.at.flatMap { ISO8601DateFormatter().date(from: $0) }].compactMap { $0 }.max()
+        VStack(alignment: .leading, spacing: 4) {
+            if !mr.nextOwner.isEmpty || !mr.label.isEmpty { contextLine("hourglass", L("Blocco: \(mr.label.isEmpty ? "—" : mr.label) · su \(mr.nextOwner.isEmpty ? "—" : mr.nextOwner)")) }
+            if let next = dossier?.nextAction, !next.isEmpty { contextLine("arrow.right.circle", L("Prossima azione: \(next)")) }
+            if let ticket { contextLine("ticket", L("Ticket \(ticket.identifier) · \(ticket.status)")) }
+            if let last { contextLine("clock", L("Ultima attività \(last.formatted(.relative(presentation: .named)))")) }
+            if let gotcha = dossier?.gotchas.first { contextLine("exclamationmark.triangle", gotcha, color: DeckTheme.amber) }
+            if let decision = dossier?.openDecisions.first { contextLine("questionmark.circle", decision) }
+        }
+    }
+    private func contextLine(_ symbol: String, _ text: String, color: Color = DeckTheme.muted) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: symbol).font(.system(size: 10)).foregroundStyle(color).frame(width: 14)
+            Text(text).font(.system(size: 11)).foregroundStyle(color).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
         }
     }
 
@@ -241,21 +266,7 @@ struct CompanionView: View {
                 }
             }
             dossierCard(store.dossier(for: ref))
-            DeckCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(L("Aggiungi contesto")).font(.system(size: 13, weight: .semibold))
-                    TextEditor(text: $contextText).font(.system(size: 12)).frame(minHeight: 70).scrollContentBackground(.hidden)
-                        .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-                    HStack {
-                        Button(L("Aggiungi contesto")) {
-                            let text = contextText.trimmingCharacters(in: .whitespacesAndNewlines)
-                            feedback = store.sendCompanionClick(actionID: "add_context", target: ref, draftText: text)
-                            if feedback == nil { contextText = "" }
-                        }.buttonStyle(.borderedProminent).disabled(contextText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        sentLabel("add_context|" + ref)
-                    }
-                }
-            }
+            DeckCard { AddContextRow(ref: ref, expanded: true).environmentObject(store) }
         }
     }
 
@@ -320,5 +331,39 @@ struct CompanionView: View {
     }
     private func send(_ click: PendingClick) {
         feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draft)
+    }
+}
+
+/// "Add context" on a card: a button that opens a text box with Send and Cancel, like the Lavish board.
+struct AddContextRow: View {
+    @EnvironmentObject var store: DeckStore
+    let ref: String
+    var expanded = false
+    @State private var open = false
+    @State private var text = ""
+    @State private var feedback: String?
+    private var key: String { ref + ".add-context|" + ref }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if open || expanded {
+                TextEditor(text: $text).font(.system(size: 12)).frame(minHeight: 60).scrollContentBackground(.hidden)
+                    .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                HStack {
+                    Button(L("Invia")) {
+                        guard let click = CompanionAnswer.contextClick(ref: ref, text: text) else { return }
+                        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText)
+                        if feedback == nil { text = ""; open = false }
+                    }.buttonStyle(.borderedProminent).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if !expanded { Button(L("Annulla")) { text = ""; open = false }.buttonStyle(.bordered) }
+                }
+            } else {
+                Button(L("Aggiungi contesto")) { open = true }.buttonStyle(.bordered)
+            }
+            if let state = store.companionStatuses[key] {
+                Text(D(state == .sent ? "Inviato" : state == .pickedUp ? "Preso in carico" : "Fatto")).font(.system(size: 10)).foregroundStyle(DeckTheme.mint)
+            }
+            if let feedback { Text(D(feedback)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
+        }
     }
 }

@@ -63,6 +63,13 @@ public enum CompanionAnswer {
         guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return CompanionClick(actionID: decisionID + ".answer", target: decisionID, draftText: typed, now: now, key: key)
     }
+    /// "Add context" on any card: `<ref>.add-context`, target the ref, the typed text with trailing whitespace dropped.
+    public static func contextClick(ref: String, text: String, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick? {
+        var typed = text
+        while let last = typed.last, last.isWhitespace || last.isNewline { typed.removeLast() }
+        guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return CompanionClick(actionID: ref + ".add-context", target: ref, draftText: typed, now: now, key: key)
+    }
     public static func actionID(decisionID: String, option: CompanionFeed.Option?, optionIndex: Int) -> String {
         option.map { $0.actionId ?? "decision:\(decisionID):option:\(optionIndex)" } ?? decisionID + ".answer"
     }

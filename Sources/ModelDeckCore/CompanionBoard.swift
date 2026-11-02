@@ -12,6 +12,8 @@ public struct BoardMR: Equatable, Sendable, Identifiable {
     public let verdictStale: Bool
     public let drafts: [CompanionFeed.Draft]
     public let actions: [CompanionFeed.Action]
+    /// Last GitLab activity, known only when the app polled it.
+    public let updatedAt: Date?
 }
 
 public struct BoardTicketRow: Equatable, Sendable, Identifiable {
@@ -33,6 +35,7 @@ public enum CompanionBoard {
         var rows: [BoardMR] = []
         for mr in feed?.mrs ?? [] {
             var pipeline: String? = mr.pipeline, threads: Int? = mr.openThreads, stale = false
+            let updated = raw?.gitlabOK == true ? rawByURL[key(mr.url)]?.updatedAt : nil
             if let raw, raw.gitlabOK, let generated = feed?.generatedAt, raw.fetchedAt > generated {
                 if let live = rawByURL[key(mr.url)] {
                     pipeline = live.pipeline; threads = live.openThreads
@@ -41,11 +44,11 @@ public enum CompanionBoard {
             }
             rawByURL[key(mr.url)] = nil
             rows.append(BoardMR(ref: mr.ref, title: mr.title, role: mr.role, pipeline: pipeline, label: mr.label, nextOwner: mr.nextOwner, url: mr.url,
-                                openThreads: threads, verdict: mr.verdict, verdictStale: stale, drafts: mr.drafts, actions: mr.actions))
+                                openThreads: threads, verdict: mr.verdict, verdictStale: stale, drafts: mr.drafts, actions: mr.actions, updatedAt: updated))
         }
         for live in raw?.mrs ?? [] where rawByURL[key(live.url)] != nil {
             rows.append(BoardMR(ref: live.ref, title: live.title, role: live.role, pipeline: live.pipeline, label: "", nextOwner: "", url: live.url,
-                                openThreads: live.openThreads, verdict: nil, verdictStale: false, drafts: [], actions: []))
+                                openThreads: live.openThreads, verdict: nil, verdictStale: false, drafts: [], actions: [], updatedAt: live.updatedAt))
         }
         return rows
     }

@@ -28,6 +28,7 @@ import Security
     var batcher = CompanionEventBatcher()
     var lastPoll: Date?
     var polling = false
+    var dossierCache: [String: (modified: Date, lookup: Dossier.Lookup)] = [:]
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()

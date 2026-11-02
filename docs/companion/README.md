@@ -10,7 +10,7 @@ Demo mode shows `CompanionFixture`; `fixture-feed.json` is the same content for 
 - `companion-feed.v1`: read from the feed file, strict (unknown verdict, non-https URL, missing field or duplicate id rejects the whole feed). Older than 15 minutes is stale: greyed out, buttons disabled, no notifications.
 - `companion-click.v1`: one `<epoch>-<key>.json` per click in the inbox folder, written atomically. Option buttons use `action_id` `decision:<id>:option:<n>` with the label as `draft_text`; draft buttons use `draft:<id>` with the exact text.
 - `companion-event.v1`: JSON lines appended to the events file (Settings, optional), deduplicated by fingerprint, flushed at most every 5 minutes, 50 lines per flush. Kinds: `review_requested`, `pipeline_changed`, `new_comment` (more unresolved threads), `ticket_state`, `mr_merged` (an MR that left the open lists and GitLab reports as merged). The first poll after launch is a silent baseline.
-- `companion-click.v1` with `action_id` `add_context`: `target` is the MR ref or ticket identifier, `draft_text` the typed note.
+- `companion-click.v1` for free text: "Aggiungi contesto" on every card (decision, MR, ticket) writes `action_id` `<ref>.add-context`, `target` the ref (decision id, MR ref or ticket identifier) and the typed text in `draft_text`. A decision card also has a free answer: `<decision id>.answer`, or the chosen option's `action_id` (default `decision:<id>:option:<n>`) with the text in `draft_text`. Only trailing whitespace is dropped.
 - Click status is inferred from files: in the inbox is sent, moved to `handled/` is picked up, a `<name>.reply.json` beside it is done. The producer must follow this.
 - The JSON Schema files from the ai-skills worker did not exist yet; the code follows PLAN section 0.
 
@@ -20,7 +20,7 @@ While the app is open and the Command Bridge is on, it polls every 2 minutes, re
 ## Dossier
 Clicking an MR or ticket opens its dossier from `dossiers/<name>.json` beside the feed file. `<name>` is the ref with every run of characters outside letters, digits, `.`, `_`, `-` replaced by one `-`: `svc !12` is `svc-12.json`, `IN-1` is `IN-1.json`. Only `generated_at` is required; the rest is optional:
 `{"summary":"","timeline":[{"at":"","text":""}],"open_decisions":[""],"gotchas":[""],"links":[{"label":"","url":"https://…"}],"next_action":"","generated_at":"2027-01-15T08:00:00Z"}`
-A missing file shows an empty state; a malformed one shows the error. "Aggiungi contesto" files the `add_context` click.
+A missing file shows an empty state; a malformed one shows the error. "Aggiungi contesto" files the `<ref>.add-context` click. The MR card shows role, blocker and owner (feed `label`, `next_owner`), the dossier `next_action`, the linked ticket, last activity (GitLab poll or the dossier's last timeline entry) and the first gotcha and open decision.
 
 ## Icon
 `assets/icon-r1*.svg` are the sources; `scripts/generate-icon.swift` (run by `scripts/build.sh`) renders `assets/AppIcon.icns`, the menu bar template glyph and the sidebar logo.

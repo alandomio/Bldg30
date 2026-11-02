@@ -91,7 +91,7 @@ import Foundation
     }
     @Test func dossierFileNamesAreSafe() {
         #expect(Dossier.fileName(for: "svc !12") == "svc-12.json")
-        #expect(Dossier.fileName(for: "IN-1") == "IN-1.json")
+        #expect(Dossier.fileName(for: "IN-1") == "in-1.json" && Dossier.fileName(for: "aim !307") == "aim-307.json")
         #expect(Dossier.fileName(for: "../../etc/passwd") == "etc-passwd.json")
     }
     @Test func dossierLookupHandlesMissingLoadedAndInvalid() throws {
@@ -102,21 +102,28 @@ import Foundation
         let folder = root.appendingPathComponent("dossiers")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let json = #"{"summary":"S","timeline":[{"at":"2027-01-15","text":"opened"}],"open_decisions":["D"],"gotchas":["G"],"links":[{"label":"Report","url":"https://example.com/r"}],"next_action":"Merge","generated_at":"2027-01-15T08:00:00Z"}"#
-        try Data(json.utf8).write(to: folder.appendingPathComponent("IN-1.json"))
+        try Data(json.utf8).write(to: folder.appendingPathComponent("in-1.json"))
         guard case .loaded(let dossier) = Dossier.lookup(ref: "IN-1", feedPath: feedPath) else { Issue.record("not loaded"); return }
         #expect(dossier.summary == "S" && dossier.nextAction == "Merge" && dossier.openDecisions == ["D"] && dossier.timeline[0].text == "opened" && dossier.links.count == 1)
-        try Data(#"{"summary":"only"}"#.utf8).write(to: folder.appendingPathComponent("IN-2.json"))
+        try Data(#"{"summary":"only"}"#.utf8).write(to: folder.appendingPathComponent("in-2.json"))
         guard case .invalid = Dossier.lookup(ref: "IN-2", feedPath: feedPath) else { Issue.record("expected invalid"); return }
-        try Data(json.replacingOccurrences(of: "https://example.com/r", with: "http://example.com/r").utf8).write(to: folder.appendingPathComponent("IN-3.json"))
-        guard case .invalid = Dossier.lookup(ref: "IN-3", feedPath: feedPath) else { Issue.record("expected invalid link"); return }
+        let objects = json.replacingOccurrences(of: #""open_decisions":["D"]"#, with: #""open_decisions":[{"id":"x","title":"Post the review","recommendation":"option 1","links":["https://example.com"]},"Plain"],"gotchas":[{"text":"Careful"}]"#)
+        try Data(objects.utf8).write(to: folder.appendingPathComponent("in-4.json"))
+        guard case .loaded(let withObjects) = Dossier.lookup(ref: "IN-4", feedPath: feedPath) else { Issue.record("objects not loaded"); return }
+        #expect(withObjects.openDecisions == ["Post the review", "Plain"] && withObjects.gotchas == ["Careful"])
+        let mixed = json.replacingOccurrences(of: #"[{"label":"Report","url":"https://example.com/r"}]"#, with: #"[{"label":"Local","url":"file:///Users/x/report.md"},{"label":"Plain","url":"http://example.com/r"},{"label":"Loop","url":"http://127.0.0.1:4387/s/1"},{"label":"Bad"}]"#)
+        try Data(mixed.utf8).write(to: folder.appendingPathComponent("in-3.json"))
+        guard case .loaded(let withLinks) = Dossier.lookup(ref: "IN-3", feedPath: feedPath) else { Issue.record("expected loaded"); return }
+        #expect(withLinks.links.map(\.label) == ["Local", "Loop"])
     }
     @Test func addContextClickCarriesTheTypedText() throws {
         let inbox = FileManager.default.temporaryDirectory.appendingPathComponent("bridge-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: inbox) }
-        let note = try CompanionInbox.file(CompanionClick(actionID: "add_context", target: "IN-1", draftText: "Waiting on infra", now: t0, key: "k"), inbox: inbox.path, now: t0)
+        #expect(CompanionAnswer.contextClick(ref: "IN-1", text: "  \n") == nil)
+        let note = try CompanionInbox.file(try #require(CompanionAnswer.contextClick(ref: "IN-1", text: "Waiting on infra \n", now: t0, key: "k")), inbox: inbox.path, now: t0)
         let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as? [String: String])
-        #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "add_context" && json["draft_text"] == "Waiting on infra" && json["target"] == "IN-1")
+        #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "IN-1.add-context" && json["draft_text"] == "Waiting on infra" && json["target"] == "IN-1")
     }
 
     @Test func nullPipelineAndThreadsDecodeAndOneBadRowIsSkippedWithAWarning() throws {
@@ -206,5 +213,15 @@ import Foundation
         #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "dec-1.answer" && json["target"] == "dec-1" && json["draft_text"] == "  Ship it\n  but keep the flag" && json["idempotency_key"] == "k1")
         #expect(Set(json.keys) == ["schema", "idempotency_key", "action_id", "target", "draft_text", "created_at"])
         #expect(CompanionInbox.status(of: note) == .sent)
+    }
+
+    @Test func realDossiersDecodeWhenPresent() throws {
+        let feedPath = NSString(string: CompanionFeed.defaultPath).expandingTildeInPath
+        guard let data = FileManager.default.contents(atPath: feedPath) else { return }
+        let value = try CompanionFeed.decode(data)
+        let refs = value.mrs.map(\.ref) + value.tickets.map(\.identifier)
+        var loaded = 0
+        for ref in refs { switch Dossier.lookup(ref: ref, feedPath: feedPath) { case .loaded: loaded += 1; case .invalid(let why): Issue.record("\(ref): \(why)"); case .missing: break } }
+        print("REALDOSSIERS", loaded, "of", refs.count)
     }
 }

@@ -199,7 +199,9 @@ import Foundation
         #expect(free.actionID == "dec-1.answer" && free.target == "dec-1" && free.draftText == "  Ship it\n  but keep the flag")
         let option = fixture.options[1]
         let both = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "Only after Friday", now: t0, key: "k2"))
-        #expect(both.actionID == "decision:dec-1:option:1" && both.draftText == "Only after Friday")
+        #expect(both.actionID == "dec-1.opt-2" && both.draftText == "Only after Friday")  // the feed's own id, not a made-up one
+        let bareOption = CompanionFeed.Option(label: "Old", consequence: "c", actionId: nil, outward: nil)
+        #expect(CompanionAnswer.click(decisionID: "dec-1", option: bareOption, optionIndex: 3, text: "")?.actionID == "decision:dec-1:option:3")  // only for feeds without ids
         let bare = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "  ", now: t0, key: "k3"))
         #expect(bare.draftText == option.label)
         let custom = CompanionFeed.Option(label: "Go", consequence: "c", actionId: "act-9", outward: nil)
@@ -241,5 +243,70 @@ import Foundation
         let plain = try CompanionFeed.decode(Data(CompanionFixture.json(generatedAt: t0).utf8))
         #expect(plain.mrs[0].author == nil && plain.skipped.isEmpty)  // the fields are optional
         #expect(CompanionFeed.date("not a date") == nil)
+    }
+
+    /// Every id a button can write must come from the feed itself (the bridge drops unknown ids as stale).
+    func assertClicksUseFeedIDs(_ feed: CompanionFeed) throws {
+        for decision in feed.decisions {
+            for (index, option) in decision.options.enumerated() {
+                let id = try #require(option.actionId, "option without action_id in \(decision.id)")
+                let click = try #require(CompanionAnswer.click(decisionID: decision.id, option: option, optionIndex: index, text: ""))
+                #expect(click.actionID == id && click.target == decision.id)
+            }
+        }
+        for mr in feed.mrs {
+            let ids = Set(mr.actions.map(\.id))
+            for action in mr.actions { #expect(CompanionAnswer.rowClick(action: action, ref: mr.ref).actionID == action.id && ids.contains(action.id)) }
+            if !mr.drafts.isEmpty, let post = mr.postAction {
+                let click = try #require(CompanionAnswer.postClick(mr: mr, text: "edited text\n"))
+                #expect(ids.contains(click.actionID) && click.actionID == post.id && click.target == mr.ref && click.draftText == "edited text\n")
+            }
+            if let recommended = CompanionRecommendation.actionID(in: mr.actions, texts: [mr.label]) {
+                #expect(ids.contains(recommended) && CompanionRecommendation.ordered(mr.actions, recommended: recommended).first?.id == recommended)
+            }
+        }
+        for ticket in feed.tickets {
+            let ids = Set(ticket.actions.map(\.id))
+            if let recommended = CompanionRecommendation.actionID(in: ticket.actions, texts: [ticket.finish?.step]) { #expect(ids.contains(recommended)) }
+        }
+    }
+    @Test func everyButtonActionIDExistsInTheFixtureFeed() throws {
+        try assertClicksUseFeedIDs(try feed())
+        let fixture = try feed()
+        #expect(fixture.mrs[0].postAction?.id == "mr-12-post")
+        #expect(CompanionAnswer.postClick(mr: fixture.mrs[1], text: "x") == nil)  // no post action in the feed: no click
+    }
+    @Test func everyButtonActionIDExistsInTheRealFeedWhenPresent() throws {
+        guard let data = FileManager.default.contents(atPath: NSString(string: CompanionFeed.defaultPath).expandingTildeInPath) else { return }
+        try assertClicksUseFeedIDs(try CompanionFeed.decode(data))
+    }
+    @Test func recommendationPrefersTheActionTheRowNamesAndSkipsOutwardAndQuietOnes() {
+        let actions: [CompanionFeed.Action] = [
+            .init(id: "r.resolve-and-merge", label: "Resolve and merge", outward: true), .init(id: "r.fix-the-threads", label: "Fix the threads", outward: false),
+            .init(id: "r.post-drafted-reply", label: "Post drafted reply", outward: true), .init(id: "r.wait-what", label: "Wait, what?", outward: false), .init(id: "r.nevermind", label: "Nevermind", outward: false)]
+        #expect(CompanionRecommendation.actionID(in: actions, texts: ["Change two monitor settings, then reply", "Fix the open threads"]) == "r.fix-the-threads")
+        #expect(CompanionRecommendation.actionID(in: actions, texts: ["Nothing matches here"]) == "r.fix-the-threads")  // first harmless action
+        #expect(CompanionRecommendation.actionID(in: Array(actions.filter(\.outward)), texts: ["merge"]) == nil)
+        #expect(CompanionRecommendation.ordered(actions, recommended: "r.fix-the-threads").map(\.id).first == "r.fix-the-threads")
+    }
+    @Test func receiptsFollowTheRepliesFolderAndWarnAfterTwoMinutes() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("receipts-\(UUID().uuidString)")
+        let inbox = root.appendingPathComponent("inbox"), replies = root.appendingPathComponent("replies")
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true); try FileManager.default.createDirectory(at: replies, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let note = try CompanionInbox.file(CompanionClick(actionID: "a", target: "t", now: t0, key: "key-12345678"), inbox: inbox.path, now: t0)
+        func status(_ offset: TimeInterval) -> CompanionReceipt { CompanionReceipt.resolve(note: note, key: "key-12345678", repliesDirectory: replies, sentAt: t0, now: t0.addingTimeInterval(offset)) }
+        #expect(status(30).status == .sent && status(119).status == .sent)
+        #expect(status(121).status == .waiting)
+        func reply(_ status: String, text: String? = nil) throws {
+            var object: [String: Any] = ["schema": "companion-reply.v1", "idempotency_key": "key-12345678", "note_id": "n1", "status": status, "updated_at": "2027-01-15T08:00:00Z"]
+            if let text { object["text"] = text }
+            try JSONSerialization.data(withJSONObject: object).write(to: replies.appendingPathComponent("key-12345678.json"))
+        }
+        try reply("queued"); #expect(status(600).status == .queued)  // a receipt exists, so no warning
+        try reply("picked_up"); #expect(status(600).status == .pickedUp)
+        try reply("done", text: "Posted."); #expect(status(5) == CompanionReceipt(status: .done, text: "Posted."))
+        try reply("rejected", text: "unknown action"); #expect(status(5) == CompanionReceipt(status: .rejected, text: "unknown action"))
+        #expect(CompanionReceipt.repliesDirectory(feedPath: "/x/companion/feed.json").path == "/x/companion/replies")
     }
 }

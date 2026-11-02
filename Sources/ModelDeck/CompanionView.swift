@@ -18,6 +18,7 @@ struct CompanionView: View {
     @State private var selected: String?
     @State private var contextText = ""
     @State private var answers: [String: String] = [:]
+    @State private var draftTexts: [String: String] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,11 +28,11 @@ struct CompanionView: View {
                 let feed = store.companionFeed
                 let stale = feed?.isStale() ?? false
                 status(feed, stale: stale)
-                Picker("", selection: $tab) {
-                    Text(L("Decisioni (\(feed?.decisions.count ?? 0))")).tag("decisions")
-                    Text(L("MR e revisioni (\(store.boardMRs.count))")).tag("mrs")
-                    Text(L("Ticket (\(store.boardTickets.count))")).tag("tickets")
-                }.labelsHidden().pickerStyle(.segmented).frame(maxWidth: 520)
+                HStack(spacing: 8) {
+                    tabButton("decisions", L("Decisioni (\(feed?.decisions.count ?? 0))"))
+                    tabButton("mrs", L("MR e revisioni (\(store.boardMRs.count))"))
+                    tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
+                }
                 Group {
                     if tab == "decisions" { decisions(feed?.decisions ?? [], locked: stale) }
                     else if tab == "mrs" { mrs(store.boardMRs, locked: stale) }
@@ -51,6 +52,10 @@ struct CompanionView: View {
             Alert(title: Text(L("Inviare a firstmate?")), message: Text(D(pending.label)),
                   primaryButton: .default(Text(L("Invia"))) { send(pending) }, secondaryButton: .cancel(Text(L("Annulla"))))
         }
+    }
+
+    private func tabButton(_ id: String, _ title: String) -> some View {
+        Button(title) { tab = id }.buttonStyle(DeckTabStyle(selected: tab == id))
     }
 
     private enum Row { case mr(BoardMR), ticket(BoardTicketRow) }
@@ -162,18 +167,22 @@ struct CompanionView: View {
                                 .toggleStyle(.checkbox).font(.system(size: 11))
                             if openDrafts.contains(mr.ref) {
                                 ForEach(mr.drafts) { draft in
+                                    let draftKey = mr.ref + "|" + draft.id
+                                    let text = Binding(get: { draftTexts[draftKey] ?? draft.text }, set: { draftTexts[draftKey] = $0 })
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text(draft.text).font(.system(size: 11)).textSelection(.enabled).padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                                        TextEditor(text: text).font(.system(size: 11)).frame(minHeight: 90).scrollContentBackground(.hidden)
+                                            .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
                                         HStack {
-                                            Button(L("Invia bozza")) { request(PendingClick(actionID: "draft:" + draft.id, target: draft.targetUrl, label: draft.text, draft: draft.text), confirmFirst: true) }.disabled(locked || mr.verdictStale)
-                                            sentLabel("draft:\(draft.id)|\(draft.targetUrl)")
-                                        }.buttonStyle(DeckButtonStyle())
+                                            Button(L("Invia bozza")) { postDraft(mr, text: text.wrappedValue) }
+                                                .buttonStyle(DeckButtonStyle(primary: mr.postActionID != nil)).disabled(locked || mr.verdictStale || mr.postActionID == nil)
+                                            if let id = mr.postActionID { ClickStateLabel(key: id + "|" + mr.ref).environmentObject(store) }
+                                            else { Text(L("Il feed non ha un'azione di invio per questa MR.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
+                                        }
                                     }
                                 }
                             }
                         }
-                        actions(mr.actions, target: mr.url.absoluteString, locked: locked)
+                        actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: mr.drafts.first.map { draftTexts[mr.ref + "|" + $0.id] ?? $0.text }, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
                     }
                 }.contentShape(Rectangle()).onTapGesture { open(mr.ref) }
@@ -200,7 +209,7 @@ struct CompanionView: View {
                             Text(L("Per chiudere: \(finish.step) · \(finish.owner)")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         }
                         if !ticket.linkedMrs.isEmpty { Text(ticket.linkedMrs.joined(separator: " · ")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
-                        actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale)
+                        actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale, recommended: CompanionRecommendation.actionID(in: ticket.actions, texts: [ticket.finish?.step, ticket.status] + decisionTexts(ticket.decisionId)))
                         AddContextRow(ref: ticket.identifier).environmentObject(store)
                     }
                 }.contentShape(Rectangle()).onTapGesture { open(ticket.identifier) }
@@ -307,21 +316,36 @@ struct CompanionView: View {
         }
     }
 
-    private func actions(_ list: [CompanionFeed.Action], target: String, locked: Bool) -> some View {
+    private func actions(_ list: [CompanionFeed.Action], target: String, locked: Bool, recommended: String? = nil, draft: String? = nil, postID: String? = nil) -> some View {
         HStack(spacing: 10) {
-            ForEach(list) { action in
-                Button(action.label) { request(PendingClick(actionID: action.id, target: target, label: action.label), confirmFirst: action.outward) }
-                    .buttonStyle(DeckButtonStyle()).disabled(locked)
-                sentLabel(action.id + "|" + target)
+            ForEach(CompanionRecommendation.ordered(list, recommended: recommended)) { action in
+                let isPost = action.id == postID && draft != nil
+                Button(action.label) {
+                    if isPost { postClickRequest(action, target: target, text: draft ?? "") }
+                    else { request(PendingClick(actionID: action.id, target: target, label: action.label), confirmFirst: action.outward) }
+                }.buttonStyle(DeckButtonStyle(primary: action.id == recommended)).disabled(locked)
+                if action.id == recommended { Text(L("Consigliata")).font(.system(size: 10, weight: .semibold)).foregroundStyle(DeckTheme.mint) }
+                ClickStateLabel(key: action.id + "|" + target).environmentObject(store)
             }
         }
     }
 
-    @ViewBuilder private func sentLabel(_ key: String) -> some View {
-        if let state = store.companionStatuses[key] {
-            Text(D(state == .sent ? "Inviato" : state == .pickedUp ? "Preso in carico" : "Fatto")).font(.system(size: 10)).foregroundStyle(DeckTheme.mint)
-        }
+    /// Recommendation texts for a row: its own wording plus the linked decision's recommendation.
+    private func decisionTexts(_ id: String?) -> [String?] {
+        guard let id, let decision = store.companionFeed?.decisions.first(where: { $0.id == id }) else { return [] }
+        return [decision.recommendation]
     }
+    private func recommended(for mr: BoardMR) -> String? {
+        CompanionRecommendation.actionID(in: mr.actions, texts: [mr.label, mr.feedRow?.next, mr.feedRow?.blocker, mr.feedRow?.headline] + decisionTexts(mr.feedRow?.decisionId))
+    }
+    private func postClickRequest(_ action: CompanionFeed.Action, target: String, text: String) {
+        request(PendingClick(actionID: action.id, target: target, label: text, draft: text), confirmFirst: true)
+    }
+    private func postDraft(_ mr: BoardMR, text: String) {
+        guard let row = mr.feedRow, let click = CompanionAnswer.postClick(mr: row, text: text) else { return }
+        request(PendingClick(actionID: click.actionID, target: click.target, label: text, draft: text), confirmFirst: true)
+    }
+    @ViewBuilder private func sentLabel(_ key: String) -> some View { ClickStateLabel(key: key).environmentObject(store) }
     private func empty(_ text: String) -> some View { DeckCard { Text(D(text)).font(.system(size: 12)).foregroundStyle(DeckTheme.muted) } }
     private func verdictTitle(_ verdict: String) -> String {
         switch verdict { case "close": "Da chiudere"; case "notyet": "Non ancora"; case "blocked": "Bloccata"; default: "In attesa" }
@@ -364,10 +388,31 @@ struct AddContextRow: View {
             } else {
                 Button(L("Aggiungi contesto")) { open = true }.buttonStyle(DeckButtonStyle())
             }
-            if let state = store.companionStatuses[key] {
-                Text(D(state == .sent ? "Inviato" : state == .pickedUp ? "Preso in carico" : "Fatto")).font(.system(size: 10)).foregroundStyle(DeckTheme.mint)
-            }
+            ClickStateLabel(key: key).environmentObject(store)
             if let feedback { Text(D(feedback)).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
+        }
+    }
+}
+
+/// What happened to a click: sent, queued, picked up, done or rejected, or a warning when firstmate has not answered in 2 minutes.
+struct ClickStateLabel: View {
+    @EnvironmentObject var store: DeckStore
+    let key: String
+    var body: some View {
+        if let state = store.companionStatuses[key] {
+            let warn = state == .waiting || state == .rejected
+            let reply = store.companionReceiptText[key].map { " · " + String($0.prefix(160)) } ?? ""
+            Text(D(Self.title(state)) + reply).font(.system(size: 10)).foregroundStyle(warn ? DeckTheme.amber : DeckTheme.mint).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    static func title(_ state: CompanionClickStatus) -> String {
+        switch state {
+        case .sent: "Inviato"
+        case .queued: "In coda"
+        case .pickedUp: "Preso in carico"
+        case .done: "Fatto"
+        case .rejected: "Rifiutato"
+        case .waiting: "In attesa di firstmate (il monitoraggio potrebbe essere fermo)"
         }
     }
 }

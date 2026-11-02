@@ -13,6 +13,7 @@ public struct BoardMR: Equatable, Sendable, Identifiable {
     public let drafts: [CompanionFeed.Draft]
     public let actions: [CompanionFeed.Action]
     /// Last GitLab activity, known only when the app polled it.
+    public var postActionID: String? { CompanionFeed.postAction(of: actions)?.id }
     public let updatedAt: Date?
     /// The feed row the extra producer fields come from; nil for MRs only seen in the poll.
     public let feedRow: CompanionFeed.MergeRequest?
@@ -26,6 +27,7 @@ public struct BoardTicketRow: Equatable, Sendable, Identifiable {
     public let finishStale: Bool
     public let linkedMrs: [String]
     public let actions: [CompanionFeed.Action]
+    public let decisionId: String?
 }
 
 /// Puts the app's own newer polls over the firstmate feed and flags verdicts the raw state has outrun.
@@ -67,11 +69,11 @@ public enum CompanionBoard {
             }
             live[ticket.identifier] = nil
             rows.append(BoardTicketRow(identifier: ticket.identifier, title: ticket.title, status: status, url: ticket.url, finish: ticket.finish,
-                                       finishStale: stale, linkedMrs: ticket.linkedMrs, actions: ticket.actions))
+                                       finishStale: stale, linkedMrs: ticket.linkedMrs, actions: ticket.actions, decisionId: ticket.decisionId))
         }
         for ticket in raw?.tickets ?? [] where live[ticket.identifier] != nil {
             rows.append(BoardTicketRow(identifier: ticket.identifier, title: ticket.title, status: ticket.state, url: ticket.url, finish: nil,
-                                       finishStale: false, linkedMrs: [], actions: []))
+                                       finishStale: false, linkedMrs: [], actions: [], decisionId: nil))
         }
         return rows
     }

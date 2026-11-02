@@ -20,7 +20,36 @@ public struct CompanionClick: Codable, Equatable, Sendable {
     }
 }
 
-public enum CompanionClickStatus: String, Sendable { case sent, pickedUp, done }
+public enum CompanionClickStatus: String, Sendable { case sent, queued, pickedUp, done, rejected, waiting }
+
+/// Firstmate's receipt for a click, from `replies/<idempotency_key>.json` (companion-reply.v1) beside the feed.
+public struct CompanionReceipt: Equatable, Sendable {
+    public let status: CompanionClickStatus
+    public let text: String?
+    /// Without any receipt after this long the app says firstmate may not be monitoring.
+    public static let waitAfter: TimeInterval = 120
+
+    public static func repliesDirectory(feedPath: String) -> URL {
+        URL(fileURLWithPath: (feedPath as NSString).expandingTildeInPath).deletingLastPathComponent().appendingPathComponent("replies", isDirectory: true)
+    }
+
+    public static func resolve(note: URL, key: String, repliesDirectory: URL, sentAt: Date, now: Date = Date()) -> CompanionReceipt {
+        if let data = FileManager.default.contents(atPath: repliesDirectory.appendingPathComponent(key + ".json").path),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any], object["schema"] as? String == "companion-reply.v1" {
+            let text = (object["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            switch object["status"] as? String {
+            case "queued": return CompanionReceipt(status: .queued, text: text)
+            case "picked_up": return CompanionReceipt(status: .pickedUp, text: text)
+            case "done": return CompanionReceipt(status: .done, text: text)
+            case "rejected": return CompanionReceipt(status: .rejected, text: text)
+            default: break
+            }
+        }
+        let inferred = CompanionInbox.status(of: note)
+        if inferred == .sent, now.timeIntervalSince(sentAt) > waitAfter { return CompanionReceipt(status: .waiting, text: nil) }
+        return CompanionReceipt(status: inferred, text: nil)
+    }
+}
 
 public enum CompanionInbox {
     /// Writes the note atomically (temp file, then rename) so the reader never sees a half-written file.
@@ -72,5 +101,32 @@ public enum CompanionAnswer {
     }
     public static func actionID(decisionID: String, option: CompanionFeed.Option?, optionIndex: Int) -> String {
         option.map { $0.actionId ?? "decision:\(decisionID):option:\(optionIndex)" } ?? decisionID + ".answer"
+    }
+
+    /// A draft's post button: the MR row's own post action from the feed, the MR ref as target, the shown (possibly edited) text.
+    public static func postClick(mr: CompanionFeed.MergeRequest, text: String, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick? {
+        guard let action = mr.postAction, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return CompanionClick(actionID: action.id, target: mr.ref, draftText: text, now: now, key: key)
+    }
+    /// A row action button: the feed's action id and the row ref.
+    public static func rowClick(action: CompanionFeed.Action, ref: String, draftText: String? = nil, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick {
+        CompanionClick(actionID: action.id, target: ref, draftText: draftText, now: now, key: key)
+    }
+}
+
+/// Picks the action to highlight on a row: the one the feed's text names, else the first harmless one.
+public enum CompanionRecommendation {
+    static let quiet = [".wait-what", ".nevermind"]
+    public static func actionID(in actions: [CompanionFeed.Action], texts: [String?]) -> String? {
+        let words = Set(texts.compactMap { $0 }.joined(separator: " ").lowercased().split { !$0.isLetter }.map(String.init).filter { $0.count >= 4 })
+        func score(_ action: CompanionFeed.Action) -> Int { Set(action.label.lowercased().split { !$0.isLetter }.map(String.init).filter { $0.count >= 4 }).intersection(words).count }
+        let candidates = actions.filter { action in !action.outward && !quiet.contains { action.id.hasSuffix($0) } }
+        if let best = candidates.max(by: { score($0) < score($1) }), score(best) > 0 { return best.id }
+        return candidates.first?.id
+    }
+    /// The recommended action first, the others in feed order.
+    public static func ordered(_ actions: [CompanionFeed.Action], recommended: String?) -> [CompanionFeed.Action] {
+        guard let recommended, let index = actions.firstIndex(where: { $0.id == recommended }) else { return actions }
+        var result = actions; result.insert(result.remove(at: index), at: 0); return result
     }
 }

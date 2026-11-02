@@ -29,6 +29,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let author: String?, headline: String?, blocker: String?, next: String?, ticket: String?, updatedAt: String?
         public let drafts: [Draft]
         public let actions: [Action]
+        public var postAction: Action? { CompanionFeed.postAction(of: actions) }
     }
     /// `updated_at` as a date, nil when missing, empty or unparseable.
     public static func date(_ text: String?) -> Date? {
@@ -43,6 +44,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
         return value
     }
+    /// Marks MR rows whose action posts the draft; nil when the feed offers none.
+    public static func postAction(of actions: [Action]) -> Action? { actions.first { $0.id.contains(".post") || $0.id.hasSuffix("-post") } }
     public struct Finish: Decodable, Equatable, Sendable { public let step: String, owner: String }
     public struct Ticket: Decodable, Equatable, Sendable, Identifiable {
         public var id: String { identifier }

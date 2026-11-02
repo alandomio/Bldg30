@@ -19,9 +19,11 @@ extension DeckStore {
             companionError = nil
             announceUrgent(feed)
         } catch { companionError = error.localizedDescription }
-        for (key, note) in companionNotes {
-            let status = CompanionInbox.status(of: note)
-            if companionStatuses[key] != status { companionStatuses[key] = status }
+        let replies = CompanionReceipt.repliesDirectory(feedPath: CompanionSettings.feedPath)
+        for (key, sent) in companionNotes {
+            let receipt = CompanionReceipt.resolve(note: sent.note, key: sent.key, repliesDirectory: replies, sentAt: sent.at)
+            if companionStatuses[key] != receipt.status { companionStatuses[key] = receipt.status }
+            if companionReceiptText[key] != receipt.text { companionReceiptText[key] = receipt.text }
         }
     }
 
@@ -30,9 +32,10 @@ extension DeckStore {
     func sendCompanionClick(actionID: String, target: String, draftText: String? = nil) -> String? {
         if demo { companionStatuses[actionID + "|" + target] = .sent; return nil }
         do {
-            let note = try CompanionInbox.file(CompanionClick(actionID: actionID, target: target, draftText: draftText), inbox: CompanionSettings.inboxPath)
+            let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
+            let note = try CompanionInbox.file(click, inbox: CompanionSettings.inboxPath)
             let key = actionID + "|" + target
-            companionNotes[key] = note; companionStatuses[key] = .sent
+            companionNotes[key] = SentClick(note: note, key: click.idempotencyKey, at: Date()); companionStatuses[key] = .sent; companionReceiptText[key] = nil
             return nil
         } catch { return error.localizedDescription }
     }

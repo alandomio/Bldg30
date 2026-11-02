@@ -15,10 +15,10 @@ public enum CompanionFixture {
         {"schema":"companion-feed.v1","generated_at":"\(ISO8601DateFormatter().string(from: generatedAt))","producer":"fixture",
          "decisions":[
           {"id":"dec-1","title":"Ship the parser change without a migration?","project":"example-service","why_now":"The release train closes today.",
-           "options":[{"label":"Ship now","consequence":"Fast, but old rows stay unconverted."},{"label":"Wait for migration","consequence":"Safe, one day later."}],
+           "options":[{"label":"Ship now","consequence":"Fast, but old rows stay unconverted.","action_id":"dec-1.opt-1","outward":false},{"label":"Wait for migration","consequence":"Safe, one day later.","action_id":"dec-1.opt-2","outward":false}],
            "recommendation":"Wait for migration","links":["https://example.com/decisions/1"],"urgent":true},
           {"id":"dec-2","title":"Rename the config key?","project":"example-tool","why_now":"Two callers use the old name.",
-           "options":[{"label":"Rename","consequence":"One breaking change."},{"label":"Keep","consequence":"No change, naming stays odd."}],
+           "options":[{"label":"Rename","consequence":"One breaking change.","action_id":"dec-2.opt-1"},{"label":"Keep","consequence":"No change, naming stays odd.","action_id":"dec-2.opt-2"}],
            "recommendation":"Keep","links":[],"urgent":false}],
          "mrs":[
           {"ref":"svc !12","url":"https://example.com/svc/-/merge_requests/12","title":"Add retry to the client","role":"author","verdict":"notyet","label":"Fix pipeline",

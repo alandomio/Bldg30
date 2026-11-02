@@ -38,6 +38,20 @@ struct DeckButtonStyle: ButtonStyle {
     }
 }
 
+/// Tab button: the selected tab gets the neutral fill and the mint edge, the others stay plain.
+struct DeckTabStyle: ButtonStyle {
+    var selected: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 14).padding(.vertical, 6)
+            .foregroundStyle(selected ? DeckTheme.buttonTextPrimary : DeckTheme.buttonTextOther)
+            .background(selected ? DeckTheme.buttonFill : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .overlay { if selected { RoundedRectangle(cornerRadius: 6).strokeBorder(DeckTheme.mint, lineWidth: 1.5) } }
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
 struct DeckCard<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {

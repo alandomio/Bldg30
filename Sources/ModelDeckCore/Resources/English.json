@@ -559,5 +559,9 @@
   "Blocco: %@ · su %@": "Blocker: %@ · on %@",
   "Prossima azione: %@": "Next action: %@",
   "Ultima attività %@": "Last activity %@",
-  "Ticket %@": "Ticket %@"
+  "Ticket %@": "Ticket %@",
+  "In coda": "Queued",
+  "Rifiutato": "Rejected",
+  "In attesa di firstmate (il monitoraggio potrebbe essere fermo)": "Waiting for firstmate (monitoring may be down)",
+  "Il feed non ha un'azione di invio per questa MR.": "The feed has no post action for this MR."
 }

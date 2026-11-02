@@ -309,4 +309,15 @@ import Foundation
         try reply("rejected", text: "unknown action"); #expect(status(5) == CompanionReceipt(status: .rejected, text: "unknown action"))
         #expect(CompanionReceipt.repliesDirectory(feedPath: "/x/companion/feed.json").path == "/x/companion/replies")
     }
+
+    @Test func decisionRecommendationFindsTheOptionByLabelNumberOrWords() {
+        func option(_ label: String) -> CompanionFeed.Option { .init(label: label, consequence: "c", actionId: nil, outward: nil) }
+        let options = [option("retry the two CI jobs that failed on a runner TLS fault"), option("do not merge")]
+        #expect(CompanionRecommendation.optionIndex(recommendation: "option 1, retry then merge.", options: options) == 0)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "Option 2", options: options) == 1)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "do not merge", options: options) == 1)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "retry the failed jobs first", options: options) == 0)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "option 7", options: options) == nil)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "", options: options) == nil)
+    }
 }

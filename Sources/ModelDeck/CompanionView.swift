@@ -28,16 +28,18 @@ struct CompanionView: View {
                 let feed = store.companionFeed
                 let stale = feed?.isStale() ?? false
                 status(feed, stale: stale)
+                if stale { Text(L("Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber) }
                 HStack(spacing: 8) {
                     tabButton("decisions", L("Decisioni (\(feed?.decisions.count ?? 0))"))
                     tabButton("mrs", L("MR e revisioni (\(store.boardMRs.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
                 }
                 Group {
-                    if tab == "decisions" { decisions(feed?.decisions ?? [], locked: stale) }
-                    else if tab == "mrs" { mrs(store.boardMRs, locked: stale) }
-                    else { tickets(store.boardTickets, locked: stale) }
-                }.opacity(stale && tab == "decisions" ? 0.45 : 1)
+                    // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
+                    if tab == "decisions" { decisions(feed?.decisions ?? [], locked: false) }
+                    else if tab == "mrs" { mrs(store.boardMRs, locked: false) }
+                    else { tickets(store.boardTickets, locked: false) }
+                }
             } else {
                 DeckCard {
                     VStack(alignment: .leading, spacing: 8) {
@@ -107,7 +109,7 @@ struct CompanionView: View {
                             let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
                             HStack(alignment: .top, spacing: 12) {
                                 Button(option.label) { sendDecision(item, option: option, index: offset) }
-                                    .buttonStyle(DeckButtonStyle(primary: option.label == item.recommendation)).disabled(locked)
+                                    .buttonStyle(DeckButtonStyle(primary: offset == CompanionRecommendation.optionIndex(recommendation: item.recommendation, options: item.options))).disabled(locked)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                                     sentLabel(key)

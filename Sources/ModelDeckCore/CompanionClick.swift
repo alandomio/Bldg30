@@ -124,6 +124,19 @@ public enum CompanionRecommendation {
         if let best = candidates.max(by: { score($0) < score($1) }), score(best) > 0 { return best.id }
         return candidates.first?.id
     }
+    /// Which option a decision recommends: its exact label, "option N", or the label sharing the most words with the text.
+    public static func optionIndex(recommendation: String, options: [CompanionFeed.Option]) -> Int? {
+        let text = recommendation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !text.isEmpty else { return nil }
+        if let exact = options.firstIndex(where: { $0.label.lowercased() == text }) { return exact }
+        if let range = text.range(of: #"option\s*(\d+)"#, options: .regularExpression),
+           let number = Int(text[range].filter(\.isNumber)), options.indices.contains(number - 1) { return number - 1 }
+        func words(_ value: String) -> Set<String> { Set(value.lowercased().split { !$0.isLetter }.map(String.init).filter { $0.count >= 4 }) }
+        let target = words(text)
+        let scored = options.enumerated().map { ($0.offset, words($0.element.label).intersection(target).count) }
+        if let best = scored.max(by: { $0.1 < $1.1 }), best.1 > 0, scored.filter({ $0.1 == best.1 }).count == 1 { return best.0 }
+        return nil
+    }
     /// The recommended action first, the others in feed order.
     public static func ordered(_ actions: [CompanionFeed.Action], recommended: String?) -> [CompanionFeed.Action] {
         guard let recommended, let index = actions.firstIndex(where: { $0.id == recommended }) else { return actions }

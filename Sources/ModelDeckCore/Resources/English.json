@@ -558,6 +558,6 @@
   "Invia manda solo il testo. Un pulsante opzione lo manda insieme a quell’opzione.": "Send sends the text alone. An option button sends it together with that option.",
   "Blocco: %@ · su %@": "Blocker: %@ · on %@",
   "Prossima azione: %@": "Next action: %@",
-  "Ticket %@ · %@": "Ticket %@ · %@",
-  "Ultima attività %@": "Last activity %@"
+  "Ultima attività %@": "Last activity %@",
+  "Ticket %@": "Ticket %@"
 }

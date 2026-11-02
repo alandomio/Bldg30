@@ -224,4 +224,22 @@ import Foundation
         for ref in refs { switch Dossier.lookup(ref: ref, feedPath: feedPath) { case .loaded: loaded += 1; case .invalid(let why): Issue.record("\(ref): \(why)"); case .missing: break } }
         print("REALDOSSIERS", loaded, "of", refs.count)
     }
+
+    @Test func optionalMrContextFieldsDecodeAndEmptyOnesCountAsAbsent() throws {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: t0).utf8)) as? [String: Any])
+        var mrs = try #require(root["mrs"] as? [[String: Any]])
+        mrs[0].merge(["author": "alandomio", "headline": "Waiting on review", "blocker": "Two threads open", "next": "Reply to Klemens", "ticket": "IN-2566", "updated_at": "2027-01-15T08:00:00Z"]) { $1 }
+        mrs[1].merge(["author": "", "headline": "", "blocker": "", "next": "", "ticket": "", "updated_at": ""]) { $1 }
+        root["mrs"] = mrs
+        let value = try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+        let rows = CompanionBoard.mrs(feed: value, raw: nil)
+        let full = try #require(rows[0].feedRow), empty = try #require(rows[1].feedRow)
+        #expect(CompanionFeed.text(full.author) == "alandomio" && CompanionFeed.text(full.blocker) == "Two threads open" && CompanionFeed.text(full.next) == "Reply to Klemens" && CompanionFeed.text(full.ticket) == "IN-2566")
+        #expect(CompanionFeed.date(full.updatedAt) == ISO8601DateFormatter().date(from: "2027-01-15T08:00:00Z"))
+        #expect(CompanionFeed.text(empty.author) == nil && CompanionFeed.text(empty.headline) == nil && CompanionFeed.date(empty.updatedAt) == nil)
+        #expect(value.skipped.isEmpty)
+        let plain = try CompanionFeed.decode(Data(CompanionFixture.json(generatedAt: t0).utf8))
+        #expect(plain.mrs[0].author == nil && plain.skipped.isEmpty)  // the fields are optional
+        #expect(CompanionFeed.date("not a date") == nil)
+    }
 }

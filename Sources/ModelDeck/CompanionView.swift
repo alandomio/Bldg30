@@ -149,7 +149,7 @@ struct CompanionView: View {
                         HStack(spacing: 8) {
                             verdictPill(mr.verdict, stale: mr.verdictStale)
                             Text(mr.ref).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
-                            Text(D(mr.role == "author" ? "Autore" : "Revisore")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+                            Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                             Spacer()
                             Link(destination: mr.url) { Image(systemName: "arrow.up.right.square") }
                             Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted)
@@ -211,12 +211,16 @@ struct CompanionView: View {
     /// Role, blocker, next action, ticket, last activity and the top gotcha or open decision, from the feed and the dossier.
     @ViewBuilder private func mrContext(_ mr: BoardMR) -> some View {
         let dossier: Dossier? = { if case .loaded(let value) = store.dossier(for: mr.ref) { return value }; return nil }()
-        let ticket = store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }
-        let last = [mr.updatedAt, dossier?.timeline.last?.at.flatMap { ISO8601DateFormatter().date(from: $0) }].compactMap { $0 }.max()
+        let row = mr.feedRow
+        let ticket = CompanionFeed.text(row?.ticket) ?? store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }.map { $0.identifier + " · " + $0.status }
+        let last = [mr.updatedAt, CompanionFeed.date(row?.updatedAt), dossier?.timeline.last?.at.flatMap { CompanionFeed.date($0) }].compactMap { $0 }.max()
+        let blocker = CompanionFeed.text(row?.blocker) ?? CompanionFeed.text(mr.label)
+        let next = CompanionFeed.text(row?.next) ?? CompanionFeed.text(dossier?.nextAction)
         VStack(alignment: .leading, spacing: 4) {
-            if !mr.nextOwner.isEmpty || !mr.label.isEmpty { contextLine("hourglass", L("Blocco: \(mr.label.isEmpty ? "—" : mr.label) · su \(mr.nextOwner.isEmpty ? "—" : mr.nextOwner)")) }
-            if let next = dossier?.nextAction, !next.isEmpty { contextLine("arrow.right.circle", L("Prossima azione: \(next)")) }
-            if let ticket { contextLine("ticket", L("Ticket \(ticket.identifier) · \(ticket.status)")) }
+            if let headline = CompanionFeed.text(row?.headline) { Text(headline).font(.system(size: 12, weight: .medium)).fixedSize(horizontal: false, vertical: true) }
+            if blocker != nil || !mr.nextOwner.isEmpty { contextLine("hourglass", L("Blocco: \(blocker ?? "—") · su \(mr.nextOwner.isEmpty ? "—" : mr.nextOwner)")) }
+            if let next { contextLine("arrow.right.circle", L("Prossima azione: \(next)")) }
+            if let ticket { contextLine("ticket", L("Ticket \(ticket)")) }
             if let last { contextLine("clock", L("Ultima attività \(last.formatted(.relative(presentation: .named)))")) }
             if let gotcha = dossier?.gotchas.first { contextLine("exclamationmark.triangle", gotcha, color: DeckTheme.amber) }
             if let decision = dossier?.openDecisions.first { contextLine("questionmark.circle", decision) }

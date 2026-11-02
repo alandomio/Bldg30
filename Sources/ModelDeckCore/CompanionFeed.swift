@@ -25,8 +25,23 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let pipeline: String?
         public let openThreads: Int?
         public let decisionId: String?
+        /// Optional context from the producer; empty strings count as absent.
+        public let author: String?, headline: String?, blocker: String?, next: String?, ticket: String?, updatedAt: String?
         public let drafts: [Draft]
         public let actions: [Action]
+    }
+    /// `updated_at` as a date, nil when missing, empty or unparseable.
+    public static func date(_ text: String?) -> Date? {
+        guard let text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        for options in [ISO8601DateFormatter.Options.withInternetDateTime, [.withInternetDateTime, .withFractionalSeconds]] {
+            let formatter = ISO8601DateFormatter(); formatter.formatOptions = options
+            if let date = formatter.date(from: text) { return date }
+        }
+        return nil
+    }
+    public static func text(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        return value
     }
     public struct Finish: Decodable, Equatable, Sendable { public let step: String, owner: String }
     public struct Ticket: Decodable, Equatable, Sendable, Identifiable {

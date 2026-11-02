@@ -14,6 +14,8 @@ public struct BoardMR: Equatable, Sendable, Identifiable {
     public let actions: [CompanionFeed.Action]
     /// Last GitLab activity, known only when the app polled it.
     public let updatedAt: Date?
+    /// The feed row the extra producer fields come from; nil for MRs only seen in the poll.
+    public let feedRow: CompanionFeed.MergeRequest?
 }
 
 public struct BoardTicketRow: Equatable, Sendable, Identifiable {
@@ -44,11 +46,11 @@ public enum CompanionBoard {
             }
             rawByURL[key(mr.url)] = nil
             rows.append(BoardMR(ref: mr.ref, title: mr.title, role: mr.role, pipeline: pipeline, label: mr.label, nextOwner: mr.nextOwner, url: mr.url,
-                                openThreads: threads, verdict: mr.verdict, verdictStale: stale, drafts: mr.drafts, actions: mr.actions, updatedAt: updated))
+                                openThreads: threads, verdict: mr.verdict, verdictStale: stale, drafts: mr.drafts, actions: mr.actions, updatedAt: updated, feedRow: mr))
         }
         for live in raw?.mrs ?? [] where rawByURL[key(live.url)] != nil {
             rows.append(BoardMR(ref: live.ref, title: live.title, role: live.role, pipeline: live.pipeline, label: "", nextOwner: "", url: live.url,
-                                openThreads: live.openThreads, verdict: nil, verdictStale: false, drafts: [], actions: [], updatedAt: live.updatedAt))
+                                openThreads: live.openThreads, verdict: nil, verdictStale: false, drafts: [], actions: [], updatedAt: live.updatedAt, feedRow: nil))
         }
         return rows
     }

@@ -348,3 +348,51 @@ import Foundation
         #expect(!plain.isStandard)
     }
 }
+
+@Suite struct DecisionKeysTests {
+    @Test func lettersPickOptionsThatExist() {
+        #expect(DecisionKeys.command(.character("a"), optionCount: 2, typing: false) == .pick(0))
+        #expect(DecisionKeys.command(.character("B"), optionCount: 2, typing: false) == .pick(1))
+        #expect(DecisionKeys.command(.character("c"), optionCount: 2, typing: false) == nil)
+        #expect(DecisionKeys.command(.character("1"), optionCount: 2, typing: false) == nil)
+        #expect(DecisionKeys.command(.character("ab"), optionCount: 2, typing: false) == nil)
+    }
+    @Test func arrowsAndEnterMapAndTypingBlocksEverything() {
+        #expect(DecisionKeys.command(.left, optionCount: 2, typing: false) == .previous)
+        #expect(DecisionKeys.command(.right, optionCount: 2, typing: false) == .next)
+        #expect(DecisionKeys.command(.up, optionCount: 2, typing: false) == .selectUp)
+        #expect(DecisionKeys.command(.down, optionCount: 2, typing: false) == .selectDown)
+        #expect(DecisionKeys.command(.enter, optionCount: 2, typing: false) == .confirm)
+        for key in [DecisionKeys.Key.left, .right, .up, .down, .enter, .character("a")] { #expect(DecisionKeys.command(key, optionCount: 2, typing: true) == nil) }
+    }
+    @Test func selectionStartsOnRecommendedAndStaysInRange() {
+        #expect(DecisionKeys.moved(selected: nil, recommended: 1, by: 0, count: 3) == 1)
+        #expect(DecisionKeys.moved(selected: nil, recommended: 1, by: 1, count: 3) == 2)
+        #expect(DecisionKeys.moved(selected: 2, recommended: 1, by: 1, count: 3) == 2)
+        #expect(DecisionKeys.moved(selected: 0, recommended: nil, by: -1, count: 3) == 0)
+        #expect(DecisionKeys.moved(selected: nil, recommended: nil, by: 1, count: 3) == 1)
+        #expect(DecisionKeys.letter(0) == "A" && DecisionKeys.letter(2) == "C")
+    }
+}
+
+@Suite struct SummaryDecodingTests {
+    private func decision(_ extra: String) throws -> CompanionFeed.Decision {
+        let json = #"{"id":"d","title":"T","project":"p","why_now":"because","recommendation":"","options":[],"links":[],"urgent":false"# + extra + "}"
+        let decoder = JSONDecoder(); decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(CompanionFeed.Decision.self, from: json.data(using: .utf8)!)
+    }
+    @Test func olderFeedsHaveNoSummaryAndFallBackToWhyNow() throws {
+        let old = try decision("")
+        #expect(old.summaryParts.isEmpty)
+        #expect(old.contextText == "because")
+    }
+    @Test func summaryKeepsFourPartsWithTextAndFullContextWins() throws {
+        let parts = (1...6).map { #"{"heading":"H\#($0)","text":"t\#($0)"}"# }.joined(separator: ",") + #",{"heading":"Empty","text":"  "}"#
+        let new = try decision(#","summary":["# + parts + #"],"full_context":"Line one.\n\nLine two.""#)
+        #expect(new.summaryParts.count == 4)
+        #expect(new.summaryParts.first?.heading == "H1")
+        #expect(new.contextText.hasPrefix("Line one."))
+        let noHeading = try decision(#","summary":[{"text":"only text"}]"#)
+        #expect(noHeading.summaryParts.first?.heading == nil)
+    }
+}

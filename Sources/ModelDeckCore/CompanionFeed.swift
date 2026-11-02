@@ -17,10 +17,21 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let urgent: Bool
         /// The day the decision was raised, YYYY-MM-DD; optional.
         public let createdAt: String?
+        /// Optional short headed paragraphs and the original record, both written by the producer.
+        public let summary: [SummaryPart]?
+        public let fullContext: String?
+        /// The summary parts that have text, at most four; empty when the feed has none.
+        public var summaryParts: [SummaryPart] { Array((summary ?? []).filter { CompanionFeed.text($0.text) != nil }.prefix(4)) }
+        /// The original record, or `why_now` while the producer sends none.
+        public var contextText: String { CompanionFeed.text(fullContext) ?? whyNow }
         public var created: Date? { CompanionFeed.day(createdAt) }
         public func ageDays(now: Date = Date()) -> Int? {
             created.map { max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: $0), to: Calendar.current.startOfDay(for: now)).day ?? 0) }
         }
+    }
+    public struct SummaryPart: Decodable, Equatable, Sendable {
+        public let heading: String?, text: String
+        public init(heading: String?, text: String) { self.heading = heading; self.text = text }
     }
     public struct Draft: Decodable, Equatable, Sendable, Identifiable { public let id: String, targetUrl: String, text: String }
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }

@@ -27,14 +27,15 @@ enum DeckTheme {
 struct DeckButtonStyle: ButtonStyle {
     var primary = false
     var small = false
+    var danger = false
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: small ? 11 : primary ? 14 : 13, weight: primary ? .semibold : .regular))
             .padding(.horizontal, small ? 9 : 12).padding(.vertical, small ? 3 : 5).frame(minHeight: small ? 24 : 30)
-            .foregroundStyle(primary ? DeckTheme.buttonTextPrimary : DeckTheme.buttonTextOther)
-            .background(DeckTheme.buttonFill, in: RoundedRectangle(cornerRadius: 6))
-            .overlay { if primary { RoundedRectangle(cornerRadius: 6).strokeBorder(DeckTheme.mint, lineWidth: 1.5) } }
+            .foregroundStyle(danger ? Color(red: 1, green: 0.604, blue: 0.604) : primary ? DeckTheme.buttonTextPrimary : DeckTheme.buttonTextOther)
+            .background(danger ? Color(red: 0.227, green: 0.114, blue: 0.125) : DeckTheme.buttonFill, in: RoundedRectangle(cornerRadius: 6))
+            .overlay { if danger { RoundedRectangle(cornerRadius: 6).strokeBorder(Color(red: 0.478, green: 0.18, blue: 0.2), lineWidth: 1) } else if primary { RoundedRectangle(cornerRadius: 6).strokeBorder(DeckTheme.mint, lineWidth: 1.5) } }
             .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
             .contentShape(RoundedRectangle(cornerRadius: 6))
     }

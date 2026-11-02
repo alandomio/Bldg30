@@ -1,6 +1,42 @@
 import SwiftUI
 import ModelDeckCore
 
+/// One key press seen by `KeyRouter`; the id makes two presses of the same key distinct.
+struct KeyEvent: Equatable {
+    let id = UUID()
+    let key: DecisionKeys.Key, typing: Bool
+}
+
+/// Watches key presses while the decision cards are on screen; ignores them while a text field has focus.
+final class KeyRouter {
+    static let shared = KeyRouter()
+    private var monitor: Any?
+    func start(_ handler: @escaping (DecisionKeys.Key, Bool) -> Void) {
+        stop()
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
+            let typing = NSApp.keyWindow?.firstResponder is NSText
+            let key: DecisionKeys.Key
+            switch event.keyCode {
+            case 123: key = .left
+            case 124: key = .right
+            case 126: key = .up
+            case 125: key = .down
+            case 36, 76: key = .enter
+            default: key = .character(event.charactersIgnoringModifiers ?? "")
+            }
+            handler(key, typing)
+            return typing ? event : (DecisionKeys.command(key, optionCount: 26, typing: false) == nil ? event : nil)
+        }
+    }
+    func stop() { if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil }
+}
+
+extension View {
+    /// A pointing-hand cursor while the mouse is over the view.
+    func pointerCursor() -> some View { onHover { $0 ? NSCursor.pointingHand.push() : NSCursor.pop() } }
+}
+
 private struct PendingClick: Identifiable {
     let id = UUID()
     let actionID: String, target: String, label: String
@@ -19,6 +55,12 @@ struct CompanionView: View {
     @State private var contextText = ""
     @State private var answers: [String: String] = [:]
     @State private var draftTexts: [String: String] = [:]
+    @State private var openContext = Set<String>()
+    @State private var dropPending = Set<String>()
+    @State private var dropSent = Set<String>()
+    @State private var dropTasks: [String: Task<Void, Never>] = [:]
+    @State private var keyPress: KeyEvent?
+    @State private var selection: [String: Int] = [:]
     @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
 
     var body: some View {
@@ -101,60 +143,185 @@ struct CompanionView: View {
             if items.isEmpty { empty("Nessuna decisione in attesa.") }
             else {
                 let item = items[position]
+                let specific = Array(item.options.enumerated()).filter { !$0.element.isStandard }
+                let standard = Array(item.options.enumerated()).filter { $0.element.isStandard }
+                let recommendedOffset = CompanionRecommendation.optionIndex(recommendation: item.recommendation, options: specific.map(\.element)).map { specific[$0].offset }
                 DeckCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            Text(L("Decisione \(position + 1) di \(items.count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
-                            if let age = ageLabel(item) { Text(age.text).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(age.color) }
-                            if item.urgent { StatusPill(text: "Urgente", color: .red) }
-                            Spacer()
-                            Picker(L("Ordine"), selection: $decisionOrder) {
-                                Text(L("Ordine del feed")).tag(DecisionOrder.feed.rawValue)
-                                Text(L("Più vecchie prima")).tag(DecisionOrder.oldestFirst.rawValue)
-                            }.labelsHidden().pickerStyle(.menu).frame(width: 170).onChange(of: decisionOrder) { _, _ in index = 0 }
-                            Button { index = position - 1 } label: { Image(systemName: "chevron.left") }.disabled(position == 0)
-                            Button { index = position + 1 } label: { Image(systemName: "chevron.right") }.disabled(position >= items.count - 1)
-                        }.buttonStyle(DeckButtonStyle())
-                        Text(item.title).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
-                        if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
-                        if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true) }
-                        let specific = Array(item.options.enumerated()).filter { !$0.element.isStandard }
-                        let recommendedOffset = CompanionRecommendation.optionIndex(recommendation: item.recommendation, options: specific.map(\.element)).map { specific[$0].offset }
-                        ForEach(specific, id: \.offset) { offset, option in
-                            let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
-                            HStack(alignment: .top, spacing: 12) {
-                                Button(option.label) { sendDecision(item, option: option, index: offset) }
-                                    .buttonStyle(DeckButtonStyle(primary: offset == recommendedOffset)).disabled(locked)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
-                                    sentLabel(key)
+                        decisionHeader(item, position: position, count: items.count)
+                        if dropPending.contains(item.id) || dropSent.contains(item.id) {
+                            droppedRow(item, standard: standard)
+                        } else {
+                            decisionText(item)
+                            VStack(spacing: 8) {
+                                ForEach(Array(specific.enumerated()), id: \.offset) { letterIndex, entry in
+                                    optionRow(item, option: entry.element, offset: entry.offset, letter: DecisionKeys.letter(letterIndex), recommended: entry.offset == recommendedOffset, selected: letterIndex == (selection[item.id] ?? specific.firstIndex { $0.offset == recommendedOffset } ?? 0), locked: locked)
                                 }
                             }
-                        }
-                        answerField(item, locked: locked)
-                        VStack(alignment: .leading, spacing: 6) {
-                            AddContextRow(ref: item.id, small: true) {
-                                ForEach(Array(item.options.enumerated()).filter { $0.element.isStandard }, id: \.offset) { offset, option in
-                                    Button(option.label) { sendDecision(item, option: option, index: offset) }
-                                        .buttonStyle(DeckButtonStyle(small: true)).disabled(locked).help(option.consequence)
+                            if let hint = keyHint(count: specific.count) { Text(hint).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
+                            answerField(item, locked: locked)
+                            VStack(alignment: .leading, spacing: 6) {
+                                AddContextRow(ref: item.id, small: true) {
+                                    ForEach(standard, id: \.offset) { offset, option in
+                                        if isDrop(option) {
+                                            Button(option.label) { startDrop(item, option: option, offset: offset) }
+                                                .buttonStyle(DeckButtonStyle(small: true, danger: true)).disabled(locked).help(option.consequence)
+                                        } else {
+                                            Button(option.label) { sendDecision(item, option: option, index: offset) }
+                                                .buttonStyle(DeckButtonStyle(small: true)).disabled(locked).help(option.consequence)
+                                        }
+                                    }
+                                }.environmentObject(store)
+                                ForEach(standard, id: \.offset) { offset, option in
+                                    if !isDrop(option) { sentLabel(CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id) }
                                 }
-                            }.environmentObject(store)
-                            ForEach(Array(item.options.enumerated()).filter { $0.element.isStandard }, id: \.offset) { offset, option in
-                                sentLabel(CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id)
                             }
+                            ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)).pointerCursor() }
                         }
-                        ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
+                    }
+                }
+                .onAppear { KeyRouter.shared.start { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
+                .onDisappear { KeyRouter.shared.stop() }
+                .onChange(of: keyPress) { _, event in
+                    guard let event, let command = DecisionKeys.command(event.key, optionCount: specific.count, typing: event.typing) else { return }
+                    switch command {
+                    case .previous: index = max(0, position - 1)
+                    case .next: index = min(items.count - 1, position + 1)
+                    case .selectUp, .selectDown:
+                        let current = recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } }
+                        selection[item.id] = DecisionKeys.moved(selected: selection[item.id], recommended: current, by: command == .selectUp ? -1 : 1, count: specific.count)
+                    case .confirm:
+                        let current = selection[item.id] ?? recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } } ?? 0
+                        guard !locked, !dropPending.contains(item.id), !dropSent.contains(item.id), specific.indices.contains(current) else { return }
+                        sendDecision(item, option: specific[current].element, index: specific[current].offset)
+                    case .pick(let letterIndex):
+                        guard !locked, !dropPending.contains(item.id), !dropSent.contains(item.id), specific.indices.contains(letterIndex) else { return }
+                        sendDecision(item, option: specific[letterIndex].element, index: specific[letterIndex].offset)
                     }
                 }
             }
         }
     }
 
+    private func isDrop(_ option: CompanionFeed.Option) -> Bool { option.actionId?.hasSuffix(".opt-drop") == true }
+
+    private func decisionHeader(_ item: CompanionFeed.Decision, position: Int, count: Int) -> some View {
+        HStack {
+            Text(L("Decisione \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+            if let age = ageLabel(item) { Text(age.text).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(age.color) }
+            if item.urgent { StatusPill(text: "Urgente", color: .red) }
+            Spacer()
+            Picker(L("Ordine"), selection: $decisionOrder) {
+                Text(L("Ordine del feed")).tag(DecisionOrder.feed.rawValue)
+                Text(L("Più vecchie prima")).tag(DecisionOrder.oldestFirst.rawValue)
+            }.labelsHidden().pickerStyle(.menu).frame(width: 170).onChange(of: decisionOrder) { _, _ in index = 0 }
+            Button { index = position - 1 } label: { Image(systemName: "chevron.left") }.disabled(position == 0)
+            Button { index = position + 1 } label: { Image(systemName: "chevron.right") }.disabled(position >= count - 1)
+        }.buttonStyle(DeckButtonStyle())
+    }
+
+    /// Title, headed summary (or `why_now` when the feed has none) and the collapsed full record.
+    private func decisionText(_ item: CompanionFeed.Decision) -> some View {
+        let parts = item.summaryParts
+        let open = openContext.contains(item.id)
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(item.title).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+            if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
+            if parts.isEmpty {
+                if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true) }
+            } else {
+                ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let heading = CompanionFeed.text(part.heading) { Text(heading.uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint) }
+                        Text(part.text).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                Button(L(open ? "Nascondi contesto completo" : "Mostra contesto completo")) {
+                    if open { openContext.remove(item.id) } else { openContext.insert(item.id) }
+                }.buttonStyle(DeckButtonStyle(small: true))
+                if let created = item.created {
+                    let formatter = DateFormatter()
+                    let _ = { formatter.locale = DeckLanguage.current.locale; formatter.setLocalizedDateFormatFromTemplate("d MMM") }()
+                    Text(L("in attesa dal \(formatter.string(from: created))")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+                }
+            }
+            if open {
+                let paragraphs = item.contextText.components(separatedBy: "\n\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in Text(paragraph).font(.system(size: 12)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true) }
+                }.textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    .background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
+
+    /// One option as a full-width row: keycap letter, label, consequence under it; the recommended row gets the mint edge.
+    private func optionRow(_ item: CompanionFeed.Decision, option: CompanionFeed.Option, offset: Int, letter: String, recommended: Bool, selected: Bool, locked: Bool) -> some View {
+        let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
+        return VStack(alignment: .leading, spacing: 3) {
+            Button { sendDecision(item, option: option, index: offset) } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Text(letter).font(.system(size: 12, weight: .semibold, design: .monospaced)).frame(width: 26, height: 26)
+                        .foregroundStyle(recommended ? DeckTheme.mint : DeckTheme.buttonTextOther)
+                        .background(DeckTheme.subtle.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
+                        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(DeckTheme.subtle.opacity(0.25), lineWidth: 1))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(option.label).font(.system(size: recommended ? 16 : 14, weight: recommended ? .semibold : .medium)).foregroundStyle(DeckTheme.foreground)
+                        Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                    }.multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(recommended ? DeckTheme.mint.opacity(0.10) : DeckTheme.buttonFill, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(recommended ? DeckTheme.mint : DeckTheme.subtle.opacity(0.12), lineWidth: recommended ? 1.5 : 1))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(DeckTheme.blue, lineWidth: 2).padding(-4).opacity(selected ? 1 : 0))
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+            }.buttonStyle(.plain).disabled(locked).pointerCursor()
+            sentLabel(key)
+        }
+    }
+
+    private func keyHint(count: Int) -> String? {
+        guard count > 0 else { return nil }
+        let first = DecisionKeys.letter(0), last = DecisionKeys.letter(count - 1)
+        let letters = count == 1 ? first : count == 2 ? "\(first)/\(last)" : "\(first)–\(last)"
+        return L("\(letters) oppure ↑ ↓ e Invio per scegliere · ← → per passare da una decisione all’altra")
+    }
+
+    /// The card after Drop: Undo works until the click goes out a few seconds later.
+    private func droppedRow(_ item: CompanionFeed.Decision, standard: [(offset: Int, element: CompanionFeed.Option)]) -> some View {
+        let dropKey = standard.first(where: { isDrop($0.element) }).map { CompanionAnswer.actionID(decisionID: item.id, option: $0.element, optionIndex: $0.offset) + "|" + item.id }
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Text(L("Scartata")).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color(red: 1, green: 0.6, blue: 0.6))
+                Text(item.title).font(.system(size: 12)).foregroundStyle(DeckTheme.muted).lineLimit(2)
+                Spacer()
+                if dropPending.contains(item.id) { Button(L("Annulla")) { undoDrop(item.id) }.buttonStyle(DeckButtonStyle(small: true)) }
+            }
+            if dropSent.contains(item.id), let dropKey { sentLabel(dropKey) }
+        }
+    }
+
+    private func startDrop(_ item: CompanionFeed.Decision, option: CompanionFeed.Option, offset: Int) {
+        dropPending.insert(item.id)
+        dropTasks[item.id] = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled, dropPending.contains(item.id) else { return }
+            dropPending.remove(item.id); dropSent.insert(item.id); dropTasks[item.id] = nil
+            sendDecision(item, option: option, index: offset)
+        }
+    }
+    private func undoDrop(_ id: String) {
+        dropTasks[id]?.cancel(); dropTasks[id] = nil; dropPending.remove(id)
+    }
+
     private func answerField(_ item: CompanionFeed.Decision, locked: Bool) -> some View {
         let binding = Binding(get: { answers[item.id] ?? "" }, set: { answers[item.id] = $0 })
         let empty = binding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return VStack(alignment: .leading, spacing: 6) {
-            Text(L("La tua risposta o contesto")).font(.system(size: 11, weight: .semibold))
+            Text(L("Qualcos’altro, o aggiungi contesto")).font(.system(size: 11, weight: .semibold))
             TextEditor(text: binding).font(.system(size: 12)).frame(minHeight: 60).scrollContentBackground(.hidden)
                 .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
             HStack {

@@ -568,5 +568,11 @@
   "Ordine": "Order",
   "Ordine del feed": "Feed order",
   "Più vecchie prima": "Oldest first",
-  "1 giorno": "1 day"
+  "1 giorno": "1 day",
+  "Qualcos’altro, o aggiungi contesto": "Something different, or add context",
+  "Mostra contesto completo": "Show full context",
+  "Nascondi contesto completo": "Hide full context",
+  "in attesa dal %@": "held since %@",
+  "Scartata": "Dropped",
+  "%@ oppure ↑ ↓ e Invio per scegliere · ← → per passare da una decisione all’altra": "%@ or ↑ ↓ then Enter to choose · ← → to move between decision cards"
 }

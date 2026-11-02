@@ -66,7 +66,7 @@ import ModelDeckCore
         check(waitForClick { $0["action_id"] == "dec-1.opt-1" && $0["target"] == "dec-1" }, "option click wrote dec-1.opt-1")
         check(!detailsOpen(), "detail pane stayed closed after the option click")
         // Free answer: click into the field, type, Send.
-        if let label = locate("Your answer or context", nth: 0, in: host) {
+        if let label = locate("Something different, or add context", nth: 0, in: host) {
             let spot = NSPoint(x: label.x + 120, y: label.y + (host.isFlipped ? 50 : -50)); click(at: spot); typeText("free answer", near: spot)
             check(press("Send", nth: 0), "pressed Send on the free answer")
             check(waitForClick { $0["action_id"] == "dec-1.answer" && $0["draft_text"] == "free answer" }, "free answer wrote dec-1.answer with the typed text")

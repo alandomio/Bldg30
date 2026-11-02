@@ -79,7 +79,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
                 guard let row else { continue }
                 do {
                     try check(row)
-                    guard seen.insert(name + ":" + id(row)).inserted else { throw CompanionError.invalid("duplicato \(id(row))") }
+                    guard seen.insert(name + ":" + id(row)).inserted else { throw CompanionError.invalid("duplicate \(id(row))") }
                     kept.append(row)
                 } catch { notes.append("\(name)[\(index)]: \(Self.describe(error))") }
             }
@@ -95,11 +95,11 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         if case CompanionError.invalid(let detail) = error { return detail }
         guard let error = error as? DecodingError else { return error.localizedDescription }
         switch error {
-        case .keyNotFound(let key, _): return "campo mancante \(key.stringValue)"
+        case .keyNotFound(let key, _): return "missing field \(key.stringValue)"
         case .valueNotFound(_, let context), .typeMismatch(_, let context), .dataCorrupted(let context):
             let field = context.codingPath.map(\.stringValue).filter { Int($0) == nil }.joined(separator: ".")
-            return "valore non valido in " + (field.isEmpty ? "riga" : field)
-        @unknown default: return "riga non valida"
+            return "invalid value in " + (field.isEmpty ? "row" : field)
+        @unknown default: return "invalid row"
         }
     }
 
@@ -126,24 +126,24 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
                 let formatter = ISO8601DateFormatter(); formatter.formatOptions = options
                 if let date = formatter.date(from: text) { return date }
             }
-            throw CompanionError.invalid("data non valida: \(text)")
+            throw CompanionError.invalid("invalid date: \(text)")
         }
         return decoder
     }
 
-    private static func need(_ value: String, _ name: String) throws { if value.trimmingCharacters(in: .whitespaces).isEmpty { throw CompanionError.invalid("\(name) mancante") } }
-    private static func secure(_ url: URL, _ name: String) throws { if url.scheme != "https" { throw CompanionError.invalid("\(name) non è https") } }
+    private static func need(_ value: String, _ name: String) throws { if value.trimmingCharacters(in: .whitespaces).isEmpty { throw CompanionError.invalid("\(name) missing") } }
+    private static func secure(_ url: URL, _ name: String) throws { if url.scheme != "https" { throw CompanionError.invalid("\(name) is not https") } }
     static func check(_ decision: Decision) throws {
         try need(decision.id, "id"); try need(decision.title, "title")
-        guard !decision.options.isEmpty else { throw CompanionError.invalid("options vuote") }
+        guard !decision.options.isEmpty else { throw CompanionError.invalid("no options") }
         for option in decision.options { try need(option.label, "options.label") }
         // Decision links may also point at a local page on this Mac (http on loopback).
         for link in decision.links where !(link.scheme == "http" && ["127.0.0.1", "localhost", "::1"].contains(link.host ?? "")) { try secure(link, "link") }
     }
     static func check(_ mr: MergeRequest) throws {
         try need(mr.ref, "ref"); try secure(mr.url, "url")
-        guard verdicts.contains(mr.verdict) else { throw CompanionError.invalid("verdict sconosciuto \(mr.verdict)") }
-        guard roles.contains(mr.role) else { throw CompanionError.invalid("role sconosciuto \(mr.role)") }
+        guard verdicts.contains(mr.verdict) else { throw CompanionError.invalid("unknown verdict \(mr.verdict)") }
+        guard roles.contains(mr.role) else { throw CompanionError.invalid("unknown role \(mr.role)") }
         for action in mr.actions { try need(action.id, "actions.id") }
         for draft in mr.drafts { try need(draft.id, "drafts.id"); try need(draft.text, "drafts.text") }
     }

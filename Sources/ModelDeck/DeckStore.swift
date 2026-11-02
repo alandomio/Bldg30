@@ -8,6 +8,7 @@ import Security
     @Published var inventory = Inventory()
     @Published var codex = SubscriptionUsage(provider: "OpenAI", source: "Codex · app server", message: "Lettura quote…")
     @Published var claude = ClaudeUsage.read()
+    @Published var gemini = SubscriptionUsage(provider: "Google", source: "Antigravity · agy", message: "Lettura quote…")
     @Published var cpuHistory: [Double] = []
     @Published var memoryHistory: [Double] = []
     @Published var gpuHistory: [Double] = []
@@ -30,7 +31,7 @@ import Security
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()
-    private let defenderMonitor = ProcessMonitor()
+    private let defenderMonitor = ProcessMonitor(includeUnreadable: true)
     private var started = false
 
     func start() {
@@ -82,6 +83,8 @@ import Security
             codex.message = error.localizedDescription
         }
         claude = ClaudeUsage.read()
+        do { gemini = try await GeminiUsage.read() }
+        catch { gemini.message = error.localizedDescription }
     }
     func refreshProcesses() async {
         guard !demo else { return }
@@ -121,6 +124,7 @@ import Security
         ]
         inventory.runtimes = [.init(name: "Ollama", online: true, detail: "2 modelli · API locale"), .init(name: "LM Studio", online: true, detail: "2 modelli · API locale")]
         codex = .init(provider: "OpenAI", plan: "Pro", windows: [.init(id: "codex-primary", title: "5 ore", usedPercent: 34, resetsAt: Date().addingTimeInterval(9500), durationMinutes: 300), .init(id: "codex-secondary", title: "7 giorni", usedPercent: 58, resetsAt: Date().addingTimeInterval(240000), durationMinutes: 10080)], updatedAt: Date(), source: "Codex · app server")
+        gemini = .init(provider: "Google", windows: [.init(id: "gemini-weekly", title: "Modelli Gemini · 7 giorni", usedPercent: 12, resetsAt: Date().addingTimeInterval(400000), durationMinutes: 10080), .init(id: "3p-weekly", title: "Modelli Claude e GPT · 7 giorni", usedPercent: 4, resetsAt: Date().addingTimeInterval(400000), durationMinutes: 10080)], updatedAt: Date(), source: "Antigravity · agy")
         claude = .init(provider: "Claude", windows: [.init(id: "five_hour", title: "5 ore", usedPercent: 23, resetsAt: Date().addingTimeInterval(7200), durationMinutes: 300), .init(id: "seven_day", title: "7 giorni", usedPercent: 41, resetsAt: Date().addingTimeInterval(180000), durationMinutes: 10080)], updatedAt: Date(), source: "Claude Code · status line")
     }
 }

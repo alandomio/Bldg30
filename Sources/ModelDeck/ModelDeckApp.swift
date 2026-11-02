@@ -109,13 +109,14 @@ import ModelDeckCore
     @MainActor private static func renderPreview(to url: URL) {
         _ = NSApplication.shared
         let store = DeckStore(); store.useDemo()
+        if CommandLine.arguments.contains("--real-gemini"), let usage = try? GeminiUsage.readBlocking() { store.gemini = usage }
         if CommandLine.arguments.contains("--real-feed") { store.companionFeed = try? CompanionFeed.read(path: CompanionSettings.feedPath) }
         let resource: ProcessSort = CommandLine.arguments.contains("--gpu") ? .gpu : CommandLine.arguments.contains("--memory") ? .memory : .cpu
         if CommandLine.arguments.contains("--gpu-unattributed") || CommandLine.arguments.contains("--gpu-unavailable") {
             store.processes = store.processes.map { process in var copy = process; copy.gpu = nil; return copy }
             if CommandLine.arguments.contains("--gpu-unavailable") { store.snapshot.gpu = nil }
         }
-        let section = CommandLine.arguments.contains("--bridge") ? "companion" : CommandLine.arguments.contains("--services") ? "services" : CommandLine.arguments.contains("--disk") ? "disk" : CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
+        let section = CommandLine.arguments.contains("--bridge") ? "companion" : CommandLine.arguments.contains("--subscriptions") ? "subscriptions" : CommandLine.arguments.contains("--services") ? "services" : CommandLine.arguments.contains("--disk") ? "disk" : CommandLine.arguments.contains("--credits") ? "credits" : CommandLine.arguments.contains("--processes") ? "processes" : CommandLine.arguments.contains("--settings") ? "settings" : "overview"
         let theme: DeckAppearance = CommandLine.arguments.contains("--light") ? .light : .dark
         let fit = CommandLine.arguments.contains("--fit")
         if CommandLine.arguments.contains("--stale-claude") { store.claude.updatedAt = Date().addingTimeInterval(-7200); store.claude.windows[0].resetsAt = Date().addingTimeInterval(-3600) }

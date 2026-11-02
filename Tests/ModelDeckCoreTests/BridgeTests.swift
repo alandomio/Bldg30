@@ -141,4 +141,46 @@ import Foundation
         #expect(!value.mrs.isEmpty && value.skipped.isEmpty)
         print("REALFEED", value.decisions.count, value.mrs.count, value.tickets.count, "skipped", value.skipped)
     }
+
+    func defenderProcess(_ pid: Int32, _ path: String, cpu: Double? = nil, memory: UInt64? = nil) -> RunningProcess {
+        RunningProcess(id: .init(pid: pid, startedSeconds: 1, startedMicroseconds: 0), name: URL(fileURLWithPath: path).lastPathComponent, path: path, userID: 0, cpu: cpu, memory: memory, gpu: nil, gpuClient: false, threads: nil)
+    }
+    @Test func defenderIsFoundByRealRootProcessNamesAndPaths() {
+        let real = [
+            defenderProcess(832, "/Applications/Microsoft Defender.app/Contents/MacOS/wdavdaemon"),
+            defenderProcess(841, "/Library/SystemExtensions/BA9FCDDB-16BD-4750-B555-3025B1E297D2/com.microsoft.wdav.epsext.systemextension/Contents/MacOS/epsext"),
+            defenderProcess(940, "/Library/SystemExtensions/9911C98A-84A9-474D-9524-0B5AA598C3E9/com.microsoft.wdav.netext.systemextension/Contents/MacOS/netext"),
+            defenderProcess(1011, "/Applications/Microsoft Defender.app/Contents/MacOS/wdavdaemon_enterprise.app/Contents/MacOS/wdavdaemon_enterprise"),
+            defenderProcess(72858, "/Applications/Microsoft Defender.app/Contents/MacOS/wdavdaemon_unprivileged.app/Contents/MacOS/wdavdaemon_unprivileged"),
+            defenderProcess(5, "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder", cpu: 9, memory: 9),
+            defenderProcess(6, "/Library/SystemExtensions/ABC/com.example.other.systemextension/Contents/MacOS/epsext", cpu: 9, memory: 9)]
+        let hidden = DefenderUsage.summarize(real)
+        #expect(hidden?.processCount == 5 && hidden?.usageAvailable == false && hidden?.cpu == nil && hidden?.memory == 0)
+        var readable = real; readable[1] = defenderProcess(841, real[1].path!, cpu: 100, memory: 50); readable[0] = defenderProcess(832, real[0].path!, cpu: 1.5, memory: 10)
+        let usage = DefenderUsage.summarize(readable)
+        #expect(usage?.usageAvailable == true && usage?.cpu == 101.5 && usage?.memory == 60)
+        #expect(DefenderUsage.summarize([defenderProcess(5, "/Applications/Safari.app/Contents/MacOS/Safari", cpu: 1, memory: 1)]) == nil)
+    }
+    @Test func theProcessListIncludesRootProcessesOnlyWhenAsked() async {
+        let plain = await ProcessMonitor().sample(), wide = await ProcessMonitor(includeUnreadable: true).sample()
+        #expect(wide.count >= plain.count)
+        #expect(wide.contains { $0.pid == 1 && $0.cpu == nil })  // launchd is root: hidden from task info, visible through sysctl
+        #expect(!plain.contains { $0.pid == 1 })
+    }
+
+    // Real `agy -p "/usage" --output-format json` output from 2026-11-02 (no account data in it).
+    static let agySample = #"{"conversation_id":"","status":"SUCCESS","response":"Gemini Models\tWeekly Limit Remaining\t100%\t2026-11-09T06:42:06Z\n","duration_seconds":0,"num_turns":0,"usage":{"input_tokens":0,"output_tokens":0,"thinking_tokens":0,"cache_read_tokens":0,"total_tokens":0},"command":{"name":"usage","data":{"description":"Within each group, models share a weekly limit.","groups":[{"name":"Gemini Models","description":"Models within this group: Gemini Flash, Gemini Pro","buckets":[{"id":"gemini-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":1,"reset_time":"2026-11-09T06:42:06Z"}]},{"name":"Claude and GPT models","description":"Models within this group: Claude Opus, Claude Sonnet, GPT-OSS","buckets":[{"id":"3p-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":0.755,"reset_time":"2026-11-09T06:42:06Z"}]}]}}}"#
+    @Test func parsesAntigravityUsageIntoQuotaWindows() throws {
+        let usage = try GeminiUsage.parse(Data(Self.agySample.utf8), now: t0)
+        #expect(usage.provider == "Google" && usage.message == nil && usage.windows.count == 2)
+        #expect(usage.windows[0].id == "gemini-weekly" && usage.windows[0].usedPercent == 0 && usage.windows[0].durationMinutes == 10080)
+        #expect(usage.windows[0].title == "Modelli Gemini · 7 giorni" && usage.windows[1].title == "Modelli Claude e GPT · 7 giorni")
+        #expect(abs(usage.windows[1].usedPercent - 24.5) < 0.001)
+        #expect(usage.windows[0].resetsAt == ISO8601DateFormatter().date(from: "2026-11-09T06:42:06Z"))
+    }
+    @Test func antigravityErrorsAndOddShapesThrowInsteadOfReadingAsZeroUsage() {
+        for bad in [#"{"status":"ERROR"}"#, #"{"status":"SUCCESS","command":{"data":{}}}"#, #"{"status":"SUCCESS","command":{"data":{"groups":[{"name":"G","buckets":[{"id":"x","remaining_fraction":2}]}]}}}"#, "not json"] {
+            #expect(throws: (any Error).self) { try GeminiUsage.parse(Data(bad.utf8)) }
+        }
+    }
 }

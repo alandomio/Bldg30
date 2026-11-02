@@ -56,8 +56,8 @@ Unavailable/expired values display `—`, never a guessed zero. An asterisk mark
 Install Xcode (or the Command Line Tools) with a Swift 5.10+ toolchain, then:
 
 ```sh
-git clone https://github.com/tommasinigiovanni/ModelDeck.git
-cd ModelDeck
+git clone https://github.com/alandomio/Bldg30.git
+cd Bldg30
 bash scripts/build.sh
 open build/ShipDeck.app
 ```
@@ -227,7 +227,9 @@ The tagging helper refuses a dirty worktree, inconsistent version numbers or an 
 
 ## Credits
 
-Developed by [Giovanni Tommasini](https://github.com/tommasinigiovanni). [Source and releases](https://github.com/tommasinigiovanni/ModelDeck) · [Issues](https://github.com/tommasinigiovanni/ModelDeck/issues). The same links are available in the app's **Crediti** page.
+Developed by [Alan Domio](https://github.com/alandomio). [Source and releases](https://github.com/alandomio/Bldg30) · [Issues](https://github.com/alandomio/Bldg30/issues). The same links are available in the app's **Crediti** page.
+
+Based on [ModelDeck by Giovanni Tommasini](https://github.com/tommasinigiovanni/ModelDeck) (MIT).
 
 ## Italiano
 

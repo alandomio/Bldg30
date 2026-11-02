@@ -88,12 +88,12 @@ struct UsageCard: View {
         DeckCard {
             VStack(alignment: .leading, spacing: compact ? 12 : 18) {
                 HStack(spacing: 10) {
-                    Image(systemName: usage.provider == "Claude" ? "asterisk" : "circle.hexagongrid")
-                        .font(.system(size: 19, weight: .medium)).foregroundStyle(usage.provider == "Claude" ? DeckTheme.amber : DeckTheme.mint)
+                    Image(systemName: usage.provider == "Claude" ? "asterisk" : usage.provider == "Google" ? "sparkle" : "circle.hexagongrid")
+                        .font(.system(size: 19, weight: .medium)).foregroundStyle(usage.provider == "Claude" ? DeckTheme.amber : usage.provider == "Google" ? DeckTheme.blue : DeckTheme.mint)
                         .frame(width: 34, height: 34).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(D(usage.provider)).font(.system(size: 15, weight: .semibold))
-                        Text(D(usage.provider == "Claude" ? "Claude Code" : "Codex" + (usage.plan.map { " · " + $0.capitalized } ?? "")))
+                        Text(D(usage.provider == "Claude" ? "Claude Code" : usage.provider == "Google" ? "Antigravity" : "Codex" + (usage.plan.map { " · " + $0.capitalized } ?? "")))
                             .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                     }
                     Spacer()

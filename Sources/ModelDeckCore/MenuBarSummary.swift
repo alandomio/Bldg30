@@ -103,7 +103,7 @@ public struct MenuBarSummary: Sendable {
             case .defender:
                 let value = percentage(defender?.cpu)
                 readings.append(.init(name: metric.title, value: value))
-                details.append("Defender · " + (defender == nil ? "non installato" : "CPU " + value + " · RAM " + DeckFormat.bytes(defender?.memory ?? 0)))
+                details.append("Defender · " + (defender == nil ? "non installato" : defender?.usageAvailable == false ? "in esecuzione (utilizzo non disponibile)" : "CPU " + value + " · RAM " + DeckFormat.bytes(defender?.memory ?? 0)))
             case .claude, .openAI:
                 let usage = metric == .claude ? claude : openAI
                 let id = metric == .claude ? options.claudeWindowID : options.openAIWindowID

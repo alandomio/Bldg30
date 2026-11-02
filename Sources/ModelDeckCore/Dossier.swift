@@ -44,7 +44,7 @@ public struct Dossier: Decodable, Equatable, Sendable {
         do { value = try CompanionFeed.jsonDecoder().decode(Dossier.self, from: data) }
         catch let error as CompanionError { throw error }
         catch { throw CompanionError.invalid(String(describing: error)) }
-        if let bad = value.links.first(where: { $0.url.scheme != "https" }) { throw CompanionError.invalid("link non https: \(bad.label)") }
+        if let bad = value.links.first(where: { $0.url.scheme != "https" }) { throw CompanionError.invalid("link is not https: \(bad.label)") }
         return value
     }
 

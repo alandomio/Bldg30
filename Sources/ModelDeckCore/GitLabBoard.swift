@@ -24,7 +24,7 @@ public enum GitLabBoard {
         guard let url = URL(string: text), let name = url.host?.lowercased(), !name.isEmpty, url.user == nil, url.password == nil,
               url.query == nil, url.fragment == nil, url.path.isEmpty || url.path == "/" else { throw DeckError.rpc("Host GitLab non valido.") }
         let local = ["localhost", "127.0.0.1", "::1"].contains(name)
-        guard url.scheme == "https" || (url.scheme == "http" && local) else { throw DeckError.rpc("Il host GitLab deve usare https.") }
+        guard url.scheme == "https" || (url.scheme == "http" && local) else { throw DeckError.rpc("L’host GitLab deve usare https.") }
         return url
     }
 

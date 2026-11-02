@@ -133,7 +133,9 @@ public struct ProcessResourceGroup: Identifiable, Sendable {
 public actor ProcessMonitor {
     private struct Counters { let cpu: UInt64?; let gpu: UInt64?; let sampledAt: TimeInterval }
     private var previous: [ProcessIdentity: Counters] = [:]
-    public init() {}
+    private let includeUnreadable: Bool
+    /// macOS denies task and BSD info for root processes. With `includeUnreadable` they are listed from sysctl and the path, with no CPU or memory.
+    public init(includeUnreadable: Bool = false) { self.includeUnreadable = includeUnreadable }
 
     public func sample() -> [RunningProcess] {
         let capacity = max(512, Int(proc_listallpids(nil, 0)) + 256)
@@ -144,8 +146,11 @@ public actor ProcessMonitor {
         let gpuClients = Self.gpuClients()
         var results: [RunningProcess] = [], next: [ProcessIdentity: Counters] = [:]
         for pid in pids.prefix(Int(count)) where pid > 0 {
-            guard var bsd = Self.bsd(pid) else { continue }
-            let identity = Self.identity(pid, bsd)
+            var bsd = proc_bsdinfo()
+            var identity: ProcessIdentity, uid: UInt32
+            if let readable = Self.bsd(pid) { bsd = readable; identity = Self.identity(pid, readable); uid = readable.pbi_uid }
+            else if includeUnreadable, let kernel = Self.kernelInfo(pid) { identity = ProcessIdentity(pid: pid, startedSeconds: kernel.seconds, startedMicroseconds: kernel.microseconds); uid = kernel.uid }
+            else { continue }
             var task = proc_taskinfo()
             let taskValid = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, Int32(MemoryLayout<proc_taskinfo>.size)) == MemoryLayout<proc_taskinfo>.size
             let cpuTime: UInt64? = taskValid ? task.pti_total_user &+ task.pti_total_system : nil
@@ -164,7 +169,7 @@ public actor ProcessMonitor {
                 pointer.withMemoryRebound(to: CChar.self, capacity: 32) { String(cString: $0) }
             }
             let name = path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? (short.isEmpty ? "Processo \(pid)" : short)
-            results.append(RunningProcess(id: identity, name: name, path: path, userID: bsd.pbi_uid, cpu: cpu,
+            results.append(RunningProcess(id: identity, name: name, path: path, userID: uid, cpu: cpu,
                                           memory: taskValid ? task.pti_resident_size : nil, gpu: gpu,
                                           gpuClient: gpuClients.contains(pid) || supportsGPU,
                                           threads: taskValid ? Int(task.pti_threadnum) : nil))
@@ -189,6 +194,13 @@ public actor ProcessMonitor {
         }
     }
 
+    private static func kernelInfo(_ pid: Int32) -> (seconds: UInt64, microseconds: UInt64, uid: UInt32)? {
+        var info = kinfo_proc(), size = MemoryLayout<kinfo_proc>.size
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        let started = info.kp_proc.p_un.__p_starttime
+        return (UInt64(max(0, started.tv_sec)), UInt64(max(0, started.tv_usec)), info.kp_eproc.e_ucred.cr_uid)
+    }
     private static func bsd(_ pid: Int32) -> proc_bsdinfo? {
         var info = proc_bsdinfo()
         guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, Int32(MemoryLayout<proc_bsdinfo>.size)) == MemoryLayout<proc_bsdinfo>.size else { return nil }

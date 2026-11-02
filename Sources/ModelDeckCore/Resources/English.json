@@ -574,5 +574,14 @@
   "Nascondi contesto completo": "Hide full context",
   "in attesa dal %@": "held since %@",
   "Scartata": "Dropped",
-  "%@ oppure ↑ ↓ e Invio per scegliere · ← → per passare da una decisione all’altra": "%@ or ↑ ↓ then Enter to choose · ← → to move between decision cards"
+  "%@ oppure ↑ ↓ e Invio per scegliere · ← → per passare da una decisione all’altra": "%@ or ↑ ↓ then Enter to choose · ← → to move between decision cards",
+  "MR %@ di %@": "MR %@ of %@",
+  "MR precedente (←)": "Previous MR (←)",
+  "MR successiva (→)": "Next MR (→)",
+  "Bozza di risposta": "Draft reply",
+  "%@ ha scritto": "%@ wrote",
+  "‹ Bozza precedente": "‹ Previous draft",
+  "Bozza successiva ›": "Next draft ›",
+  "bozza %@ di %@": "draft %@ of %@",
+  "Scarta": "Discard"
 }

@@ -33,7 +33,9 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let heading: String?, text: String
         public init(heading: String?, text: String) { self.heading = heading; self.text = text }
     }
-    public struct Draft: Decodable, Equatable, Sendable, Identifiable { public let id: String, targetUrl: String, text: String }
+    /// The colleague comment a draft answers (`drafts[].reply_to`); optional.
+    public struct ReplyTo: Decodable, Equatable, Sendable { public let author: String?, text: String, at: String?, location: String? }
+    public struct Draft: Decodable, Equatable, Sendable, Identifiable { public let id: String, targetUrl: String, text: String; public let replyTo: ReplyTo? }
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }
     public struct MergeRequest: Decodable, Equatable, Sendable, Identifiable {
         public var id: String { ref }
@@ -45,6 +47,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let decisionId: String?
         /// Optional context from the producer; empty strings count as absent.
         public let author: String?, headline: String?, blocker: String?, next: String?, ticket: String?, updatedAt: String?
+        /// Optional Linear issue link for `ticket` (https only).
+        public let ticketUrl: String?
         public let drafts: [Draft]
         public let actions: [Action]
         public var postAction: Action? { CompanionFeed.postAction(of: actions) }

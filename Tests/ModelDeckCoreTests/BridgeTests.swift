@@ -396,3 +396,41 @@ import Foundation
         #expect(noHeading.summaryParts.first?.heading == nil)
     }
 }
+
+@Suite struct MRCardNavigationTests {
+    @Test func arrowKeysMapToPreviousAndNextAndMRCardsWrap() {
+        #expect(DecisionKeys.command(.left, optionCount: 0, typing: false) == .previous)
+        #expect(DecisionKeys.command(.right, optionCount: 0, typing: false) == .next)
+        #expect(DecisionKeys.command(.left, optionCount: 0, typing: true) == nil)
+        #expect(Pager.move(0, by: -1, count: 48, wrap: true) == 47)
+        #expect(Pager.move(47, by: 1, count: 48, wrap: true) == 0)
+        #expect(Pager.move(5, by: 1, count: 48, wrap: true) == 6)
+        #expect(Pager.move(0, by: 1, count: 0, wrap: true) == 0)
+        #expect(Pager.label(0, count: 48) == (1, 48))
+        #expect(Pager.label(99, count: 3) == (3, 3))
+    }
+    @Test func draftPagerStopsAtItsEnds() {
+        #expect(Pager.move(0, by: -1, count: 3, wrap: false) == 0)
+        #expect(Pager.move(2, by: 1, count: 3, wrap: false) == 2)
+        #expect(Pager.move(0, by: 1, count: 3, wrap: false) == 1)
+        #expect(!Pager.canMove(0, by: -1, count: 3))
+        #expect(Pager.canMove(0, by: 1, count: 3))
+        #expect(!Pager.canMove(2, by: 1, count: 3))
+        #expect(!Pager.canMove(0, by: 1, count: 1))
+    }
+    @Test func ticketIdAndLinkComeOnlyFromTheFeed() {
+        #expect(MRTicket.identifier(in: "IN-2566 · In Progress") == "IN-2566")
+        #expect(MRTicket.identifier(in: "no ticket here") == nil)
+        #expect(MRTicket.identifier(in: nil) == nil)
+        #expect(MRTicket.url(identifier: "IN-1", feedURL: "https://linear.app/pp/issue/IN-1", tickets: [])?.host == "linear.app")
+        #expect(MRTicket.url(identifier: "IN-1", feedURL: "http://evil.example/x", tickets: []) == nil)
+        #expect(MRTicket.url(identifier: "IN-1", feedURL: nil, tickets: []) == nil)
+    }
+    @Test func draftsDecodeTheCommentTheyAnswer() throws {
+        let decoder = JSONDecoder(); decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let withQuote = try decoder.decode(CompanionFeed.Draft.self, from: #"{"id":"d1","target_url":"https://x","text":"ok","reply_to":{"author":"Sadmi","text":"use max:","location":"a.yaml line 14"}}"#.data(using: .utf8)!)
+        #expect(withQuote.replyTo?.author == "Sadmi" && withQuote.replyTo?.text == "use max:")
+        let plain = try decoder.decode(CompanionFeed.Draft.self, from: #"{"id":"d1","target_url":"https://x","text":"ok"}"#.data(using: .utf8)!)
+        #expect(plain.replyTo == nil)
+    }
+}

@@ -11,8 +11,10 @@ struct KeyEvent: Equatable {
 final class KeyRouter {
     static let shared = KeyRouter()
     private var monitor: Any?
-    func start(_ handler: @escaping (DecisionKeys.Key, Bool) -> Void) {
-        stop()
+    private var owner = ""
+    /// `swallow` says which keys the screen handles itself, so they do not beep.
+    func start(owner: String, swallow: @escaping (DecisionKeys.Key) -> Bool = { DecisionKeys.command($0, optionCount: 26, typing: false) != nil }, _ handler: @escaping (DecisionKeys.Key, Bool) -> Void) {
+        stop(owner: nil); self.owner = owner
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
             let typing = NSApp.keyWindow?.firstResponder is NSText
@@ -26,10 +28,11 @@ final class KeyRouter {
             default: key = .character(event.charactersIgnoringModifiers ?? "")
             }
             handler(key, typing)
-            return typing ? event : (DecisionKeys.command(key, optionCount: 26, typing: false) == nil ? event : nil)
+            return typing ? event : (swallow(key) ? nil : event)
         }
     }
-    func stop() { if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil }
+    /// Only the screen that started the monitor can stop it, so a tab switch cannot stop its successor.
+    func stop(owner: String?) { guard owner == nil || owner == self.owner else { return }; if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil }
 }
 
 extension View {
@@ -61,6 +64,9 @@ struct CompanionView: View {
     @State private var dropTasks: [String: Task<Void, Never>] = [:]
     @State private var keyPress: KeyEvent?
     @State private var selection: [String: Int] = [:]
+    @State private var mrIndex = 0
+    @State private var draftIndex: [String: Int] = [:]
+    @State private var discarded = Set<String>()
     @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
 
     var body: some View {
@@ -180,8 +186,8 @@ struct CompanionView: View {
                         }
                     }
                 }
-                .onAppear { KeyRouter.shared.start { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
-                .onDisappear { KeyRouter.shared.stop() }
+                .onAppear { KeyRouter.shared.start(owner: "decisions") { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
+                .onDisappear { KeyRouter.shared.stop(owner: "decisions") }
                 .onChange(of: keyPress) { _, event in
                     guard let event, let command = DecisionKeys.command(event.key, optionCount: specific.count, typing: event.typing) else { return }
                     switch command {
@@ -339,47 +345,88 @@ struct CompanionView: View {
     }
 
     private func mrs(_ items: [BoardMR], locked: Bool) -> some View {
-        VStack(spacing: 12) {
+        let position = Pager.move(mrIndex, by: 0, count: items.count, wrap: false)
+        return VStack(spacing: 12) {
             if items.isEmpty { empty("Nessuna MR in attesa.") }
-            ForEach(items) { mr in
+            else {
+                let mr = items[position]
+                let drafts = mr.drafts.filter { !discarded.contains(mr.ref + "|" + $0.id) }
+                let draftPos = Pager.move(draftIndex[mr.ref] ?? 0, by: 0, count: drafts.count, wrap: false)
                 DeckCard {
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 8) {
-                            verdictPill(mr.verdict, stale: mr.verdictStale)
-                            Text(mr.ref).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
-                            Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
-                            Spacer()
-                            Link(destination: mr.url) { Image(systemName: "arrow.up.right.square") }
-                            detailsButton(mr.ref)
-                        }
+                        mrHeader(mr, position: position, count: items.count)
                         Button { open(mr.ref) } label: { Text(mr.title).font(.system(size: 14, weight: .semibold)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
                             .buttonStyle(.plain).help(L("Apri i dettagli"))
                         Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         mrContext(mr)
-                        if !mr.drafts.isEmpty {
-                            Toggle(L("Bozze (\(mr.drafts.count))"), isOn: Binding(get: { openDrafts.contains(mr.ref) }, set: { if $0 { openDrafts.insert(mr.ref) } else { openDrafts.remove(mr.ref) } }))
-                                .toggleStyle(.checkbox).font(.system(size: 11))
-                            if openDrafts.contains(mr.ref) {
-                                ForEach(mr.drafts) { draft in
-                                    let draftKey = mr.ref + "|" + draft.id
-                                    let text = Binding(get: { draftTexts[draftKey] ?? draft.text }, set: { draftTexts[draftKey] = $0 })
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        TextEditor(text: text).font(.system(size: 11)).frame(minHeight: 90).scrollContentBackground(.hidden)
-                                            .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-                                        HStack {
-                                            Button(L("Invia bozza")) { postDraft(mr, text: text.wrappedValue) }
-                                                .buttonStyle(DeckButtonStyle(primary: mr.postActionID != nil)).disabled(locked || mr.verdictStale || mr.postActionID == nil)
-                                            if let id = mr.postActionID { ClickStateLabel(key: id + "|" + mr.ref).environmentObject(store) }
-                                            else { Text(L("Il feed non ha un'azione di invio per questa MR.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: mr.drafts.first.map { draftTexts[mr.ref + "|" + $0.id] ?? $0.text }, postID: mr.postActionID)
+                        if !drafts.isEmpty { draftPanel(mr, drafts: drafts, position: draftPos, locked: locked) }
+                        actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: drafts.indices.contains(draftPos) ? (draftTexts[mr.ref + "|" + drafts[draftPos].id] ?? drafts[draftPos].text) : nil, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
                     }
                 }
+                .onAppear { KeyRouter.shared.start(owner: "mrs", swallow: { $0 == .left || $0 == .right }) { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
+                .onDisappear { KeyRouter.shared.stop(owner: "mrs") }
+                .onChange(of: keyPress) { _, event in
+                    guard let event, let command = DecisionKeys.command(event.key, optionCount: 0, typing: event.typing) else { return }
+                    if command == .previous { mrIndex = Pager.move(position, by: -1, count: items.count, wrap: true) }
+                    if command == .next { mrIndex = Pager.move(position, by: 1, count: items.count, wrap: true) }
+                }
+            }
+        }
+    }
+
+    /// "MR n of N", verdict, clickable MR ref and ticket id, author, details and Previous/Next.
+    private func mrHeader(_ mr: BoardMR, position: Int, count: Int) -> some View {
+        let ticketText = CompanionFeed.text(mr.feedRow?.ticket) ?? store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }?.identifier
+        let ticketID = MRTicket.identifier(in: ticketText)
+        let ticketURL = ticketID.flatMap { MRTicket.url(identifier: $0, feedURL: mr.feedRow?.ticketUrl, tickets: store.boardTickets) }
+        return HStack(spacing: 8) {
+            Text(L("MR \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+            verdictPill(mr.verdict, stale: mr.verdictStale)
+            Link(mr.ref, destination: mr.url).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor().help(mr.url.absoluteString)
+            if let ticketID {
+                if let ticketURL { Link(ticketID, destination: ticketURL).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor().help(ticketURL.absoluteString) }
+                else { Text(ticketID).font(.system(size: 11, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
+            }
+            Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+            Spacer()
+            detailsButton(mr.ref)
+            Button { mrIndex = Pager.move(position, by: -1, count: count, wrap: true) } label: { Image(systemName: "chevron.left") }.help(L("MR precedente (←)")).disabled(count < 2)
+            Button { mrIndex = Pager.move(position, by: 1, count: count, wrap: true) } label: { Image(systemName: "chevron.right") }.help(L("MR successiva (→)")).disabled(count < 2)
+        }.buttonStyle(DeckButtonStyle())
+    }
+
+    /// One draft at a time: the comment it answers as a quote, the editable text, Post and Discard, and the draft pager.
+    private func draftPanel(_ mr: BoardMR, drafts: [CompanionFeed.Draft], position: Int, locked: Bool) -> some View {
+        let draft = drafts[position]
+        let draftKey = mr.ref + "|" + draft.id
+        let text = Binding(get: { draftTexts[draftKey] ?? draft.text }, set: { draftTexts[draftKey] = $0 })
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(L("Bozza di risposta").uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
+            if let quote = draft.replyTo, let quoted = CompanionFeed.text(quote.text) {
+                VStack(alignment: .leading, spacing: 3) {
+                    let who = [CompanionFeed.text(quote.author).map { L("\($0) ha scritto") }, CompanionFeed.text(quote.at), CompanionFeed.text(quote.location)].compactMap { $0 }.joined(separator: " · ")
+                    if !who.isEmpty { Text(who).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
+                    Text(quoted).font(.system(size: 12)).foregroundStyle(DeckTheme.buttonTextOther).fixedSize(horizontal: false, vertical: true)
+                }.textSelection(.enabled).padding(.vertical, 8).padding(.horizontal, 12).frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(alignment: .leading) { Rectangle().fill(DeckTheme.subtle.opacity(0.3)).frame(width: 3) }
+                    .background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            }
+            TextEditor(text: text).font(.system(size: 12)).frame(minHeight: 90).scrollContentBackground(.hidden)
+                .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            HStack(spacing: 8) {
+                Button(L("Invia bozza")) { postDraft(mr, text: text.wrappedValue) }
+                    .buttonStyle(DeckButtonStyle(primary: mr.postActionID != nil)).disabled(locked || mr.verdictStale || mr.postActionID == nil)
+                HStack(spacing: 4) {
+                    Button(L("‹ Bozza precedente")) { draftIndex[mr.ref] = Pager.move(position, by: -1, count: drafts.count, wrap: false) }
+                        .buttonStyle(DeckButtonStyle(small: true)).disabled(!Pager.canMove(position, by: -1, count: drafts.count))
+                    Text(L("bozza \(position + 1) di \(drafts.count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+                    Button(L("Bozza successiva ›")) { draftIndex[mr.ref] = Pager.move(position, by: 1, count: drafts.count, wrap: false) }
+                        .buttonStyle(DeckButtonStyle(small: true)).disabled(!Pager.canMove(position, by: 1, count: drafts.count))
+                }.opacity(drafts.count > 1 ? 1 : 0).allowsHitTesting(drafts.count > 1)
+                Button(L("Scarta")) { discarded.insert(draftKey) }.buttonStyle(DeckButtonStyle(small: true, danger: true))
+                if let id = mr.postActionID { ClickStateLabel(key: id + "|" + mr.ref).environmentObject(store) }
+                else { Text(L("Il feed non ha un'azione di invio per questa MR.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
             }
         }
     }
@@ -416,7 +463,6 @@ struct CompanionView: View {
     @ViewBuilder private func mrContext(_ mr: BoardMR) -> some View {
         let dossier: Dossier? = { if case .loaded(let value) = store.dossier(for: mr.ref) { return value }; return nil }()
         let row = mr.feedRow
-        let ticket = CompanionFeed.text(row?.ticket) ?? store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }.map { $0.identifier + " · " + $0.status }
         let last = [mr.updatedAt, CompanionFeed.date(row?.updatedAt), dossier?.timeline.last?.at.flatMap { CompanionFeed.date($0) }].compactMap { $0 }.max()
         let blocker = CompanionFeed.text(row?.blocker) ?? CompanionFeed.text(mr.label)
         let next = CompanionFeed.text(row?.next) ?? CompanionFeed.text(dossier?.nextAction)
@@ -424,7 +470,6 @@ struct CompanionView: View {
             if let headline = CompanionFeed.text(row?.headline) { Text(headline).font(.system(size: 12, weight: .medium)).fixedSize(horizontal: false, vertical: true) }
             if blocker != nil || !mr.nextOwner.isEmpty { contextLine("hourglass", L("Blocco: \(blocker ?? "—") · su \(mr.nextOwner.isEmpty ? "—" : mr.nextOwner)")) }
             if let next { contextLine("arrow.right.circle", L("Prossima azione: \(next)")) }
-            if let ticket { contextLine("ticket", L("Ticket \(ticket)")) }
             if let last { contextLine("clock", L("Ultima attività \(last.formatted(.relative(presentation: .named)))")) }
             if let gotcha = dossier?.gotchas.first { contextLine("exclamationmark.triangle", gotcha, color: DeckTheme.amber) }
             if let decision = dossier?.openDecisions.first { contextLine("questionmark.circle", decision) }

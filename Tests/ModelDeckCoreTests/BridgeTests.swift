@@ -156,9 +156,11 @@ import Foundation
             defenderProcess(6, "/Library/SystemExtensions/ABC/com.example.other.systemextension/Contents/MacOS/epsext", cpu: 9, memory: 9)]
         let hidden = DefenderUsage.summarize(real)
         #expect(hidden?.processCount == 5 && hidden?.usageAvailable == false && hidden?.cpu == nil && hidden?.memory == 0)
-        var readable = real; readable[1] = defenderProcess(841, real[1].path!, cpu: 100, memory: 50); readable[0] = defenderProcess(832, real[0].path!, cpu: 1.5, memory: 10)
+        var partial = real; partial[4] = defenderProcess(72858, real[4].path!, cpu: 0.1, memory: 5)  // the one process of the user is readable
+        #expect(DefenderUsage.summarize(partial)?.usageAvailable == false)
+        let readable = real.prefix(5).enumerated().map { defenderProcess($0.element.pid, $0.element.path!, cpu: $0.offset == 1 ? 100 : 0.5, memory: 10) }
         let usage = DefenderUsage.summarize(readable)
-        #expect(usage?.usageAvailable == true && usage?.cpu == 101.5 && usage?.memory == 60)
+        #expect(usage?.usageAvailable == true && usage?.cpu == 102 && usage?.memory == 50)
         #expect(DefenderUsage.summarize([defenderProcess(5, "/Applications/Safari.app/Contents/MacOS/Safari", cpu: 1, memory: 1)]) == nil)
     }
     @Test func theProcessListIncludesRootProcessesOnlyWhenAsked() async {
@@ -182,5 +184,27 @@ import Foundation
         for bad in [#"{"status":"ERROR"}"#, #"{"status":"SUCCESS","command":{"data":{}}}"#, #"{"status":"SUCCESS","command":{"data":{"groups":[{"name":"G","buckets":[{"id":"x","remaining_fraction":2}]}]}}}"#, "not json"] {
             #expect(throws: (any Error).self) { try GeminiUsage.parse(Data(bad.utf8)) }
         }
+    }
+
+    @Test func decisionAnswerClicksHaveTheRightShape() throws {
+        let fixture = try feed().decisions[0]
+        let free = try #require(CompanionAnswer.click(decisionID: "dec-1", text: "  Ship it\n  but keep the flag \n\n", now: t0, key: "k1"))
+        #expect(free.actionID == "dec-1.answer" && free.target == "dec-1" && free.draftText == "  Ship it\n  but keep the flag")
+        let option = fixture.options[1]
+        let both = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "Only after Friday", now: t0, key: "k2"))
+        #expect(both.actionID == "decision:dec-1:option:1" && both.draftText == "Only after Friday")
+        let bare = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "  ", now: t0, key: "k3"))
+        #expect(bare.draftText == option.label)
+        let custom = CompanionFeed.Option(label: "Go", consequence: "c", actionId: "act-9", outward: nil)
+        #expect(CompanionAnswer.click(decisionID: "d", option: custom, text: "x")?.actionID == "act-9")
+        #expect(CompanionAnswer.click(decisionID: "dec-1", text: " \n ") == nil)
+        let inbox = FileManager.default.temporaryDirectory.appendingPathComponent("answer-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: inbox) }
+        let note = try CompanionInbox.file(free, inbox: inbox.path, now: t0)
+        let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as? [String: String])
+        #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "dec-1.answer" && json["target"] == "dec-1" && json["draft_text"] == "  Ship it\n  but keep the flag" && json["idempotency_key"] == "k1")
+        #expect(Set(json.keys) == ["schema", "idempotency_key", "action_id", "target", "draft_text", "created_at"])
+        #expect(CompanionInbox.status(of: note) == .sent)
     }
 }

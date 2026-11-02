@@ -101,7 +101,7 @@ public struct MenuBarSummary: Sendable {
                 readings.append(.init(name: "RAM", value: value))
                 details.append(available ? "RAM · \(DeckFormat.bytes(snapshot.memoryUsed)) / \(DeckFormat.bytes(snapshot.memoryTotal)) · \(percentage(snapshot.memoryPercent))" : "RAM · non disponibile")
             case .defender:
-                let value = percentage(defender?.cpu)
+                let value = percentage(defender.flatMap { $0.usageAvailable ? $0.cpu : nil })
                 readings.append(.init(name: metric.title, value: value))
                 details.append("Defender · " + (defender == nil ? "non installato" : defender?.usageAvailable == false ? "in esecuzione (utilizzo non disponibile)" : "CPU " + value + " · RAM " + DeckFormat.bytes(defender?.memory ?? 0)))
             case .claude, .openAI:

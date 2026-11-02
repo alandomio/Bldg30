@@ -49,3 +49,21 @@ public enum CompanionInbox {
         return manager.fileExists(atPath: note.path) ? .sent : .pickedUp
     }
 }
+
+/// Builds the click for a decision card: a chosen option keeps its action id, text alone goes to `<decision id>.answer`.
+public enum CompanionAnswer {
+    /// Only trailing whitespace is dropped; nil when there is neither an option nor text.
+    public static func click(decisionID: String, option: CompanionFeed.Option? = nil, optionIndex: Int = 0, text: String, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick? {
+        var typed = text
+        while let last = typed.last, last.isWhitespace || last.isNewline { typed.removeLast() }
+        if let option {
+            let action = option.actionId ?? "decision:\(decisionID):option:\(optionIndex)"
+            return CompanionClick(actionID: action, target: decisionID, draftText: typed.isEmpty ? option.label : typed, now: now, key: key)
+        }
+        guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return CompanionClick(actionID: decisionID + ".answer", target: decisionID, draftText: typed, now: now, key: key)
+    }
+    public static func actionID(decisionID: String, option: CompanionFeed.Option?, optionIndex: Int) -> String {
+        option.map { $0.actionId ?? "decision:\(decisionID):option:\(optionIndex)" } ?? decisionID + ".answer"
+    }
+}

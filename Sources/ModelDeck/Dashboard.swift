@@ -113,7 +113,7 @@ struct Dashboard: View {
                         .onTapGesture { processSort = .memory; section = "processes" }.help(L("Mostra i processi ordinati per memoria"))
                     MetricCard(title: L("GPU"), symbol: "square.3.layers.3d", value: DeckFormat.percent(store.snapshot.gpu), detail: D(store.snapshot.gpu == nil ? "Metrica non esposta su questo Mac" : "Utilizzo del dispositivo · IOKit"), color: DeckTheme.purple, history: store.gpuHistory)
                         .onTapGesture { processSort = .gpu; section = "processes" }.help(L("Mostra i processi ordinati per GPU"))
-                    MetricCard(title: L("DEFENDER"), symbol: "shield.lefthalf.filled", value: DeckFormat.percent(store.defender?.cpu), detail: store.defender.map { $0.usageAvailable ? L("CPU somma di \($0.processCount) processi · RAM \(DeckFormat.bytes($0.memory))") : L("In esecuzione (utilizzo non disponibile) · \($0.processCount) processi") } ?? D("Defender non installato"), color: DeckTheme.amber)
+                    MetricCard(title: L("DEFENDER"), symbol: "shield.lefthalf.filled", value: DeckFormat.percent(store.defender.flatMap { $0.usageAvailable ? $0.cpu : nil }), detail: store.defender.map { $0.usageAvailable ? L("CPU somma di \($0.processCount) processi · RAM \(DeckFormat.bytes($0.memory))") : L("In esecuzione (utilizzo non disponibile) · \($0.processCount) processi") } ?? D("Defender non installato"), color: DeckTheme.amber)
                 }
                 HStack(spacing: 12) {
                     Button { section = "disk" } label: { DeckCard {

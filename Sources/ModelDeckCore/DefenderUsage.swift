@@ -6,7 +6,7 @@ public struct DefenderUsage: Equatable, Sendable {
     public let cpu: Double?
     public let memory: UInt64
     public let processCount: Int
-    /// False when Defender runs but macOS hides its CPU and memory (root processes).
+    /// False unless every Defender process could be read: root ones are hidden, and a partial sum would understate the load.
     public let usageAvailable: Bool
     public init(cpu: Double?, memory: UInt64, processCount: Int, usageAvailable: Bool? = nil) {
         self.cpu = cpu; self.memory = memory; self.processCount = processCount; self.usageAvailable = usageAvailable ?? (cpu != nil || memory > 0)
@@ -26,8 +26,7 @@ public struct DefenderUsage: Equatable, Sendable {
         let matches = processes.filter(isDefender)
         guard !matches.isEmpty else { return nil }
         let values = matches.compactMap(\.cpu)
-        let memory = matches.compactMap(\.memory)
-        return DefenderUsage(cpu: values.isEmpty ? nil : values.reduce(0, +), memory: memory.reduce(0, +), processCount: matches.count,
-                             usageAvailable: !values.isEmpty || !memory.isEmpty)
+        return DefenderUsage(cpu: values.isEmpty ? nil : values.reduce(0, +), memory: matches.compactMap(\.memory).reduce(0, +), processCount: matches.count,
+                             usageAvailable: matches.allSatisfy { $0.memory != nil })
     }
 }

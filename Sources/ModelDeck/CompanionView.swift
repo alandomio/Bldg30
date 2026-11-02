@@ -17,6 +17,7 @@ struct CompanionView: View {
 
     @State private var selected: String?
     @State private var contextText = ""
+    @State private var answers: [String: String] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -98,9 +99,9 @@ struct CompanionView: View {
                         if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
                         if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true) }
                         ForEach(Array(item.options.enumerated()), id: \.offset) { offset, option in
-                            let key = "decision:\(item.id):option:\(offset)|\(item.id)"
+                            let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
                             HStack(alignment: .top, spacing: 12) {
-                                Button(option.label) { request(PendingClick(actionID: "decision:\(item.id):option:\(offset)", target: item.id, label: option.label, draft: option.label)) }
+                                Button(option.label) { sendDecision(item, option: option, index: offset) }
                                     .buttonStyle(.borderedProminent).disabled(locked)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
@@ -109,11 +110,33 @@ struct CompanionView: View {
                                 }
                             }
                         }
+                        answerField(item, locked: locked)
                         ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
                     }
                 }
             }
         }
+    }
+
+    private func answerField(_ item: CompanionFeed.Decision, locked: Bool) -> some View {
+        let binding = Binding(get: { answers[item.id] ?? "" }, set: { answers[item.id] = $0 })
+        let empty = binding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(L("La tua risposta o contesto")).font(.system(size: 11, weight: .semibold))
+            TextEditor(text: binding).font(.system(size: 12)).frame(minHeight: 60).scrollContentBackground(.hidden)
+                .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            HStack {
+                Button(L("Invia")) { sendDecision(item, option: nil, index: 0) }.buttonStyle(.borderedProminent).disabled(locked || empty)
+                sentLabel(CompanionAnswer.actionID(decisionID: item.id, option: nil, optionIndex: 0) + "|" + item.id)
+            }
+            Text(L("Invia manda solo il testo. Un pulsante opzione lo manda insieme a quell’opzione.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+        }
+    }
+
+    private func sendDecision(_ item: CompanionFeed.Decision, option: CompanionFeed.Option?, index: Int) {
+        guard let click = CompanionAnswer.click(decisionID: item.id, option: option, optionIndex: index, text: answers[item.id] ?? "") else { return }
+        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText)
+        if feedback == nil { answers[item.id] = "" }
     }
 
     private func mrs(_ items: [BoardMR], locked: Bool) -> some View {

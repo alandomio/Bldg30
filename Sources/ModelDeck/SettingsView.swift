@@ -82,7 +82,7 @@ struct SettingsView: View {
                             feedback = "Impostazioni salvate."
                             Task { await store.refreshModels() }
                         } catch { feedback = error.localizedDescription }
-                    }.buttonStyle(.bordered)
+                    }.buttonStyle(DeckButtonStyle())
                 }
             }
             DeckCard {
@@ -110,7 +110,7 @@ struct SettingsView: View {
                                 feedback = "Chiave Linear rimossa."
                             } catch { feedback = error.localizedDescription }
                         }.disabled(!linearKeySaved)
-                    }.buttonStyle(.bordered).disabled(!boardEnabled)
+                    }.buttonStyle(DeckButtonStyle()).disabled(!boardEnabled)
                 }
             }
             DeckCard {
@@ -141,7 +141,7 @@ struct SettingsView: View {
                                 feedback = "Token GitLab rimosso."
                             } catch { feedback = error.localizedDescription }
                         }.disabled(!gitlabTokenSaved)
-                    }.buttonStyle(.bordered).disabled(!gitlabEnabled)
+                    }.buttonStyle(DeckButtonStyle()).disabled(!gitlabEnabled)
                 }
             }
             DeckCard {
@@ -187,7 +187,7 @@ struct SettingsView: View {
                     HStack {
                         Button(L("Aggiungi cartella…")) { chooseFolder(unsloth: false) }
                         Button(L("Aggiungi cartella Unsloth…")) { chooseFolder(unsloth: true) }
-                    }.buttonStyle(.bordered)
+                    }.buttonStyle(DeckButtonStyle())
                     Text(L("La cache Hugging Face può essere usata da più applicazioni; i suoi pesi sono raggruppati sotto Unsloth."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
@@ -208,7 +208,7 @@ struct SettingsView: View {
                                 bridgeInstalled = ClaudeBridge.isInstalled()
                                 feedback = bridgeInstalled ? "Collegato. Riavvia la sessione Claude Code e invia un messaggio." : "Status line precedente ripristinata."
                             } catch { feedback = error.localizedDescription }
-                        }.buttonStyle(.bordered)
+                        }.buttonStyle(DeckButtonStyle())
                         Link(L("Documentazione"), destination: URL(string: "https://code.claude.com/docs/en/statusline")!).font(.system(size: 11))
                     }
                     Text(L("Le quote di Codex non rappresentano tutti i limiti dell’app ChatGPT. Non sono costi API né percentuali di contesto."))

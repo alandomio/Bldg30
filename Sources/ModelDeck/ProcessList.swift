@@ -43,7 +43,7 @@ struct ProcessList: View {
                             Label(L("Processi di \(focusedGroupName)"), systemImage: "app.badge")
                                 .font(.system(size: 11, weight: .medium)).foregroundStyle(DeckTheme.mint)
                             Spacer()
-                            Button(L("Mostra tutti i processi")) { focusedGroupID = nil }.font(.system(size: 10)).buttonStyle(.bordered)
+                            Button(L("Mostra tutti i processi")) { focusedGroupID = nil }.font(.system(size: 10)).buttonStyle(DeckButtonStyle())
                         }
                     }
                     HStack {

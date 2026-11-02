@@ -176,9 +176,9 @@ struct MenuPanel: View {
                     if let battery = store.snapshot.battery { Label(D(DeckFormat.percent(battery)), systemImage: store.snapshot.charging ? "battery.100percent.bolt" : "battery.75percent").font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
                 }
                 HStack {
-                    Button(L("Apri cruscotto"), action: openDashboard).buttonStyle(.borderedProminent).tint(DeckTheme.mint)
-                    Button(L("Command Bridge"), action: openBridge).buttonStyle(.bordered)
-                    Button(L("Processi"), action: openProcesses).buttonStyle(.bordered)
+                    Button(L("Apri cruscotto"), action: openDashboard).buttonStyle(DeckButtonStyle(primary: true))
+                    Button(L("Command Bridge"), action: openBridge).buttonStyle(DeckButtonStyle())
+                    Button(L("Processi"), action: openProcesses).buttonStyle(DeckButtonStyle())
                 }
                 HStack {
                     Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.help(L("Impostazioni"))

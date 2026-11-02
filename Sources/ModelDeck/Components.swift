@@ -10,12 +10,32 @@ enum DeckTheme {
     static let blue = adaptive(.init(red: 0.46, green: 0.68, blue: 0.99, alpha: 1), .init(red: 0.16, green: 0.36, blue: 0.74, alpha: 1))
     static let purple = adaptive(.init(red: 0.70, green: 0.57, blue: 0.96, alpha: 1), .init(red: 0.47, green: 0.30, blue: 0.74, alpha: 1))
     static let amber = adaptive(.init(red: 0.96, green: 0.72, blue: 0.38, alpha: 1), .init(red: 0.62, green: 0.37, blue: 0.06, alpha: 1))
+    static func hex(_ value: UInt32) -> NSColor { NSColor(red: CGFloat((value >> 16) & 255) / 255, green: CGFloat((value >> 8) & 255) / 255, blue: CGFloat(value & 255) / 255, alpha: 1) }
+    // Button tokens: neutral fill, mint edge only on the primary button. Contrast of each text on its fill is above 4.5:1.
+    static let buttonFill = adaptive(hex(0x262d32), hex(0xe9edf0))
+    static let buttonTextPrimary = adaptive(hex(0xf0f4f6), hex(0x0e1216))
+    static let buttonTextOther = adaptive(hex(0xc3ccd1), hex(0x3a454c))
     static let background = adaptive(.init(red: 0.055, green: 0.071, blue: 0.085, alpha: 1), .init(red: 0.95, green: 0.96, blue: 0.97, alpha: 1))
     static let card = adaptive(.init(red: 0.085, green: 0.105, blue: 0.121, alpha: 1), .white)
     static let muted = Color(nsColor: .secondaryLabelColor)
     static let foreground = Color(nsColor: .labelColor)
     static let subtle = adaptive(.white, .black)
     static func usage(_ value: Double) -> Color { value >= 90 ? .red : value >= 70 ? amber : mint }
+}
+
+/// Neutral button with a mint edge on the primary one; replaces the white-on-green prominent style.
+struct DeckButtonStyle: ButtonStyle {
+    var primary = false
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12).padding(.vertical, 5)
+            .foregroundStyle(primary ? DeckTheme.buttonTextPrimary : DeckTheme.buttonTextOther)
+            .background(DeckTheme.buttonFill, in: RoundedRectangle(cornerRadius: 6))
+            .overlay { if primary { RoundedRectangle(cornerRadius: 6).strokeBorder(DeckTheme.mint, lineWidth: 1.5) } }
+            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+    }
 }
 
 struct DeckCard<Content: View>: View {
@@ -141,7 +161,7 @@ struct UsageCard: View {
                         Button { showClaudeHelp = true } label: { Label(L("Come aggiornare"), systemImage: "questionmark.circle") }
                         Spacer()
                         Button(L("Rileggi dati")) { if !store.demo { store.claude = ClaudeUsage.read() }; showClaudeHelp = true }
-                    }.font(.system(size: 10)).buttonStyle(.bordered)
+                    }.font(.system(size: 10)).buttonStyle(DeckButtonStyle())
                 }
             }
         }.frame(maxHeight: .infinity, alignment: .top)

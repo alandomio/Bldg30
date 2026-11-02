@@ -169,7 +169,7 @@ struct ModelLibrary: View {
         VStack(spacing: 12) {
             HStack {
                 SectionLabel(title: L("MODELLI LOCALI"), trailing: L("\(store.inventory.models.count) modelli · \(DeckFormat.bytes(store.inventory.models.reduce(0) { $0 + $1.bytes })) su disco*"))
-                Button { fitRequest = FitRequest(model: nil) } label: { Label(L("Verifica hardware"), systemImage: "gauge.with.needle") }.font(.system(size: 10)).buttonStyle(.bordered)
+                Button { fitRequest = FitRequest(model: nil) } label: { Label(L("Verifica hardware"), systemImage: "gauge.with.needle") }.font(.system(size: 10)).buttonStyle(DeckButtonStyle())
             }
             DeckCard {
                 VStack(spacing: 16) {

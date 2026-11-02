@@ -94,7 +94,7 @@ struct CompanionView: View {
                             Spacer()
                             Button { index = position - 1 } label: { Image(systemName: "chevron.left") }.disabled(position == 0)
                             Button { index = position + 1 } label: { Image(systemName: "chevron.right") }.disabled(position >= items.count - 1)
-                        }.buttonStyle(.bordered)
+                        }.buttonStyle(DeckButtonStyle())
                         Text(item.title).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                         if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
                         if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true) }
@@ -102,7 +102,7 @@ struct CompanionView: View {
                             let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
                             HStack(alignment: .top, spacing: 12) {
                                 Button(option.label) { sendDecision(item, option: option, index: offset) }
-                                    .buttonStyle(.borderedProminent).disabled(locked)
+                                    .buttonStyle(DeckButtonStyle(primary: option.label == item.recommendation)).disabled(locked)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                                     if option.label == item.recommendation { Text(L("Consigliata")).font(.system(size: 10, weight: .semibold)).foregroundStyle(DeckTheme.mint) }
@@ -127,7 +127,7 @@ struct CompanionView: View {
             TextEditor(text: binding).font(.system(size: 12)).frame(minHeight: 60).scrollContentBackground(.hidden)
                 .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
             HStack {
-                Button(L("Invia")) { sendDecision(item, option: nil, index: 0) }.buttonStyle(.borderedProminent).disabled(locked || empty)
+                Button(L("Invia")) { sendDecision(item, option: nil, index: 0) }.buttonStyle(DeckButtonStyle(primary: true)).disabled(locked || empty)
                 sentLabel(CompanionAnswer.actionID(decisionID: item.id, option: nil, optionIndex: 0) + "|" + item.id)
             }
             Text(L("Invia manda solo il testo. Un pulsante opzione lo manda insieme a quell’opzione.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
@@ -168,7 +168,7 @@ struct CompanionView: View {
                                         HStack {
                                             Button(L("Invia bozza")) { request(PendingClick(actionID: "draft:" + draft.id, target: draft.targetUrl, label: draft.text, draft: draft.text), confirmFirst: true) }.disabled(locked || mr.verdictStale)
                                             sentLabel("draft:\(draft.id)|\(draft.targetUrl)")
-                                        }.buttonStyle(.bordered)
+                                        }.buttonStyle(DeckButtonStyle())
                                     }
                                 }
                             }
@@ -249,7 +249,7 @@ struct CompanionView: View {
         }
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Button { selected = nil } label: { Label(L("Indietro"), systemImage: "chevron.left") }.buttonStyle(.bordered)
+                Button { selected = nil } label: { Label(L("Indietro"), systemImage: "chevron.left") }.buttonStyle(DeckButtonStyle())
                 Spacer()
                 Link(destination: url) { Label(L("Apri"), systemImage: "arrow.up.right.square") }
             }
@@ -311,7 +311,7 @@ struct CompanionView: View {
         HStack(spacing: 10) {
             ForEach(list) { action in
                 Button(action.label) { request(PendingClick(actionID: action.id, target: target, label: action.label), confirmFirst: action.outward) }
-                    .buttonStyle(.bordered).disabled(locked)
+                    .buttonStyle(DeckButtonStyle()).disabled(locked)
                 sentLabel(action.id + "|" + target)
             }
         }
@@ -358,11 +358,11 @@ struct AddContextRow: View {
                         guard let click = CompanionAnswer.contextClick(ref: ref, text: text) else { return }
                         feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText)
                         if feedback == nil { text = ""; open = false }
-                    }.buttonStyle(.borderedProminent).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    if !expanded { Button(L("Annulla")) { text = ""; open = false }.buttonStyle(.bordered) }
+                    }.buttonStyle(DeckButtonStyle(primary: true)).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if !expanded { Button(L("Annulla")) { text = ""; open = false }.buttonStyle(DeckButtonStyle()) }
                 }
             } else {
-                Button(L("Aggiungi contesto")) { open = true }.buttonStyle(.bordered)
+                Button(L("Aggiungi contesto")) { open = true }.buttonStyle(DeckButtonStyle())
             }
             if let state = store.companionStatuses[key] {
                 Text(D(state == .sent ? "Inviato" : state == .pickedUp ? "Preso in carico" : "Fatto")).font(.system(size: 10)).foregroundStyle(DeckTheme.mint)

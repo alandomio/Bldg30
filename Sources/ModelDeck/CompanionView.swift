@@ -110,7 +110,6 @@ struct CompanionView: View {
                                     .buttonStyle(DeckButtonStyle(primary: option.label == item.recommendation)).disabled(locked)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
-                                    if option.label == item.recommendation { Text(L("Consigliata")).font(.system(size: 10, weight: .semibold)).foregroundStyle(DeckTheme.mint) }
                                     sentLabel(key)
                                 }
                             }
@@ -157,9 +156,10 @@ struct CompanionView: View {
                             Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                             Spacer()
                             Link(destination: mr.url) { Image(systemName: "arrow.up.right.square") }
-                            Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted)
+                            detailsButton(mr.ref)
                         }
-                        Text(mr.title).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                        Button { open(mr.ref) } label: { Text(mr.title).font(.system(size: 14, weight: .semibold)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
+                            .buttonStyle(.plain).help(L("Apri i dettagli"))
                         Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         mrContext(mr)
                         if !mr.drafts.isEmpty {
@@ -185,7 +185,7 @@ struct CompanionView: View {
                         actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: mr.drafts.first.map { draftTexts[mr.ref + "|" + $0.id] ?? $0.text }, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
                     }
-                }.contentShape(Rectangle()).onTapGesture { open(mr.ref) }
+                }
             }
         }
     }
@@ -202,9 +202,10 @@ struct CompanionView: View {
                             if ticket.finishStale { StatusPill(text: "Verdetto superato", color: DeckTheme.amber) }
                             Spacer()
                             Link(destination: ticket.url) { Image(systemName: "arrow.up.right.square") }
-                            Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted)
+                            detailsButton(ticket.identifier)
                         }
-                        Text(ticket.title).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                        Button { open(ticket.identifier) } label: { Text(ticket.title).font(.system(size: 14, weight: .semibold)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
+                            .buttonStyle(.plain).help(L("Apri i dettagli"))
                         if let finish = ticket.finish {
                             Text(L("Per chiudere: \(finish.step) · \(finish.owner)")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         }
@@ -212,7 +213,7 @@ struct CompanionView: View {
                         actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale, recommended: CompanionRecommendation.actionID(in: ticket.actions, texts: [ticket.finish?.step, ticket.status] + decisionTexts(ticket.decisionId)))
                         AddContextRow(ref: ticket.identifier).environmentObject(store)
                     }
-                }.contentShape(Rectangle()).onTapGesture { open(ticket.identifier) }
+                }
             }
         }
     }
@@ -248,6 +249,10 @@ struct CompanionView: View {
     }
 
     private func unknown<T>(_ value: T?) -> String { value.map { String(describing: $0) } ?? D("n/d") }
+    /// The only way into the detail pane besides the title: buttons on the card never open it.
+    private func detailsButton(_ ref: String) -> some View {
+        Button { open(ref) } label: { Image(systemName: "chevron.right").foregroundStyle(DeckTheme.muted).padding(4) }.buttonStyle(.plain).help(L("Apri i dettagli"))
+    }
     private func open(_ ref: String) { selected = ref; contextText = ""; feedback = nil }
 
     private func detail(_ row: Row) -> some View {
@@ -324,7 +329,6 @@ struct CompanionView: View {
                     if isPost { postClickRequest(action, target: target, text: draft ?? "") }
                     else { request(PendingClick(actionID: action.id, target: target, label: action.label), confirmFirst: action.outward) }
                 }.buttonStyle(DeckButtonStyle(primary: action.id == recommended)).disabled(locked)
-                if action.id == recommended { Text(L("Consigliata")).font(.system(size: 10, weight: .semibold)).foregroundStyle(DeckTheme.mint) }
                 ClickStateLabel(key: action.id + "|" + target).environmentObject(store)
             }
         }

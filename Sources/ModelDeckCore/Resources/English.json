@@ -462,7 +462,6 @@
   "Feed non aggiornato": "Feed is stale",
   "Feed aggiornato": "Feed is fresh",
   "Urgente": "Urgent",
-  "Consigliata": "Recommended",
   "Autore": "Author",
   "Revisore": "Reviewer",
   "Invia bozza": "Send draft",
@@ -563,5 +562,6 @@
   "In coda": "Queued",
   "Rifiutato": "Rejected",
   "In attesa di firstmate (il monitoraggio potrebbe essere fermo)": "Waiting for firstmate (monitoring may be down)",
-  "Il feed non ha un'azione di invio per questa MR.": "The feed has no post action for this MR."
+  "Il feed non ha un'azione di invio per questa MR.": "The feed has no post action for this MR.",
+  "Apri i dettagli": "Open details"
 }

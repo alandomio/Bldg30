@@ -5,7 +5,7 @@ import ModelDeckCore
 enum CompanionSettings {
     static var enabled: Bool { UserDefaults.standard.bool(forKey: "companionEnabled") }
     static var feedPath: String { CommandLine.arguments.firstIndex(of: "--feed").map { CommandLine.arguments[$0 + 1] } ?? UserDefaults.standard.string(forKey: "companionFeedPath").flatMap { $0.isEmpty ? nil : $0 } ?? CompanionFeed.defaultPath }
-    static var inboxPath: String { UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
+    static var inboxPath: String { CommandLine.arguments.firstIndex(of: "--inbox").map { CommandLine.arguments[$0 + 1] } ?? UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
 }
 
 extension DeckStore {

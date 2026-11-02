@@ -86,6 +86,7 @@ import ModelDeckCore
             }
             RunLoop.main.run(); return
         }
+        if args.contains("--ui-selftest") { exit(MainActor.assumeIsolated { UISelfTest.run() }) }
         if let index = args.firstIndex(of: "--preview"), args.indices.contains(index + 1) {
             renderPreview(to: URL(fileURLWithPath: args[index + 1])); return
         }

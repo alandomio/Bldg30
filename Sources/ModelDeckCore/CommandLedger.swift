@@ -98,3 +98,46 @@ public enum CommandLog {
         return text.split(whereSeparator: \.isNewline).map(String.init)
     }
 }
+
+/// What a card shows about its commands: one status line, which buttons may run now, and a plain-language history.
+public enum CardActivity {
+    /// Actions that can run beside another one: asking "Wait, what?" and adding context change nothing.
+    public static func isParallelSafe(actionID: String) -> Bool { actionID.hasSuffix(".wait-what") || actionID.hasSuffix(".add-context") }
+
+    /// The newest command of the card that is sent but not finished (Sent or picked up), if any.
+    public static func inFlight(target: String, ledger: CommandLedger) -> Command? {
+        ledger.commands.last { $0.target == target && ($0.state == .queued || $0.state == .pickedUp) && !isParallelSafe(actionID: $0.actionID) }
+    }
+    /// A button may run when nothing else is in flight on its card, or when it is parallel-safe.
+    public static func canRun(actionID: String, target: String, ledger: CommandLedger) -> Bool {
+        isParallelSafe(actionID: actionID) || inFlight(target: target, ledger: ledger) == nil
+    }
+
+    /// One short sentence about the card's newest command: Sent, Firstmate is on it, Done, Failed: reason.
+    public static func statusText(_ command: Command) -> String {
+        switch command.state {
+        case .queued: return "Sent"
+        case .pickedUp: return "Firstmate is on it"
+        case .done: return "Done"
+        case .failed: return command.note.map { "Failed: " + String($0.prefix(160)) } ?? "Failed"
+        }
+    }
+    /// The button text the person pressed, or the action id turned into words.
+    public static func plainLabel(_ command: Command) -> String {
+        if let label = command.label?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty { return label }
+        let tail = command.actionID.split(separator: ".").last.map(String.init) ?? command.actionID
+        switch tail {
+        case "opt-defer": return "Defer one week"
+        case "opt-drop": return "Drop it"
+        case "add-context": return "Add context"
+        case "wait-what": return "Wait, what?"
+        case "nevermind": return "Nevermind"
+        case "free-text", "answer": return "Free answer"
+        default:
+            let words = tail.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ")
+            return words.prefix(1).uppercased() + words.dropFirst()
+        }
+    }
+    /// The card's commands, newest first.
+    public static func history(target: String, ledger: CommandLedger) -> [Command] { ledger.history(target: target) }
+}

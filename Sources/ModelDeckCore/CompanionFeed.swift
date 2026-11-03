@@ -61,6 +61,9 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let ticketUrl: String?
         /// Time-to-close position (1 = closest to done) and the step it stands for; the producer sorts by it.
         public let closeRank: Int?, closeStep: String?
+        /// Optional GitLab state: "opened", "merged" or "closed". A merged or closed MR is not shown.
+        public let state: String?
+        public var isFinished: Bool { ["merged", "closed"].contains(state?.lowercased() ?? "") }
         public let drafts: [Draft]
         public let actions: [Action]
         public var postAction: Action? { CompanionFeed.postAction(of: actions) }

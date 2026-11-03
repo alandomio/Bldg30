@@ -37,7 +37,7 @@ public enum CompanionBoard {
     public static func mrs(feed: CompanionFeed?, raw: RawBoard?) -> [BoardMR] {
         var rawByURL = Dictionary(raw?.mrs.map { (key($0.url), $0) } ?? [], uniquingKeysWith: { first, _ in first })
         var rows: [BoardMR] = []
-        for mr in feed?.mrs ?? [] {
+        for mr in feed?.mrs ?? [] where !mr.isFinished {
             var pipeline: String? = mr.pipeline, threads: Int? = mr.openThreads, stale = false
             let updated = raw?.gitlabOK == true ? rawByURL[key(mr.url)]?.updatedAt : nil
             if let raw, raw.gitlabOK, let generated = feed?.generatedAt, raw.fetchedAt > generated {
@@ -56,6 +56,9 @@ public enum CompanionBoard {
         }
         return MROrder.apply(rows)
     }
+
+    /// MRs the feed marks merged or closed: not shown as cards.
+    public static func finishedMRs(feed: CompanionFeed?) -> [CompanionFeed.MergeRequest] { (feed?.mrs ?? []).filter(\.isFinished) }
 
     public static func tickets(feed: CompanionFeed?, raw: RawBoard?) -> [BoardTicketRow] {
         var live = Dictionary(raw?.tickets.map { ($0.identifier, $0) } ?? [], uniquingKeysWith: { first, _ in first })

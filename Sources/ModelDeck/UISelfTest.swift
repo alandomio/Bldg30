@@ -65,13 +65,16 @@ import ModelDeckCore
         check(press("Ship now"), "found option button")
         check(waitForClick { $0["action_id"] == "dec-1.opt-1" && $0["target"] == "dec-1" }, "option click wrote dec-1.opt-1")
         check(!detailsOpen(), "detail pane stayed closed after the option click")
-        // Free answer: click into the field, type, Send.
+        _ = press("Defer one week") // disabled while the option is in flight: must not write
+        check(clicks().filter { $0["action_id"] == "dec-1.opt-defer" }.isEmpty, "a second action on a busy card wrote nothing")
+        // Free answer: with an option sent on the card, Send is disabled and writes nothing.
         if let label = locate("Something different, or add context", nth: 0, in: host) {
             let spot = NSPoint(x: label.x + 120, y: label.y + (host.isFlipped ? 50 : -50)); click(at: spot); typeText("free answer", near: spot)
             check(press("Send", nth: 0), "pressed Send on the free answer")
-            check(waitForClick { $0["action_id"] == "dec-1.answer" && $0["draft_text"] == "free answer" }, "free answer wrote dec-1.answer with the typed text")
+            check(!clicks().contains { $0["action_id"] == "dec-1.answer" }, "free answer waits while the option click is in flight")
             check(!detailsOpen(), "detail pane stayed closed after the free answer")
         } else { check(false, "found the free answer field") }
+        // Add context stays possible while another action is in flight; the option click comes last.
         // Add context on the decision card opens an editor; typing and Send writes <ref>.add-context.
         check(press("Add context"), "pressed Add context on the decision card")
         if let cancel = locate("Cancel", nth: 0, in: host) {
@@ -111,7 +114,7 @@ import ModelDeckCore
         let hits = (request.results ?? []).compactMap { observation -> (String, CGRect)? in
             guard let text = observation.topCandidates(1).first?.string else { return nil }
             return (text, observation.boundingBox)
-        }.filter { prefix ? $0.0.hasPrefix(label) : $0.0.trimmingCharacters(in: .whitespaces) == label || ($0.0.count < label.count + 4 && $0.0.hasSuffix(label)) }.sorted { $0.1.midY > $1.1.midY }
+        }.filter { prefix ? $0.0.hasPrefix(label) : $0.0.trimmingCharacters(in: .whitespaces).lowercased() == label.lowercased() || ($0.0.count < label.count + 4 && $0.0.lowercased().hasSuffix(label.lowercased())) }.sorted { $0.1.midY > $1.1.midY }
         guard hits.indices.contains(nth) else { return nil }
         let box = hits[nth].1, size = view.bounds.size
         let y = view.isFlipped ? (1 - box.midY) * size.height : box.midY * size.height

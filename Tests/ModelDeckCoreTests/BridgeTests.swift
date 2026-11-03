@@ -559,3 +559,67 @@ import Foundation
         #expect(OpenDecisions.filter(Array(d.dropFirst()), ledger: CommandLedger()).map(\.id) == ["d2"])
     }
 }
+
+@Suite struct CardActivityTests {
+    private func line(_ id: String, _ state: String, action: String, target: String = "c1", note: String? = nil, label: String? = nil) -> String {
+        var o: [String: Any] = ["id": id, "action_id": action, "target": target, "state": state, "at": "2026-11-03T08:00:00Z"]
+        if let note { o["note"] = note }; if let label { o["label"] = label }
+        return String(data: try! JSONSerialization.data(withJSONObject: o), encoding: .utf8)!
+    }
+    @Test func otherActionsWaitWhileOneIsSentOrRunning() {
+        let sent = CommandLedger(lines: [line("a", "queued", action: "c1.post-reply")])
+        #expect(!CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: sent))
+        #expect(CardActivity.canRun(actionID: "c1.wait-what", target: "c1", ledger: sent))
+        #expect(CardActivity.canRun(actionID: "c1.add-context", target: "c1", ledger: sent))
+        #expect(CardActivity.canRun(actionID: "c2.approve", target: "c2", ledger: sent))   // another card is free
+        let running = CommandLedger(lines: [line("a", "queued", action: "c1.post-reply"), line("a", "picked_up", action: "c1.post-reply")])
+        #expect(!CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: running))
+    }
+    @Test func finishedCommandsFreeTheCardAgain() {
+        let done = CommandLedger(lines: [line("a", "queued", action: "c1.post-reply"), line("a", "done", action: "c1.post-reply")])
+        #expect(CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: done))
+        let failed = CommandLedger(lines: [line("a", "queued", action: "c1.post-reply"), line("a", "failed", action: "c1.post-reply", note: "403")])
+        #expect(CardActivity.canRun(actionID: "c1.post-reply", target: "c1", ledger: failed))
+    }
+    @Test func aParallelSafeCommandInFlightDoesNotBlockTheCard() {
+        let ctx = CommandLedger(lines: [line("a", "queued", action: "c1.add-context")])
+        #expect(CardActivity.inFlight(target: "c1", ledger: ctx) == nil)
+        #expect(CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: ctx))
+    }
+    @Test func plainStatusWords() {
+        func status(_ lines: [String]) -> String { CardActivity.statusText(CommandLedger(lines: lines).commands[0]) }
+        #expect(status([line("a", "queued", action: "x")]) == "Sent")
+        #expect(status([line("a", "queued", action: "x"), line("a", "picked_up", action: "x")]) == "Firstmate is on it")
+        #expect(status([line("a", "queued", action: "x"), line("a", "done", action: "x")]) == "Done")
+        #expect(status([line("a", "queued", action: "x"), line("a", "failed", action: "x", note: "branch protected")]) == "Failed: branch protected")
+    }
+    @Test func historyUsesWordsNotActionIDs() {
+        let ledger = CommandLedger(lines: [line("a", "queued", action: "row-mr-pi-1571.post-reply-and-approve"), line("b", "queued", action: "d1.opt-defer"),
+                                           line("c", "queued", action: "c1.wait-what"), line("d", "queued", action: "c1.x", label: "Ship it")])
+        #expect(ledger.commands.map(CardActivity.plainLabel) == ["Post reply and approve", "Defer one week", "Wait, what?", "Ship it"])
+    }
+    @Test func eachCardSeesOnlyItsOwnHistoryNewestFirst() {
+        let ledger = CommandLedger(lines: [line("a", "queued", action: "c1.x", target: "c1"), line("b", "queued", action: "c2.x", target: "c2"), line("c", "queued", action: "c1.y", target: "c1")])
+        #expect(CardActivity.history(target: "c1", ledger: ledger).map(\.id) == ["c", "a"])
+        #expect(CardActivity.history(target: "c2", ledger: ledger).map(\.id) == ["b"])
+    }
+}
+
+@Suite struct FinishedMRTests {
+    private func feed(states: [String?]) throws -> CompanionFeed {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        var mrs = try #require(root["mrs"] as? [[String: Any]])
+        for (i, state) in states.enumerated() where i < mrs.count { if let state { mrs[i]["state"] = state } }
+        root["mrs"] = mrs
+        return try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+    }
+    @Test func mergedAndClosedMRsAreNotCards() throws {
+        let all = try feed(states: [nil, nil])
+        #expect(CompanionBoard.mrs(feed: all, raw: nil).count == 2)
+        let merged = try feed(states: ["merged", nil])
+        #expect(CompanionBoard.mrs(feed: merged, raw: nil).map(\.ref) == [all.mrs[1].ref])
+        #expect(CompanionBoard.finishedMRs(feed: merged).map(\.ref) == [all.mrs[0].ref])
+        let closed = try feed(states: ["CLOSED", "opened"])
+        #expect(CompanionBoard.mrs(feed: closed, raw: nil).map(\.ref) == [all.mrs[1].ref])
+    }
+}

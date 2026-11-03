@@ -98,6 +98,40 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let decisionId: String?
         public let linkedMrs: [String]
         public let actions: [Action]
+        /// Optional structured Linear context (`tickets[].detail`); a malformed block is ignored, never a reason to drop the ticket.
+        public let detail: TicketDetail?
+        private enum Keys: String, CodingKey { case identifier, title, status, url, finish, decisionId, linkedMrs, actions, detail }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: Keys.self)
+            identifier = try c.decode(String.self, forKey: .identifier); title = try c.decode(String.self, forKey: .title); status = try c.decode(String.self, forKey: .status)
+            url = try c.decode(URL.self, forKey: .url); finish = try c.decodeIfPresent(Finish.self, forKey: .finish)
+            decisionId = try c.decodeIfPresent(String.self, forKey: .decisionId); linkedMrs = try c.decode([String].self, forKey: .linkedMrs)
+            actions = try c.decode([Action].self, forKey: .actions); detail = try? c.decodeIfPresent(TicketDetail.self, forKey: .detail)
+        }
+    }
+    public struct AcceptanceItem: Decodable, Equatable, Sendable { public let text: String; public let done: Bool? }
+    public struct LinkedMR: Decodable, Equatable, Sendable { public let ref: String; public let url: String?; public let state: String?
+        public init(ref: String, url: String?, state: String?) { self.ref = ref; self.url = url; self.state = state } }
+    public struct TicketComment: Decodable, Equatable, Sendable { public let author: String?, at: String?, text: String }
+    /// Everything the Details box shows beyond status, finish step and owner; every field is optional and never invented.
+    public struct TicketDetail: Decodable, Equatable, Sendable {
+        public let assignee: String?, priority: String?, summary: String?
+        public let labels: [String]?
+        public let acceptance: [AcceptanceItem]?
+        public let mrs: [LinkedMR]?
+        public let comments: [TicketComment]?
+        /// Names of the fields the feed did not send, so the box can say what is missing.
+        public var missing: [String] {
+            var out: [String] = []
+            if CompanionFeed.text(assignee) == nil { out.append("assignee") }
+            if CompanionFeed.text(priority) == nil { out.append("priority") }
+            if (labels ?? []).isEmpty { out.append("labels") }
+            if CompanionFeed.text(summary) == nil { out.append("summary") }
+            if (acceptance ?? []).isEmpty { out.append("acceptance") }
+            if (mrs ?? []).isEmpty { out.append("mrs") }
+            if (comments ?? []).isEmpty { out.append("comments") }
+            return out
+        }
     }
 
     public let schema: String

@@ -48,7 +48,7 @@ private struct PendingClick: Identifiable {
 
 struct CompanionView: View {
     @EnvironmentObject var store: DeckStore
-    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : "decisions"
+    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : CommandLine.arguments.contains("--tickets-tab") ? "tickets" : "decisions"
     @State private var index = 0
     @State private var openDrafts = Set<String>()
     @State private var confirm: PendingClick?
@@ -59,6 +59,7 @@ struct CompanionView: View {
     @State private var answers: [String: String] = [:]
     @State private var draftTexts: [String: String] = [:]
     @State private var openContext = Set<String>()
+    @State private var detailsOpen = Set<String>()
     @State private var dropPending = Set<String>()
     @State private var dropSent = Set<String>()
     @State private var dropTasks: [String: Task<Void, Never>] = [:]
@@ -383,7 +384,7 @@ struct CompanionView: View {
                         if !drafts.isEmpty { draftPanel(mr, drafts: drafts, position: draftPos, locked: locked) }
                         actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: drafts.indices.contains(draftPos) ? (draftTexts[mr.ref + "|" + drafts[draftPos].id] ?? drafts[draftPos].text) : nil, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
-                        CardHistory(target: mr.ref, labels: Dictionary(mr.actions.map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a })).environmentObject(store)
+                        if detailsOpen.contains(mr.ref) || CommandLine.arguments.contains("--details-open") { mrDetailsBox(mr) }
                     }
                 }
                 .onAppear { KeyRouter.shared.start(owner: "mrs", swallow: { $0 == .left || $0 == .right }) { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
@@ -416,6 +417,7 @@ struct CompanionView: View {
             }
             Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
             Spacer()
+            detailsToggle(mr.ref)
             detailsButton(mr.ref)
             Button { mrIndex = Pager.move(position, by: -1, count: count, wrap: true) } label: { Image(systemName: "chevron.left") }.help(L("MR precedente (←)")).disabled(count < 2)
             Button { mrIndex = Pager.move(position, by: 1, count: count, wrap: true) } label: { Image(systemName: "chevron.right") }.help(L("MR successiva (→)")).disabled(count < 2)
@@ -456,6 +458,93 @@ struct CompanionView: View {
         }
     }
 
+    private func detailsToggle(_ ref: String) -> some View {
+        let open = detailsOpen.contains(ref)
+        return Button(L(open ? "Nascondi dettagli" : "Dettagli")) { if open { detailsOpen.remove(ref) } else { detailsOpen.insert(ref) } }
+            .buttonStyle(DeckButtonStyle(small: true))
+    }
+    private func boxRow(_ title: String, _ value: String?) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(D(title)).font(.system(size: 11, weight: .semibold)).foregroundStyle(DeckTheme.muted).frame(width: 110, alignment: .leading)
+            Text(value ?? "—").font(.system(size: 12)).foregroundStyle(value == nil ? DeckTheme.muted : DeckTheme.foreground).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        }
+    }
+    private func boxHeading(_ title: String) -> some View {
+        Text(D(title).uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint).padding(.top, 4)
+    }
+    /// The live state of an MR the ticket links: the ticket's own block first, then the feed's MR row.
+    private func linkedState(_ linked: CompanionFeed.LinkedMR) -> String? {
+        CompanionFeed.text(linked.state) ?? CompanionFeed.text(store.companionFeed?.mrs.first { $0.ref == linked.ref }?.state)
+    }
+    private func ticketDetailsBox(_ ticket: BoardTicketRow) -> some View {
+        let detail = ticket.detail
+        return VStack(alignment: .leading, spacing: 8) {
+            boxHeading("Linear")
+            boxRow("Stato", ticket.status)
+            boxRow("Assegnato a", CompanionFeed.text(detail?.assignee))
+            boxRow("Priorità", CompanionFeed.text(detail?.priority))
+            boxRow("Etichette", (detail?.labels ?? []).isEmpty ? nil : detail?.labels?.joined(separator: ", "))
+            if let summary = CompanionFeed.text(detail?.summary) { boxHeading("Riepilogo"); Text(summary).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled) }
+            if let items = detail?.acceptance, !items.isEmpty {
+                boxHeading("Criteri di accettazione")
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Image(systemName: item.done == true ? "checkmark.square.fill" : "square").font(.system(size: 11)).foregroundStyle(item.done == true ? DeckTheme.mint : DeckTheme.muted)
+                        Text(item.text).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            let linked = detail?.mrs ?? ticket.linkedMrs.map { CompanionFeed.LinkedMR(ref: $0, url: nil, state: nil) }
+            if !linked.isEmpty {
+                boxHeading("MR collegate")
+                ForEach(Array(linked.enumerated()), id: \.offset) { _, mr in
+                    HStack(spacing: 8) {
+                        if let url = mr.url.flatMap({ URL(string: $0) }) { Link(mr.ref, destination: url).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor() }
+                        else { Text(mr.ref).font(.system(size: 11, design: .monospaced)) }
+                        Text(linkedState(mr).map { D($0 == "opened" ? "aperta" : $0 == "merged" ? "unita" : $0 == "closed" ? "chiusa" : $0) } ?? L("stato non nel feed")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                    }
+                }
+            }
+            if let comments = detail?.comments, !comments.isEmpty {
+                boxHeading("Ultimi commenti")
+                ForEach(Array(comments.prefix(5).enumerated()), id: \.offset) { _, comment in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text([CompanionFeed.text(comment.author), CompanionFeed.text(comment.at)].compactMap { $0 }.joined(separator: " · ")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+                        Text(String(comment.text.prefix(300))).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    }
+                }
+            }
+            boxHeading("Cosa manca")
+            boxRow("Passo", CompanionFeed.text(ticket.finish?.step))
+            boxRow("Spetta a", CompanionFeed.text(ticket.finish?.owner))
+            if detail == nil || !(detail?.missing.isEmpty ?? true) {
+                Text(L("Non ancora nel feed: \((detail?.missing ?? ["detail"]).joined(separator: ", "))")).font(.system(size: 10)).foregroundStyle(DeckTheme.amber)
+            }
+            boxHeading("Storico")
+            CardHistory(target: ticket.identifier, labels: Dictionary(ticket.actions.map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a }), alwaysOpen: true).environmentObject(store)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func mrDetailsBox(_ mr: BoardMR) -> some View {
+        let row = mr.feedRow
+        let ticketText = CompanionFeed.text(row?.ticket) ?? store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }?.identifier
+        return VStack(alignment: .leading, spacing: 8) {
+            boxHeading("GitLab")
+            boxRow("Stato", CompanionFeed.text(row?.state))
+            boxRow("Ruolo", D(mr.role == "author" ? "Autore" : "Revisore"))
+            boxRow("Autore", CompanionFeed.text(row?.author))
+            boxRow("Pipeline", mr.pipeline)
+            boxRow("Thread aperti", mr.openThreads.map(String.init))
+            boxRow("Ticket", ticketText)
+            boxHeading("Cosa manca")
+            boxRow("Blocco", CompanionFeed.text(row?.blocker) ?? CompanionFeed.text(mr.label))
+            boxRow("Passo", CompanionFeed.text(row?.next))
+            boxRow("Spetta a", CompanionFeed.text(mr.nextOwner))
+            boxRow("Ultima attività", (mr.updatedAt ?? CompanionFeed.date(row?.updatedAt)).map { $0.formatted(.relative(presentation: .named)) })
+            boxHeading("Storico")
+            CardHistory(target: mr.ref, labels: Dictionary(mr.actions.map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a }), alwaysOpen: true).environmentObject(store)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private func tickets(_ items: [BoardTicketRow], locked: Bool) -> some View {
         VStack(spacing: 12) {
             if items.isEmpty { empty("Nessun ticket aperto.") }
@@ -468,6 +557,7 @@ struct CompanionView: View {
                             if ticket.finishStale { StatusPill(text: "Verdetto superato", color: DeckTheme.amber) }
                             Spacer()
                             Link(destination: ticket.url) { Image(systemName: "arrow.up.right.square") }
+                            detailsToggle(ticket.identifier)
                             detailsButton(ticket.identifier)
                         }
                         Button { open(ticket.identifier) } label: { Text(ticket.title).font(.system(size: 14, weight: .semibold)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
@@ -479,7 +569,7 @@ struct CompanionView: View {
                         actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale, recommended: CompanionRecommendation.actionID(in: ticket.actions, texts: [ticket.finish?.step, ticket.status] + decisionTexts(ticket.decisionId)))
                         AddContextRow(ref: ticket.identifier).environmentObject(store)
                         CardStatusLine(target: ticket.identifier).environmentObject(store)
-                        CardHistory(target: ticket.identifier, labels: Dictionary(ticket.actions.map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a })).environmentObject(store)
+                        if detailsOpen.contains(ticket.identifier) || CommandLine.arguments.contains("--details-open") { ticketDetailsBox(ticket) }
                     }
                 }
             }
@@ -718,27 +808,35 @@ struct CardHistory: View {
     let target: String
     /// action id to the button text, for commands written without a label
     var labels: [String: String] = [:]
+    /// Inside the Details box the list is always shown, without its own toggle.
+    var alwaysOpen = false
     @State private var open = CommandLine.arguments.contains("--history-tab")
     var body: some View {
         let rows = CardActivity.history(target: target, ledger: store.commandLedger)
-        if !rows.isEmpty {
+        if alwaysOpen {
+            if rows.isEmpty { Text(L("Nessun comando ancora.")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
+            historyList(rows)
+        } else if !rows.isEmpty {
             DisclosureGroup(isExpanded: $open) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(rows) { command in
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 8) {
-                                Circle().fill(CardStyle.color(command.state)).frame(width: 6, height: 6)
-                                Text(labels[command.actionID] ?? CardActivity.plainLabel(command)).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                                Text(CardStyle.title(command)).font(.system(size: 11)).foregroundStyle(CardStyle.color(command.state))
-                            }
-                            Text(when(command)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
-                        }
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
+                historyList(rows).padding(.top, 6)
             } label: {
                 Text(L("Cronologia (\(rows.count))")).font(.system(size: 11, weight: .semibold)).foregroundStyle(DeckTheme.muted)
             }
         }
+    }
+    private func historyList(_ rows: [Command]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(rows) { command in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Circle().fill(CardStyle.color(command.state)).frame(width: 6, height: 6)
+                        Text(labels[command.actionID] ?? CardActivity.plainLabel(command)).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                        Text(CardStyle.title(command)).font(.system(size: 11)).foregroundStyle(CardStyle.color(command.state))
+                    }
+                    Text(when(command)).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+                }
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func when(_ command: Command) -> String {
         func stamp(_ date: Date?) -> String? { date.map { $0.formatted(date: .abbreviated, time: .shortened) } }

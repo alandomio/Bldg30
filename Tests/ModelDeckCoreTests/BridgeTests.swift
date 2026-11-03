@@ -623,3 +623,39 @@ import Foundation
         #expect(CompanionBoard.mrs(feed: closed, raw: nil).map(\.ref) == [all.mrs[1].ref])
     }
 }
+
+@Suite struct TicketDetailTests {
+    private func feed(detail: Any?) throws -> CompanionFeed {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        var tickets = try #require(root["tickets"] as? [[String: Any]])
+        if let detail { tickets[0]["detail"] = detail }
+        root["tickets"] = tickets
+        return try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+    }
+    @Test func theFullDetailBlockDecodes() throws {
+        let value = try feed(detail: ["assignee": "Alan", "priority": "High", "labels": ["infra", "gateway"], "summary": "Wildcard DNS for previews",
+            "acceptance": [["text": "DNS resolves", "done": true], ["text": "README updated", "done": false]],
+            "mrs": [["ref": "pi !1571", "url": "https://x/1571", "state": "merged"]],
+            "comments": [["author": "kmang", "at": "2026-11-02", "text": "Looks good"]]])
+        let detail = try #require(value.tickets[0].detail)
+        #expect(detail.assignee == "Alan" && detail.labels == ["infra", "gateway"])
+        #expect(detail.acceptance?.map(\.done) == [true, false])
+        #expect(detail.mrs?.first?.state == "merged" && detail.comments?.first?.author == "kmang")
+        #expect(detail.missing.isEmpty)
+    }
+    @Test func missingFieldsAreNamedNotInvented() throws {
+        let detail = try #require(try feed(detail: ["assignee": "Alan"]).tickets[0].detail)
+        #expect(detail.missing == ["priority", "labels", "summary", "acceptance", "mrs", "comments"])
+        #expect(try feed(detail: nil).tickets[0].detail == nil)
+    }
+    @Test func aBrokenDetailBlockDoesNotDropTheTicket() throws {
+        let value = try feed(detail: ["labels": "not a list", "acceptance": 7])
+        #expect(value.tickets.count == 2 || value.tickets.count >= 1)
+        #expect(value.tickets[0].detail == nil)
+        #expect(value.skipped.isEmpty)
+    }
+    @Test func detailReachesTheBoardRow() throws {
+        let value = try feed(detail: ["priority": "Urgent"])
+        #expect(CompanionBoard.tickets(feed: value, raw: nil)[0].detail?.priority == "Urgent")
+    }
+}

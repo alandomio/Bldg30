@@ -28,6 +28,8 @@ public struct BoardTicketRow: Equatable, Sendable, Identifiable {
     public let linkedMrs: [String]
     public let actions: [CompanionFeed.Action]
     public let decisionId: String?
+    /// Structured Linear context from the feed; nil for tickets the feed does not describe.
+    public let detail: CompanionFeed.TicketDetail?
 }
 
 /// Puts the app's own newer polls over the firstmate feed and flags verdicts the raw state has outrun.
@@ -72,11 +74,11 @@ public enum CompanionBoard {
             }
             live[ticket.identifier] = nil
             rows.append(BoardTicketRow(identifier: ticket.identifier, title: ticket.title, status: status, url: ticket.url, finish: ticket.finish,
-                                       finishStale: stale, linkedMrs: ticket.linkedMrs, actions: ticket.actions, decisionId: ticket.decisionId))
+                                       finishStale: stale, linkedMrs: ticket.linkedMrs, actions: ticket.actions, decisionId: ticket.decisionId, detail: ticket.detail))
         }
         for ticket in raw?.tickets ?? [] where live[ticket.identifier] != nil {
             rows.append(BoardTicketRow(identifier: ticket.identifier, title: ticket.title, status: ticket.state, url: ticket.url, finish: nil,
-                                       finishStale: false, linkedMrs: [], actions: [], decisionId: nil))
+                                       finishStale: false, linkedMrs: [], actions: [], decisionId: nil, detail: nil))
         }
         return rows
     }

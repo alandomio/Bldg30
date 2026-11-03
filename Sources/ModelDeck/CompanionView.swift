@@ -80,14 +80,14 @@ struct CompanionView: View {
                 status(feed, stale: stale)
                 if stale { Text(L("Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber) }
                 HStack(spacing: 8) {
-                    tabButton("decisions", L("Decisioni (\(feed?.decisions.count ?? 0))"))
+                    tabButton("decisions", L("Decisioni (\(openDecisions.count))"))
                     tabButton("mrs", L("MR e revisioni (\(store.boardMRs.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
                     tabButton("history", L("Cronologia (\(store.commandLedger.commands.count))"))
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
-                    if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(feed?.decisions ?? []) ?? feed?.decisions ?? [], locked: false) }
+                    if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(openDecisions) ?? openDecisions, locked: false) }
                     else if tab == "mrs" { mrs(store.boardMRs, locked: false) }
                     else if tab == "history" { CommandHistoryView(filter: $historyFilter).environmentObject(store) }
                     else { tickets(store.boardTickets, locked: false) }
@@ -212,13 +212,22 @@ struct CompanionView: View {
         }
     }
 
+    /// Feed decisions that are not dropped; a Drop whose undo window is over has already written its queued line.
+    private var openDecisions: [CompanionFeed.Decision] {
+        OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).filter { !dropSent.contains($0.id) }
+    }
+
     private func isDrop(_ option: CompanionFeed.Option) -> Bool { option.actionId?.hasSuffix(".opt-drop") == true }
 
     private func decisionHeader(_ item: CompanionFeed.Decision, position: Int, count: Int) -> some View {
         HStack {
             Text(L("Decisione \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
             if let age = ageLabel(item) { Text(age.text).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(age.color) }
-            if item.urgent { StatusPill(text: "Urgente", color: .red) }
+            switch item.level {
+            case .urgent: StatusPill(text: "Urgente", color: .red)
+            case .high: StatusPill(text: "Alta", color: DeckTheme.amber)
+            case .normal: EmptyView()
+            }
             CommandPill(target: item.id) { historyFilter = $0; tab = "history" }.environmentObject(store)
             Spacer()
             Picker(L("Ordine"), selection: $decisionOrder) {

@@ -107,8 +107,14 @@ public enum CompanionDiff {
 }
 
 public enum DecisionOrder: String, CaseIterable, Sendable { case feed, oldestFirst
-    /// Feed order, or oldest first with undated decisions last; the sort is stable.
+    /// Urgent, then High, then the rest, each group in feed order (or oldest first with undated decisions last); the sort is stable.
     public func apply(_ decisions: [CompanionFeed.Decision]) -> [CompanionFeed.Decision] {
+        let ordered = dated(decisions)
+        return ordered.enumerated().sorted { a, b in
+            a.element.level != b.element.level ? a.element.level < b.element.level : a.offset < b.offset
+        }.map(\.element)
+    }
+    private func dated(_ decisions: [CompanionFeed.Decision]) -> [CompanionFeed.Decision] {
         guard self == .oldestFirst else { return decisions }
         return decisions.enumerated().sorted { a, b in
             switch (a.element.created, b.element.created) {
@@ -135,5 +141,16 @@ public enum MROrder {
         let known: [String: String] = ["merge": "Merge", "approve": "Approve", "final check": "Final check", "final_check": "Final check", "final-check": "Final check",
                                        "your step": "Your step", "your_step": "Your step", "your-step": "Your step", "review": "Review", "waiting": "Waiting"]
         return known[text.lowercased()] ?? String(text.prefix(24))
+    }
+}
+
+/// Decisions that still wait for the user: a decision whose Drop click went out leaves the list at once.
+public enum OpenDecisions {
+    public static func isDropped(_ decision: CompanionFeed.Decision, ledger: CommandLedger) -> Bool {
+        ledger.commands.contains { $0.target == decision.id && $0.actionID.hasSuffix(".opt-drop") && $0.state != .failed }
+    }
+    /// Feed decisions minus the dropped ones; a failed Drop keeps the decision in the list.
+    public static func filter(_ decisions: [CompanionFeed.Decision], ledger: CommandLedger) -> [CompanionFeed.Decision] {
+        decisions.filter { !isDropped($0, ledger: ledger) }
     }
 }

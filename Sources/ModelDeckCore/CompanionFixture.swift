@@ -4,7 +4,7 @@ public enum CompanionNotifications {
     /// Urgent decisions of a fresh feed that were not announced yet. A stale feed never notifies.
     public static func pending(in feed: CompanionFeed, announced: Set<String>, now: Date = Date()) -> [CompanionFeed.Decision] {
         guard !feed.isStale(now: now) else { return [] }
-        return feed.decisions.filter { $0.urgent && !announced.contains($0.id) }
+        return feed.decisions.filter { $0.level == .urgent && !announced.contains($0.id) }
     }
 }
 

@@ -72,7 +72,7 @@ import ModelDeckCore
     private func updateStatusItem(snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage) {
         guard let item = statusItem, let button = item.button else { return }
         let options = menuOptionsOverride ?? .load()
-        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: store.companionFeed?.decisions.count ?? 0, defender: store.defender)
+        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).count, defender: store.defender)
         item.length = summary.title.isEmpty ? NSStatusItem.squareLength : NSStatusItem.variableLength
         if options.layout == .twoRows && !summary.readings.isEmpty {
             button.image = MenuBarBadge.image(for: summary, height: NSStatusBar.system.thickness - 2)

@@ -311,7 +311,8 @@ import Foundation
         let day = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         #expect(value.decisions[0].ageDays(now: day) == 52 && value.decisions[2].ageDays(now: day) == 93)
         #expect(value.decisions[1].created == nil && value.decisions[1].ageDays(now: day) == nil)
-        #expect(DecisionOrder.feed.apply(value.decisions).map(\.id) == ["dec-1", "dec-2", "dec-3"])
+        // dec-1 and dec-3 are urgent in the fixture, so they come first, each group in feed order
+        #expect(DecisionOrder.feed.apply(value.decisions).map(\.id) == ["dec-1", "dec-3", "dec-2"])
         #expect(DecisionOrder.oldestFirst.apply(value.decisions).map(\.id) == ["dec-3", "dec-1", "dec-2"])  // undated last
         #expect(try CompanionFeed.decode(Data(CompanionFixture.json(generatedAt: t0).utf8)).decisions[0].createdAt == nil)
     }
@@ -514,5 +515,47 @@ import Foundation
         #expect(lines.count == 2)
         let ledger = CommandLedger(lines: lines)
         #expect(ledger.command(id: "c1")?.state == .pickedUp && ledger.command(id: "c1")?.label == "Go" && ledger.ignoredLines == 0)
+    }
+}
+
+@Suite struct DecisionPriorityAndDropTests {
+    private func feed(_ rows: [(id: String, priority: String?, urgent: Bool)]) throws -> [CompanionFeed.Decision] {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        let base = try #require((root["decisions"] as? [[String: Any]])?.first)
+        root["decisions"] = rows.map { row -> [String: Any] in
+            var d = base; d["id"] = row.id; d["urgent"] = row.urgent
+            if let p = row.priority { d["priority"] = p } else { d.removeValue(forKey: "priority") }
+            return d
+        }
+        return try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root)).decisions
+    }
+    private func line(_ id: String, _ state: String, action: String, target: String) -> String {
+        String(data: try! JSONSerialization.data(withJSONObject: ["id": id, "action_id": action, "target": target, "state": state, "at": "2026-11-03T08:00:00Z"]), encoding: .utf8)!
+    }
+
+    @Test func priorityFieldWinsAndUrgentFlagIsTheFallback() throws {
+        let d = try feed([("a", "urgent", false), ("b", "high", true), ("c", "normal", true), ("d", nil, true), ("e", nil, false), ("f", "weird", false)])
+        #expect(d.map(\.level) == [.urgent, .high, .normal, .urgent, .normal, .normal])
+    }
+    @Test func urgentThenHighComeFirstAndTheRestKeepFeedOrder() throws {
+        let d = try feed([("n1", "normal", false), ("h1", "high", false), ("u1", "urgent", false), ("n2", nil, false), ("u2", nil, true), ("h2", "high", false)])
+        #expect(DecisionOrder.feed.apply(d).map(\.id) == ["u1", "u2", "h1", "h2", "n1", "n2"])
+        #expect(DecisionOrder.oldestFirst.apply(d).first?.level == .urgent)
+    }
+    @Test func aDroppedDecisionLeavesTheListAtOnce() throws {
+        let d = try feed([("d1", nil, false), ("d2", nil, false), ("d3", nil, false)])
+        let queued = CommandLedger(lines: [line("c1", "queued", action: "d2.opt-drop", target: "d2")])
+        #expect(OpenDecisions.filter(d, ledger: queued).map(\.id) == ["d1", "d3"])
+        let done = CommandLedger(lines: [line("c1", "queued", action: "d2.opt-drop", target: "d2"), line("c1", "done", action: "d2.opt-drop", target: "d2")])
+        #expect(OpenDecisions.filter(d, ledger: done).map(\.id) == ["d1", "d3"])
+    }
+    @Test func aFailedDropOrAnotherAnswerKeepsTheDecision() throws {
+        let d = try feed([("d1", nil, false), ("d2", nil, false)])
+        let failed = CommandLedger(lines: [line("c1", "queued", action: "d1.opt-drop", target: "d1"), line("c1", "failed", action: "d1.opt-drop", target: "d1")])
+        #expect(OpenDecisions.filter(d, ledger: failed).count == 2)
+        let defer1 = CommandLedger(lines: [line("c2", "queued", action: "d1.opt-defer", target: "d1")])
+        #expect(OpenDecisions.filter(d, ledger: defer1).count == 2)
+        // a decision released in the feed is simply no longer in it
+        #expect(OpenDecisions.filter(Array(d.dropFirst()), ledger: CommandLedger()).map(\.id) == ["d2"])
     }
 }

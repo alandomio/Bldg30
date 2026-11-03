@@ -15,6 +15,16 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let options: [Option]
         public let links: [URL]
         public let urgent: Bool
+        /// Optional `priority`: "urgent", "high" or "normal". Without it, `urgent: true` means urgent.
+        public let priority: String?
+        public var level: DecisionPriority {
+            switch priority?.lowercased() {
+            case "urgent": return .urgent
+            case "high": return .high
+            case "normal": return .normal
+            default: return urgent ? .urgent : .normal
+            }
+        }
         /// The day the decision was raised, YYYY-MM-DD; optional.
         public let createdAt: String?
         /// Optional short headed paragraphs and the original record, both written by the producer.
@@ -218,4 +228,10 @@ public enum CompanionError: LocalizedError, Equatable {
         case .unsafeInbox: "La cartella inbox non è utilizzabile."
         }
     }
+}
+
+/// How pressing a decision is; the raw order is the sort order (urgent first).
+public enum DecisionPriority: Int, Comparable, Sendable {
+    case urgent = 0, high = 1, normal = 2
+    public static func < (a: DecisionPriority, b: DecisionPriority) -> Bool { a.rawValue < b.rawValue }
 }

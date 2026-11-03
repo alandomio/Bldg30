@@ -49,6 +49,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         public let author: String?, headline: String?, blocker: String?, next: String?, ticket: String?, updatedAt: String?
         /// Optional Linear issue link for `ticket` (https only).
         public let ticketUrl: String?
+        /// Time-to-close position (1 = closest to done) and the step it stands for; the producer sorts by it.
+        public let closeRank: Int?, closeStep: String?
         public let drafts: [Draft]
         public let actions: [Action]
         public var postAction: Action? { CompanionFeed.postAction(of: actions) }

@@ -383,6 +383,10 @@ struct CompanionView: View {
         return HStack(spacing: 8) {
             Text(L("MR \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
             verdictPill(mr.verdict, stale: mr.verdictStale)
+            if let step = MROrder.stepLabel(mr.feedRow?.closeStep) {
+                Text(D(step)).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
+                    .foregroundStyle(DeckTheme.buttonTextOther).background(DeckTheme.buttonFill, in: Capsule()).help(L("Passo per chiudere"))
+            }
             Link(mr.ref, destination: mr.url).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor().help(mr.url.absoluteString)
             if let ticketID {
                 if let ticketURL { Link(ticketID, destination: ticketURL).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor().help(ticketURL.absoluteString) }

@@ -583,5 +583,12 @@
   "‹ Bozza precedente": "‹ Previous draft",
   "Bozza successiva ›": "Next draft ›",
   "bozza %@ di %@": "draft %@ of %@",
-  "Scarta": "Discard"
+  "Scarta": "Discard",
+  "Passo per chiudere": "Step to close",
+  "Merge": "Merge",
+  "Approve": "Approve",
+  "Final check": "Final check",
+  "Your step": "Your step",
+  "Review": "Review",
+  "Waiting": "Waiting"
 }

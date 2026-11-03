@@ -434,3 +434,33 @@ import Foundation
         #expect(plain.replyTo == nil)
     }
 }
+
+@Suite struct MROrderTests {
+    private func rows(_ ranks: [Int?], steps: [String?] = []) throws -> [BoardMR] {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        let base = try #require((root["mrs"] as? [[String: Any]])?.first)
+        var list: [[String: Any]] = []
+        for (offset, rank) in ranks.enumerated() {
+            var row = base; row["ref"] = "r\(offset) !\(offset + 1)"; row["url"] = "https://gitlab.example/mr/\(offset)"
+            if let rank { row["close_rank"] = rank }
+            if offset < steps.count, let step = steps[offset] { row["close_step"] = step }
+            list.append(row)
+        }
+        root["mrs"] = list
+        return CompanionBoard.mrs(feed: try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root)), raw: nil)
+    }
+    @Test func cardsSortByCloseRankThenFeedOrderWithUnrankedLast() throws {
+        let sorted = try rows([5, nil, 1, 5, 2]).map(\.ref)
+        #expect(sorted == ["r2 !3", "r4 !5", "r0 !1", "r3 !4", "r1 !2"])
+    }
+    @Test func feedsWithoutRanksKeepTheirOrder() throws {
+        #expect(try rows([nil, nil, nil]).map(\.ref) == ["r0 !1", "r1 !2", "r2 !3"])
+    }
+    @Test func stepLabelsAreNormalisedAndMissingOnesHidden() throws {
+        #expect(MROrder.stepLabel("merge") == "Merge")
+        #expect(MROrder.stepLabel("Final_Check") == "Final check")
+        #expect(MROrder.stepLabel("your step") == "Your step")
+        #expect(MROrder.stepLabel("  ") == nil && MROrder.stepLabel(nil) == nil)
+        #expect(try rows([1], steps: ["waiting"])[0].feedRow?.closeStep == "waiting")
+    }
+}

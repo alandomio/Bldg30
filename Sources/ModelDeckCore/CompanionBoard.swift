@@ -54,7 +54,7 @@ public enum CompanionBoard {
             rows.append(BoardMR(ref: live.ref, title: live.title, role: live.role, pipeline: live.pipeline, label: "", nextOwner: "", url: live.url,
                                 openThreads: live.openThreads, verdict: nil, verdictStale: false, drafts: [], actions: [], updatedAt: live.updatedAt, feedRow: nil))
         }
-        return rows
+        return MROrder.apply(rows)
     }
 
     public static func tickets(feed: CompanionFeed?, raw: RawBoard?) -> [BoardTicketRow] {
@@ -118,5 +118,22 @@ public enum DecisionOrder: String, CaseIterable, Sendable { case feed, oldestFir
             default: return a.offset < b.offset
             }
         }.map(\.element)
+    }
+}
+
+/// MR cards stay in the producer's order: by `close_rank` (rows without one last), ties and unranked rows in feed order.
+public enum MROrder {
+    public static func apply(_ rows: [BoardMR]) -> [BoardMR] {
+        rows.enumerated().sorted { a, b in
+            let ra = a.element.feedRow?.closeRank ?? Int.max, rb = b.element.feedRow?.closeRank ?? Int.max
+            return ra != rb ? ra < rb : a.offset < b.offset
+        }.map(\.element)
+    }
+    /// The small step label: Merge, Approve, Final check, Your step, Review or Waiting, from `close_step`; other text is shown as sent, empty gives nil.
+    public static func stepLabel(_ step: String?) -> String? {
+        guard let text = CompanionFeed.text(step) else { return nil }
+        let known: [String: String] = ["merge": "Merge", "approve": "Approve", "final check": "Final check", "final_check": "Final check", "final-check": "Final check",
+                                       "your step": "Your step", "your_step": "Your step", "your-step": "Your step", "review": "Review", "waiting": "Waiting"]
+        return known[text.lowercased()] ?? String(text.prefix(24))
     }
 }

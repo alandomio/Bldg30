@@ -19,25 +19,32 @@ extension DeckStore {
             companionError = nil
             announceUrgent(feed)
         } catch { companionError = error.localizedDescription }
-        let replies = CompanionReceipt.repliesDirectory(feedPath: CompanionSettings.feedPath)
-        for (key, sent) in companionNotes {
-            let receipt = CompanionReceipt.resolve(note: sent.note, key: sent.key, repliesDirectory: replies, sentAt: sent.at)
-            if companionStatuses[key] != receipt.status { companionStatuses[key] = receipt.status }
-            if companionReceiptText[key] != receipt.text { companionReceiptText[key] = receipt.text }
-        }
+        refreshCommands()
     }
 
-    /// Files one click note. Returns an error text, or nil on success.
+    /// Reads `commands.jsonl` beside the inbox; the pills and the History panel show exactly what its lines say.
+    func refreshCommands() {
+        let ledger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
+        if ledger != commandLedger { commandLedger = ledger }
+    }
+
+    /// Files one click note. The queued line goes into `commands.jsonl` first, so a pickup line can never come before it.
+    /// Returns an error text, or nil on success.
     @discardableResult
-    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil) -> String? {
-        if demo { companionStatuses[actionID + "|" + target] = .sent; return nil }
-        do {
-            let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
-            let note = try CompanionInbox.file(click, inbox: CompanionSettings.inboxPath)
-            let key = actionID + "|" + target
-            companionNotes[key] = SentClick(note: note, key: click.idempotencyKey, at: Date()); companionStatuses[key] = .sent; companionReceiptText[key] = nil
-            return nil
-        } catch { return error.localizedDescription }
+    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, label: String? = nil) -> String? {
+        if demo { return nil }
+        let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
+        let log = CommandLog.url(inbox: CompanionSettings.inboxPath)
+        do { try CommandLog.append(CommandRecord(id: click.idempotencyKey, actionID: actionID, target: target, state: .queued, label: label), to: log) }
+        catch { return error.localizedDescription }
+        do { try CompanionInbox.file(click, inbox: CompanionSettings.inboxPath) }
+        catch {
+            try? CommandLog.append(CommandRecord(id: click.idempotencyKey, actionID: actionID, target: target, state: .failed, note: "Inbox write failed: " + error.localizedDescription), to: log)
+            refreshCommands()
+            return error.localizedDescription
+        }
+        refreshCommands()
+        return nil
     }
 
     private func announceUrgent(_ feed: CompanionFeed) {

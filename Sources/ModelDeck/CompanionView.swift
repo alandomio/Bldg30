@@ -48,7 +48,7 @@ private struct PendingClick: Identifiable {
 
 struct CompanionView: View {
     @EnvironmentObject var store: DeckStore
-    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : "decisions"
+    @State private var tab = CommandLine.arguments.contains("--history-tab") ? "history" : CommandLine.arguments.contains("--mrs-tab") ? "mrs" : "decisions"
     @State private var index = 0
     @State private var openDrafts = Set<String>()
     @State private var confirm: PendingClick?
@@ -65,6 +65,7 @@ struct CompanionView: View {
     @State private var keyPress: KeyEvent?
     @State private var selection: [String: Int] = [:]
     @State private var mrIndex = 0
+    @State private var historyFilter = ""
     @State private var draftIndex: [String: Int] = [:]
     @State private var discarded = Set<String>()
     @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
@@ -82,11 +83,13 @@ struct CompanionView: View {
                     tabButton("decisions", L("Decisioni (\(feed?.decisions.count ?? 0))"))
                     tabButton("mrs", L("MR e revisioni (\(store.boardMRs.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
+                    tabButton("history", L("Cronologia (\(store.commandLedger.commands.count))"))
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
                     if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(feed?.decisions ?? []) ?? feed?.decisions ?? [], locked: false) }
                     else if tab == "mrs" { mrs(store.boardMRs, locked: false) }
+                    else if tab == "history" { CommandHistoryView(filter: $historyFilter).environmentObject(store) }
                     else { tickets(store.boardTickets, locked: false) }
                 }
             } else {
@@ -216,6 +219,7 @@ struct CompanionView: View {
             Text(L("Decisione \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
             if let age = ageLabel(item) { Text(age.text).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(age.color) }
             if item.urgent { StatusPill(text: "Urgente", color: .red) }
+            CommandPill(target: item.id) { historyFilter = $0; tab = "history" }.environmentObject(store)
             Spacer()
             Picker(L("Ordine"), selection: $decisionOrder) {
                 Text(L("Ordine del feed")).tag(DecisionOrder.feed.rawValue)
@@ -340,7 +344,7 @@ struct CompanionView: View {
 
     private func sendDecision(_ item: CompanionFeed.Decision, option: CompanionFeed.Option?, index: Int) {
         guard let click = CompanionAnswer.click(decisionID: item.id, option: option, optionIndex: index, text: answers[item.id] ?? "") else { return }
-        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText)
+        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText, label: option?.label ?? L("Risposta libera"))
         if feedback == nil { answers[item.id] = "" }
     }
 
@@ -393,6 +397,7 @@ struct CompanionView: View {
                 else { Text(ticketID).font(.system(size: 11, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
             }
             Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
+            CommandPill(target: mr.ref) { historyFilter = $0; tab = "history" }.environmentObject(store)
             Spacer()
             detailsButton(mr.ref)
             Button { mrIndex = Pager.move(position, by: -1, count: count, wrap: true) } label: { Image(systemName: "chevron.left") }.help(L("MR precedente (←)")).disabled(count < 2)
@@ -445,6 +450,7 @@ struct CompanionView: View {
                             Text(ticket.identifier).font(.system(size: 11, weight: .semibold, design: .monospaced))
                             StatusPill(text: ticket.status, color: DeckTheme.blue)
                             if ticket.finishStale { StatusPill(text: "Verdetto superato", color: DeckTheme.amber) }
+                            CommandPill(target: ticket.identifier) { historyFilter = $0; tab = "history" }.environmentObject(store)
                             Spacer()
                             Link(destination: ticket.url) { Image(systemName: "arrow.up.right.square") }
                             detailsButton(ticket.identifier)
@@ -605,7 +611,7 @@ struct CompanionView: View {
         if confirmFirst { confirm = click } else { send(click) }
     }
     private func send(_ click: PendingClick) {
-        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draft)
+        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draft, label: click.draft == nil ? click.label : nil)
     }
 }
 
@@ -632,7 +638,7 @@ struct AddContextRow<Trailing: View>: View {
                 HStack {
                     Button(L("Invia")) {
                         guard let click = CompanionAnswer.contextClick(ref: ref, text: text) else { return }
-                        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText)
+                        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText, label: L("Aggiungi contesto"))
                         if feedback == nil { text = ""; open = false }
                     }.buttonStyle(DeckButtonStyle(primary: true)).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if !expanded { Button(L("Annulla")) { text = ""; open = false }.buttonStyle(DeckButtonStyle()) }
@@ -653,25 +659,83 @@ extension AddContextRow where Trailing == EmptyView {
     init(ref: String, expanded: Bool = false) { self.init(ref: ref, expanded: expanded, small: false) { EmptyView() } }
 }
 
-/// What happened to a click: sent, queued, picked up, done or rejected, or a warning when firstmate has not answered in 2 minutes.
+/// The state of the newest command for a button, exactly as `commands.jsonl` says it; nothing is guessed from time.
 struct ClickStateLabel: View {
     @EnvironmentObject var store: DeckStore
+    /// `"<action_id>|<target>"`
     let key: String
     var body: some View {
-        if let state = store.companionStatuses[key] {
-            let warn = state == .waiting || state == .rejected
-            let reply = store.companionReceiptText[key].map { " · " + String($0.prefix(160)) } ?? ""
-            Text(D(Self.title(state)) + reply).font(.system(size: 10)).foregroundStyle(warn ? DeckTheme.amber : DeckTheme.mint).fixedSize(horizontal: false, vertical: true)
+        if let split = key.range(of: "|"), let command = store.commandLedger.latest(target: String(key[split.upperBound...]), actionID: String(key[..<split.lowerBound])) {
+            let note = command.note.map { " · " + String($0.prefix(160)) } ?? ""
+            Text(D(CommandStyle.title(command.state)) + note).font(.system(size: 10)).foregroundStyle(CommandStyle.color(command.state)).fixedSize(horizontal: false, vertical: true)
         }
     }
-    static func title(_ state: CompanionClickStatus) -> String {
-        switch state {
-        case .sent: "Inviato"
-        case .queued: "In coda"
-        case .pickedUp: "Preso in carico"
-        case .done: "Fatto"
-        case .rejected: "Rifiutato"
-        case .waiting: "In attesa di firstmate (il monitoraggio potrebbe essere fermo)"
+}
+
+enum CommandStyle {
+    static func title(_ state: CommandState) -> String {
+        switch state { case .queued: "In coda"; case .pickedUp: "Preso in carico"; case .done: "Fatto"; case .failed: "Fallito" }
+    }
+    static func color(_ state: CommandState) -> Color {
+        switch state { case .queued: DeckTheme.muted; case .pickedUp: DeckTheme.blue; case .done: DeckTheme.mint; case .failed: .red }
+    }
+}
+
+/// The status pill of a card: the newest command issued from it. A click opens the History panel for that card.
+struct CommandPill: View {
+    @EnvironmentObject var store: DeckStore
+    let target: String
+    let open: (String) -> Void
+    var body: some View {
+        if let command = store.commandLedger.latest(target: target) {
+            Button { open(target) } label: {
+                Text(D(CommandStyle.title(command.state))).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 8).padding(.vertical, 3)
+                    .foregroundStyle(CommandStyle.color(command.state)).background(CommandStyle.color(command.state).opacity(0.14), in: Capsule())
+            }.buttonStyle(.plain).pointerCursor().help(L("Mostra la cronologia dei comandi di questa scheda"))
         }
+    }
+}
+
+/// Every command, newest first, optionally one card only.
+struct CommandHistoryView: View {
+    @EnvironmentObject var store: DeckStore
+    @Binding var filter: String
+    var body: some View {
+        let ledger = store.commandLedger
+        let rows = ledger.history(target: filter.isEmpty ? nil : filter)
+        DeckCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(L("Cronologia comandi")).font(.system(size: 14, weight: .semibold))
+                    Spacer()
+                    Picker(L("Scheda"), selection: $filter) {
+                        Text(L("Tutte le schede")).tag("")
+                        ForEach(ledger.targets, id: \.self) { Text($0).tag($0) }
+                    }.labelsHidden().pickerStyle(.menu).frame(width: 200)
+                }
+                if rows.isEmpty { Text(L("Nessun comando ancora.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted) }
+                ForEach(rows) { command in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Text(D(CommandStyle.title(command.state))).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 8).padding(.vertical, 3)
+                                .foregroundStyle(CommandStyle.color(command.state)).background(CommandStyle.color(command.state).opacity(0.14), in: Capsule())
+                            Text(command.label ?? command.actionID).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                            Text(command.target).font(.system(size: 11, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+                            Spacer()
+                            Text(String(command.id.prefix(8))).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted).textSelection(.enabled).help(command.id)
+                        }
+                        Text(timeline(command)).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
+                        if let note = command.note { Text(note).font(.system(size: 11)).foregroundStyle(DeckTheme.buttonTextOther).fixedSize(horizontal: false, vertical: true) }
+                    }
+                    Divider().opacity(0.4)
+                }
+                if ledger.ignoredLines > 0 { Text(L("\(ledger.ignoredLines) righe del registro ignorate")).font(.system(size: 10)).foregroundStyle(DeckTheme.amber) }
+            }
+        }
+    }
+    private func timeline(_ command: Command) -> String {
+        func stamp(_ date: Date?) -> String { date.map { $0.formatted(date: .abbreviated, time: .standard) } ?? "—" }
+        let finish = command.state == .failed ? "failed" : "done"
+        return "queued \(stamp(command.queuedAt)) · picked up \(stamp(command.pickedUpAt)) · \(finish) \(stamp(command.finishedAt))"
     }
 }

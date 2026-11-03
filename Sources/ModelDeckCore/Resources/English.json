@@ -590,5 +590,14 @@
   "Final check": "Final check",
   "Your step": "Your step",
   "Review": "Review",
-  "Waiting": "Waiting"
+  "Waiting": "Waiting",
+  "Risposta libera": "Free answer",
+  "Fallito": "Failed",
+  "Mostra la cronologia dei comandi di questa scheda": "Show the command history of this card",
+  "Cronologia comandi": "Command history",
+  "Scheda": "Card",
+  "Tutte le schede": "All cards",
+  "Nessun comando ancora.": "No commands yet.",
+  "%@ righe del registro ignorate": "%@ log lines ignored",
+  "Cronologia (%@)": "History (%@)"
 }

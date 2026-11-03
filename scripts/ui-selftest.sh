@@ -22,5 +22,7 @@ json.dump({"schema": "companion-feed.v1", "generated_at": now, "producer": "ui-s
 PY
 status=0
 "$app/Contents/MacOS/ShipDeck" --ui-selftest --feed "$work/feed.json" --inbox "$work/inbox" --english || status=$?
+n=$(grep -c '"state":"queued"' "$work/commands.jsonl" 2>/dev/null || echo 0); k=$(ls "$work"/inbox/*.json | wc -l | tr -d ' ')
+if [ "$n" = "$k" ] && [ "$k" -gt 0 ]; then echo "PASS every click wrote a queued line in commands.jsonl ($n)"; else echo "FAIL commands.jsonl has $n queued lines for $k clicks"; status=1; fi
 echo "inbox files:"; for f in "$work"/inbox/*.json; do echo "  $(basename "$f")  $(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['action_id'], '->', d['target'], '|', d.get('draft_text',''))" "$f")"; done
 exit $status

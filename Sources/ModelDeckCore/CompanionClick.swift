@@ -22,35 +22,6 @@ public struct CompanionClick: Codable, Equatable, Sendable {
 
 public enum CompanionClickStatus: String, Sendable { case sent, queued, pickedUp, done, rejected, waiting }
 
-/// Firstmate's receipt for a click, from `replies/<idempotency_key>.json` (companion-reply.v1) beside the feed.
-public struct CompanionReceipt: Equatable, Sendable {
-    public let status: CompanionClickStatus
-    public let text: String?
-    /// Without any receipt after this long the app says firstmate may not be monitoring.
-    public static let waitAfter: TimeInterval = 120
-
-    public static func repliesDirectory(feedPath: String) -> URL {
-        URL(fileURLWithPath: (feedPath as NSString).expandingTildeInPath).deletingLastPathComponent().appendingPathComponent("replies", isDirectory: true)
-    }
-
-    public static func resolve(note: URL, key: String, repliesDirectory: URL, sentAt: Date, now: Date = Date()) -> CompanionReceipt {
-        if let data = FileManager.default.contents(atPath: repliesDirectory.appendingPathComponent(key + ".json").path),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any], object["schema"] as? String == "companion-reply.v1" {
-            let text = (object["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            switch object["status"] as? String {
-            case "queued": return CompanionReceipt(status: .queued, text: text)
-            case "picked_up": return CompanionReceipt(status: .pickedUp, text: text)
-            case "done": return CompanionReceipt(status: .done, text: text)
-            case "rejected": return CompanionReceipt(status: .rejected, text: text)
-            default: break
-            }
-        }
-        let inferred = CompanionInbox.status(of: note)
-        if inferred == .sent, now.timeIntervalSince(sentAt) > waitAfter { return CompanionReceipt(status: .waiting, text: nil) }
-        return CompanionReceipt(status: inferred, text: nil)
-    }
-}
-
 public enum CompanionInbox {
     /// Writes the note atomically (temp file, then rename) so the reader never sees a half-written file.
     @discardableResult

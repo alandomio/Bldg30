@@ -2,7 +2,6 @@ import SwiftUI
 import ModelDeckCore
 import Security
 
-struct SentClick { let note: URL; let key: String; let at: Date }
 
 @MainActor final class DeckStore: ObservableObject {
     @Published var snapshot = SystemSnapshot()
@@ -23,9 +22,7 @@ struct SentClick { let note: URL; let key: String; let at: Date }
     @Published var defender: DefenderUsage?
     @Published var companionFeed: CompanionFeed?
     @Published var companionError: String?
-    @Published var companionNotes: [String: SentClick] = [:]
-    @Published var companionReceiptText: [String: String] = [:]
-    @Published var companionStatuses: [String: CompanionClickStatus] = [:]
+    @Published var commandLedger = CommandLedger()
     @Published var rawBoard: RawBoard?
     @Published var pollError: String?
     var batcher = CompanionEventBatcher()

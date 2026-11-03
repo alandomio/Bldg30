@@ -289,27 +289,6 @@ import Foundation
         #expect(CompanionRecommendation.actionID(in: Array(actions.filter(\.outward)), texts: ["merge"]) == nil)
         #expect(CompanionRecommendation.ordered(actions, recommended: "r.fix-the-threads").map(\.id).first == "r.fix-the-threads")
     }
-    @Test func receiptsFollowTheRepliesFolderAndWarnAfterTwoMinutes() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("receipts-\(UUID().uuidString)")
-        let inbox = root.appendingPathComponent("inbox"), replies = root.appendingPathComponent("replies")
-        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true); try FileManager.default.createDirectory(at: replies, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let note = try CompanionInbox.file(CompanionClick(actionID: "a", target: "t", now: t0, key: "key-12345678"), inbox: inbox.path, now: t0)
-        func status(_ offset: TimeInterval) -> CompanionReceipt { CompanionReceipt.resolve(note: note, key: "key-12345678", repliesDirectory: replies, sentAt: t0, now: t0.addingTimeInterval(offset)) }
-        #expect(status(30).status == .sent && status(119).status == .sent)
-        #expect(status(121).status == .waiting)
-        func reply(_ status: String, text: String? = nil) throws {
-            var object: [String: Any] = ["schema": "companion-reply.v1", "idempotency_key": "key-12345678", "note_id": "n1", "status": status, "updated_at": "2027-01-15T08:00:00Z"]
-            if let text { object["text"] = text }
-            try JSONSerialization.data(withJSONObject: object).write(to: replies.appendingPathComponent("key-12345678.json"))
-        }
-        try reply("queued"); #expect(status(600).status == .queued)  // a receipt exists, so no warning
-        try reply("picked_up"); #expect(status(600).status == .pickedUp)
-        try reply("done", text: "Posted."); #expect(status(5) == CompanionReceipt(status: .done, text: "Posted."))
-        try reply("rejected", text: "unknown action"); #expect(status(5) == CompanionReceipt(status: .rejected, text: "unknown action"))
-        #expect(CompanionReceipt.repliesDirectory(feedPath: "/x/companion/feed.json").path == "/x/companion/replies")
-    }
-
     @Test func decisionRecommendationFindsTheOptionByLabelNumberOrWords() {
         func option(_ label: String) -> CompanionFeed.Option { .init(label: label, consequence: "c", actionId: nil, outward: nil, standard: nil) }
         let options = [option("retry the two CI jobs that failed on a runner TLS fault"), option("do not merge")]
@@ -462,5 +441,57 @@ import Foundation
         #expect(MROrder.stepLabel("your step") == "Your step")
         #expect(MROrder.stepLabel("  ") == nil && MROrder.stepLabel(nil) == nil)
         #expect(try rows([1], steps: ["waiting"])[0].feedRow?.closeStep == "waiting")
+    }
+}
+
+@Suite struct CommandLedgerTests {
+    private func line(_ id: String, _ state: String, at: String = "2026-11-03T08:00:00Z", action: String = "a.opt-1", target: String = "dec-1", note: String? = nil, label: String? = nil) -> String {
+        var object: [String: Any] = ["id": id, "action_id": action, "target": target, "state": state, "at": at]
+        if let note { object["note"] = note }
+        if let label { object["label"] = label }
+        return String(data: try! JSONSerialization.data(withJSONObject: object), encoding: .utf8)!
+    }
+    @Test func commandsMoveForwardOnly() {
+        let ledger = CommandLedger(lines: [line("c1", "queued", label: "Ship now"), line("c1", "picked_up", at: "2026-11-03T08:01:00Z"), line("c1", "done", at: "2026-11-03T08:02:00Z", note: "Merged"),
+                                           line("c1", "queued"), line("c1", "picked_up"), line("c1", "failed")])
+        let command = try! #require(ledger.command(id: "c1"))
+        #expect(command.state == .done && command.note == "Merged" && command.label == "Ship now")
+        #expect(command.queuedAt != nil && command.pickedUpAt != nil && command.finishedAt != nil)
+        #expect(ledger.ignoredLines == 3)   // the backwards and the post-terminal lines
+    }
+    @Test func aResultMaySkipPickupButNeverBeInventedFromNothing() {
+        let skipped = CommandLedger(lines: [line("c1", "queued"), line("c1", "failed", note: "unknown action")])
+        #expect(skipped.command(id: "c1")?.state == .failed && skipped.command(id: "c1")?.pickedUpAt == nil)
+        let queuedOnly = CommandLedger(lines: [line("c2", "queued", at: "2026-01-01T00:00:00Z")])
+        #expect(queuedOnly.command(id: "c2")?.state == .queued)   // age never changes the state
+    }
+    @Test func unknownIdsDuplicatesAndBadLinesAreIgnored() {
+        let ledger = CommandLedger(lines: ["", "not json", line("ghost", "done"), line("c1", "queued"), line("c1", "queued"), line("c1", "picked_up"), line("c1", "picked_up"),
+                                           line("c1", "exploded"), #"{"id":"","action_id":"a","target":"t","state":"queued","at":"x"}"#])
+        #expect(ledger.commands.map(\.id) == ["c1"] && ledger.command(id: "ghost") == nil)
+        #expect(ledger.command(id: "c1")?.state == .pickedUp)
+        #expect(ledger.ignoredLines == 6)   // bad json, ghost, two repeats, unknown state, empty id
+    }
+    @Test func historyIsNewestFirstAndFiltersByCard() {
+        let ledger = CommandLedger(lines: [line("c1", "queued", target: "dec-1"), line("c2", "queued", target: "svc !12"), line("c3", "queued", action: "a.opt-2", target: "dec-1"), line("c2", "done", target: "svc !12")])
+        #expect(ledger.history().map(\.id) == ["c3", "c2", "c1"])
+        #expect(ledger.history(target: "dec-1").map(\.id) == ["c3", "c1"])
+        #expect(ledger.targets == ["dec-1", "svc !12"])
+        #expect(ledger.latest(target: "dec-1")?.id == "c3" && ledger.latest(target: "dec-1", actionID: "a.opt-1")?.id == "c1")
+        #expect(ledger.latest(target: "nobody") == nil)
+    }
+    @Test func appendWritesWholeLinesBesideTheInboxAndReadsThemBack() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cmd-\(UUID().uuidString)")
+        let inbox = root.appendingPathComponent("inbox"); try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = CommandLog.url(inbox: inbox.path)
+        #expect(file.lastPathComponent == "commands.jsonl" && file.deletingLastPathComponent().path == root.path)
+        #expect(CommandLog.read(file).isEmpty)
+        try CommandLog.append(CommandRecord(id: "c1", actionID: "a", target: "t", state: .queued, label: "Go"), to: file)
+        try CommandLog.append(CommandRecord(id: "c1", actionID: "a", target: "t", state: .pickedUp), to: file)
+        let lines = CommandLog.read(file)
+        #expect(lines.count == 2)
+        let ledger = CommandLedger(lines: lines)
+        #expect(ledger.command(id: "c1")?.state == .pickedUp && ledger.command(id: "c1")?.label == "Go" && ledger.ignoredLines == 0)
     }
 }

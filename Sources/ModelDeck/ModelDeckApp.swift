@@ -111,7 +111,10 @@ import ModelDeckCore
         _ = NSApplication.shared
         let store = DeckStore(); store.useDemo()
         if CommandLine.arguments.contains("--real-gemini"), let usage = try? GeminiUsage.readBlocking() { store.gemini = usage }
-        if CommandLine.arguments.contains("--real-feed") { store.companionFeed = try? CompanionFeed.read(path: CompanionSettings.feedPath) }
+        if CommandLine.arguments.contains("--real-feed") {
+            store.companionFeed = try? CompanionFeed.read(path: CompanionSettings.feedPath)
+            store.commandLedger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
+        }
         let resource: ProcessSort = CommandLine.arguments.contains("--gpu") ? .gpu : CommandLine.arguments.contains("--memory") ? .memory : .cpu
         if CommandLine.arguments.contains("--gpu-unattributed") || CommandLine.arguments.contains("--gpu-unavailable") {
             store.processes = store.processes.map { process in var copy = process; copy.gpu = nil; return copy }

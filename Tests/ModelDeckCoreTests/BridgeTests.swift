@@ -711,3 +711,31 @@ import Foundation
         #expect(key == ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[0]) && key != ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[1]))
     }
 }
+
+@Suite struct ApprovalTests {
+    private func feed(_ extra: [String: Any]) throws -> CompanionFeed {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        var mrs = try #require(root["mrs"] as? [[String: Any]])
+        for (k, v) in extra { mrs[0][k] = v }
+        root["mrs"] = mrs
+        return try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+    }
+    @Test func theApprovalBadgeNamesWhoApproved() throws {
+        let you = try #require(try feed(["approval": ["approved_by": [], "approved_by_me": true, "approvals_left": 0, "at_head": true]]).mrs[0].approval?.badge)
+        #expect(you.byMe && you.others.isEmpty)
+        let both = try #require(try feed(["approval": ["approved_by": ["omar.pp"], "approved_by_me": true]]).mrs[0].approval?.badge)
+        #expect(both.byMe && both.others == ["omar.pp"])
+        let other = try #require(try feed(["approval": ["approved_by": ["omar.pp"], "approved_by_me": false]]).mrs[0].approval?.badge)
+        #expect(!other.byMe && other.others == ["omar.pp"])
+        #expect(try feed(["approval": ["approved_by": [], "approved_by_me": false, "approvals_left": 1]]).mrs[0].approval?.badge == nil)
+        #expect(try feed([:]).mrs[0].approval == nil)
+    }
+    @Test func aWaitingCardIsGroupedUntilNewActivityIsSeen() throws {
+        let value = try feed(["waiting_on": "kmang", "approval": ["approved_by_me": true]])
+        let row = try #require(CompanionBoard.mrs(feed: value, raw: nil).first { $0.ref == value.mrs[0].ref })
+        #expect(row.waitingOn == "kmang")
+        #expect(try CompanionBoard.mrs(feed: feed([:]), raw: nil).allSatisfy { $0.waitingOn == nil })
+        let blank = try CompanionBoard.mrs(feed: feed(["waiting_on": "  "]), raw: nil)
+        #expect(blank.allSatisfy { $0.waitingOn == nil })
+    }
+}

@@ -71,6 +71,7 @@ struct CompanionView: View {
     @State private var draftIndex: [String: Int] = [:]
     @State private var discarded = Set<String>()
     @State private var editingDrafts = Set<String>()
+    @State private var waitingOpen = CommandLine.arguments.contains("--waiting-open")
     @State private var discardedReview = Set(UserDefaults.standard.stringArray(forKey: "discardedReviewDrafts") ?? [])
     @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
 
@@ -85,13 +86,13 @@ struct CompanionView: View {
                 if stale { Text(L("Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber) }
                 HStack(spacing: 8) {
                     tabButton("decisions", L("Decisioni (\(openDecisions.count))"))
-                    tabButton("mrs", L("MR e revisioni (\(store.boardMRs.count))"))
+                    tabButton("mrs", L("MR e revisioni (\(store.boardMRs.filter { $0.waitingOn == nil }.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
                     if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(openDecisions) ?? openDecisions, locked: false) }
-                    else if tab == "mrs" { mrs(store.boardMRs, locked: false); finishedNote(feed) }
+                    else if tab == "mrs" { mrs(store.boardMRs.filter { $0.waitingOn == nil }, locked: false); waitingGroup(store.boardMRs.filter { $0.waitingOn != nil }); finishedNote(feed) }
                     else { tickets(store.boardTickets, locked: false) }
                 }
             } else {
@@ -405,6 +406,39 @@ struct CompanionView: View {
         }
     }
 
+    /// MRs the user approved at the current head with nothing waiting on them: collapsed, one line each.
+    @ViewBuilder private func waitingGroup(_ items: [BoardMR]) -> some View {
+        if !items.isEmpty {
+            DisclosureGroup(isExpanded: $waitingOpen) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(items) { mr in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Link(mr.ref, destination: mr.url).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor()
+                            Text(mr.title).font(.system(size: 12)).lineLimit(1)
+                            Spacer()
+                            approvalBadge(mr.feedRow?.approval)
+                            Text(L("in attesa di \(mr.waitingOn ?? "") per il merge")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                            Button(L("Dettagli")) { open(mr.ref) }.buttonStyle(DeckButtonStyle(small: true))
+                        }
+                    }
+                }.padding(.top, 8)
+            } label: {
+                Text(L("In attesa di altri (\(items.count))")).font(.system(size: 12, weight: .semibold)).foregroundStyle(DeckTheme.muted)
+            }
+            .padding(12).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    /// "Approved by you" or "Approved by omar.pp, kmang"; nothing when nobody approved.
+    @ViewBuilder private func approvalBadge(_ approval: CompanionFeed.Approval?) -> some View {
+        if let badge = approval?.badge {
+            let others = badge.others.joined(separator: ", ")
+            Text(badge.byMe ? (others.isEmpty ? L("Approvata da te") : L("Approvata da te e \(others)")) : L("Approvata da \(others)")).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
+                .foregroundStyle(DeckTheme.mint).background(DeckTheme.mint.opacity(0.15), in: Capsule())
+                
+        }
+    }
+
     /// "MR n of N", verdict, clickable MR ref and ticket id, author, details and Previous/Next.
     private func mrHeader(_ mr: BoardMR, position: Int, count: Int) -> some View {
         let ticketText = CompanionFeed.text(mr.feedRow?.ticket) ?? store.boardTickets.first { $0.linkedMrs.contains(mr.ref) }?.identifier
@@ -413,6 +447,7 @@ struct CompanionView: View {
         return HStack(spacing: 8) {
             Text(L("MR \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
             verdictPill(mr.verdict, stale: mr.verdictStale)
+            approvalBadge(mr.feedRow?.approval)
             if let step = MROrder.stepLabel(mr.feedRow?.closeStep) {
                 Text(D(step)).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
                     .foregroundStyle(DeckTheme.buttonTextOther).background(DeckTheme.buttonFill, in: Capsule()).help(L("Passo per chiudere"))

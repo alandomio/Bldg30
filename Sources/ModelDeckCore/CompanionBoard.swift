@@ -17,6 +17,8 @@ public struct BoardMR: Equatable, Sendable, Identifiable {
     public let updatedAt: Date?
     /// The feed row the extra producer fields come from; nil for MRs only seen in the poll.
     public let feedRow: CompanionFeed.MergeRequest?
+    /// Set while the card belongs in "Waiting on others": the producer said so and no newer GitLab activity has been seen since.
+    public var waitingOn: String? { verdictStale ? nil : CompanionFeed.text(feedRow?.waitingOn) }
 }
 
 public struct BoardTicketRow: Equatable, Sendable, Identifiable {

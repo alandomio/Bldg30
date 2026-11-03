@@ -639,5 +639,10 @@
   "Nota generale": "General note",
   "Fine": "Done",
   "Inviare tutti i commenti a firstmate?": "Send all comments to firstmate?",
-  "Invia commento": "Post comment"
+  "Invia commento": "Post comment",
+  "In attesa di altri (%@)": "Waiting on others (%@)",
+  "Approvata da te": "Approved by you",
+  "Approvata da %@": "Approved by %@",
+  "Approvata da te e %@": "Approved by you and %@",
+  "in attesa di %@ per il merge": "waiting on %@ to merge"
 }

@@ -69,6 +69,10 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         /// Optional GitLab state: "opened", "merged" or "closed". A merged or closed MR is not shown.
         public let state: String?
         public var isFinished: Bool { ["merged", "closed"].contains(state?.lowercased() ?? "") }
+        /// Live GitLab approvals (optional): who approved, whether the user did and at the current head.
+        public let approval: Approval?
+        /// The author's username when the user approved at the current head and nothing waits on them: the card sits in "Waiting on others".
+        public let waitingOn: String?
         public let drafts: [Draft]
         public let actions: [Action]
         public var postAction: Action? { CompanionFeed.postAction(of: actions) }
@@ -94,6 +98,16 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     }
     /// Marks MR rows whose action posts the draft; nil when the feed offers none.
     public static func postAction(of actions: [Action]) -> Action? { actions.first { $0.id.contains(".post") || $0.id.hasSuffix("-post") } }
+    public struct Approval: Decodable, Equatable, Sendable {
+        public let approvedBy: [String]?, approvedByMe: Bool?, approvalsLeft: Int?, atHead: Bool?
+        public init(approvedBy: [String]?, approvedByMe: Bool?, approvalsLeft: Int?, atHead: Bool?) { self.approvedBy = approvedBy; self.approvedByMe = approvedByMe; self.approvalsLeft = approvalsLeft; self.atHead = atHead }
+        /// Nil when nobody approved. `approvedBy` names the other approvers; the user is `approvedByMe`.
+        public var badge: (byMe: Bool, others: [String])? {
+            let names = approvedBy ?? []
+            guard approvedByMe == true || !names.isEmpty else { return nil }
+            return (approvedByMe == true, names)
+        }
+    }
     public struct Finish: Decodable, Equatable, Sendable { public let step: String, owner: String }
     public struct Ticket: Decodable, Equatable, Sendable, Identifiable {
         public var id: String { identifier }

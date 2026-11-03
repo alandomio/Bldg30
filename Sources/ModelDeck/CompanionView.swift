@@ -44,6 +44,8 @@ private struct PendingClick: Identifiable {
     let id = UUID()
     let actionID: String, target: String, label: String
     var draft: String? = nil
+    /// "Post all": one confirmation, then one click per draft.
+    var batch: [PendingClick] = []
 }
 
 struct CompanionView: View {
@@ -68,6 +70,8 @@ struct CompanionView: View {
     @State private var mrIndex = 0
     @State private var draftIndex: [String: Int] = [:]
     @State private var discarded = Set<String>()
+    @State private var editingDrafts = Set<String>()
+    @State private var discardedReview = Set(UserDefaults.standard.stringArray(forKey: "discardedReviewDrafts") ?? [])
     @AppStorage("decisionOrder") private var decisionOrder = DecisionOrder.feed.rawValue
 
     var body: some View {
@@ -102,7 +106,7 @@ struct CompanionView: View {
         }
         .alert(item: $confirm) { pending in
             Alert(title: Text(L("Inviare a firstmate?")), message: Text(D(pending.label)),
-                  primaryButton: .default(Text(L("Invia"))) { send(pending) }, secondaryButton: .cancel(Text(L("Annulla"))))
+                  primaryButton: .default(Text(L("Invia"))) { if pending.batch.isEmpty { send(pending) } else { pending.batch.forEach { send($0) } } }, secondaryButton: .cancel(Text(L("Annulla"))))
         }
     }
 
@@ -371,7 +375,9 @@ struct CompanionView: View {
             else {
                 let mr = items[position]
                 let posted = mr.postActionID.flatMap { store.commandLedger.latest(target: mr.ref, actionID: $0) }?.state == .done
-                let drafts = posted ? [] : mr.drafts.filter { !discarded.contains(mr.ref + "|" + $0.id) }
+                let perDraft = ReviewDrafts.isPerDraft(mr.drafts, actions: mr.actions)
+                let reviewDrafts = perDraft ? ReviewDrafts.remaining(mr.drafts, target: mr.ref, actions: mr.actions, ledger: store.commandLedger, discarded: discardedReview) : []
+                let drafts = perDraft ? [] : (posted ? [] : mr.drafts.filter { !discarded.contains(mr.ref + "|" + $0.id) })
                 let draftPos = Pager.move(draftIndex[mr.ref] ?? 0, by: 0, count: drafts.count, wrap: false)
                 DeckCard {
                     VStack(alignment: .leading, spacing: 10) {
@@ -381,8 +387,9 @@ struct CompanionView: View {
                         Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                         CardStatusLine(target: mr.ref).environmentObject(store)
                         mrContext(mr)
+                        if !reviewDrafts.isEmpty { reviewDraftsPanel(mr, drafts: reviewDrafts, locked: locked) }
                         if !drafts.isEmpty { draftPanel(mr, drafts: drafts, position: draftPos, locked: locked) }
-                        actions(mr.actions, target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: drafts.indices.contains(draftPos) ? (draftTexts[mr.ref + "|" + drafts[draftPos].id] ?? drafts[draftPos].text) : nil, postID: mr.postActionID)
+                        actions(ReviewDrafts.buttons(mr.actions), target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: drafts.indices.contains(draftPos) ? (draftTexts[mr.ref + "|" + drafts[draftPos].id] ?? drafts[draftPos].text) : nil, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
                         if detailsOpen.contains(mr.ref) || CommandLine.arguments.contains("--details-open") { mrDetailsBox(mr) }
                     }
@@ -456,6 +463,71 @@ struct CompanionView: View {
                 if mr.postActionID == nil { Text(L("Il feed non ha un'azione di invio per questa MR.")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted) }
             }
         }
+    }
+
+
+    /// Review comments, all in full: where each goes, whether it is required, the exact text, and its own Post, Edit and Discard.
+    private func reviewDraftsPanel(_ mr: BoardMR, drafts: [CompanionFeed.Draft], locked: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L("Commenti di review da inviare").uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
+                Spacer()
+                if drafts.count > 1 {
+                    Button(L("Invia tutti")) { postAll(mr, drafts: drafts) }
+                        .buttonStyle(DeckButtonStyle(primary: true, small: true)).disabled(locked || mr.verdictStale || cardBusy(mr.ref))
+                }
+            }
+            ForEach(drafts) { draft in reviewDraftBox(mr, draft: draft, locked: locked) }
+        }
+    }
+
+    private func reviewDraftBox(_ mr: BoardMR, draft: CompanionFeed.Draft, locked: Bool) -> some View {
+        let key = mr.ref + "|" + draft.id
+        let actionID = ReviewDrafts.actionID(for: draft, in: mr.actions) ?? ""
+        let text = Binding(get: { draftTexts[key] ?? draft.text }, set: { draftTexts[key] = $0 })
+        let editing = editingDrafts.contains(key)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(CompanionFeed.text(draft.target) ?? L("Nota generale")).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.foreground).textSelection(.enabled)
+                if let severity = ReviewDrafts.label(draft.severity) {
+                    Text(D(severity)).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
+                        .foregroundStyle(draft.severity?.lowercased() == "required" ? DeckTheme.amber : DeckTheme.muted)
+                        .background((draft.severity?.lowercased() == "required" ? DeckTheme.amber : DeckTheme.subtle).opacity(0.15), in: Capsule())
+                }
+                if let finding = CompanionFeed.text(draft.finding) { Text(finding).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
+                Spacer()
+            }
+            if editing {
+                TextEditor(text: text).font(.system(size: 12)).frame(minHeight: 120).scrollContentBackground(.hidden)
+                    .padding(6).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            } else {
+                Text(text.wrappedValue).font(.system(size: 12)).foregroundStyle(DeckTheme.buttonTextOther).fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8).padding(.horizontal, 12).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            }
+            HStack(spacing: 8) {
+                Button(L("Invia commento")) { request(PendingClick(actionID: actionID, target: mr.ref, label: text.wrappedValue, draft: text.wrappedValue), confirmFirst: true) }
+                    .buttonStyle(DeckButtonStyle(primary: true, small: true)).disabled(locked || mr.verdictStale || !canRun(actionID, mr.ref))
+                Button(L(editing ? "Fine" : "Modifica")) { if editing { editingDrafts.remove(key) } else { editingDrafts.insert(key) } }.buttonStyle(DeckButtonStyle(small: true))
+                Button(L("Scarta")) {
+                    discardedReview.insert(ReviewDrafts.discardKey(target: mr.ref, draft: draft))
+                    UserDefaults.standard.set(Array(discardedReview), forKey: "discardedReviewDrafts")
+                }.buttonStyle(DeckButtonStyle(small: true, danger: true))
+            }
+        }
+        .padding(10).overlay(RoundedRectangle(cornerRadius: 8).stroke(DeckTheme.subtle.opacity(0.25), lineWidth: 1))
+    }
+
+    /// One confirmation, then one click per draft with its own text.
+    private func postAll(_ mr: BoardMR, drafts: [CompanionFeed.Draft]) {
+        let clicks = drafts.compactMap { draft in
+            ReviewDrafts.actionID(for: draft, in: mr.actions).map { id -> PendingClick in
+                let text = draftTexts[mr.ref + "|" + draft.id] ?? draft.text
+                return PendingClick(actionID: id, target: mr.ref, label: text, draft: text)
+            }
+        }
+        let summary = L("Inviare tutti i commenti a firstmate?") + "\n\n" + drafts.map { (CompanionFeed.text($0.target) ?? "") + "\n" + (draftTexts[mr.ref + "|" + $0.id] ?? $0.text) }.joined(separator: "\n\n")
+        confirm = PendingClick(actionID: "", target: mr.ref, label: summary, batch: clicks)
     }
 
     private func detailsToggle(_ ref: String) -> some View {

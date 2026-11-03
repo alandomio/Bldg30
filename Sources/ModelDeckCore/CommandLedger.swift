@@ -141,3 +141,35 @@ public enum CardActivity {
     /// The card's commands, newest first.
     public static func history(target: String, ledger: CommandLedger) -> [Command] { ledger.history(target: target) }
 }
+
+
+/// Review comment drafts on an MR card: each draft has its own post action (`<row>.comment-<draft id>`), so each is posted,
+/// edited or discarded on its own and "Post all" is one confirmed click per draft.
+public enum ReviewDrafts {
+    public static let marker = ".comment-"
+    public static func actionID(for draft: CompanionFeed.Draft, in actions: [CompanionFeed.Action]) -> String? {
+        actions.first { $0.id.hasSuffix(marker + draft.id) }?.id
+    }
+    /// True when every draft has its own post action; otherwise the card keeps the one-draft-at-a-time panel.
+    public static func isPerDraft(_ drafts: [CompanionFeed.Draft], actions: [CompanionFeed.Action]) -> Bool {
+        !drafts.isEmpty && drafts.allSatisfy { actionID(for: $0, in: actions) != nil }
+    }
+    /// Actions shown as buttons: the per-draft post actions sit on their drafts, not in the button row.
+    public static func buttons(_ actions: [CompanionFeed.Action]) -> [CompanionFeed.Action] { actions.filter { !$0.id.contains(marker) } }
+    public static func label(_ severity: String?) -> String? {
+        switch severity?.lowercased() { case "required": "Required"; case "non-blocking", "nonblocking": "Non-blocking"; default: nil }
+    }
+    public static func isPosted(_ draft: CompanionFeed.Draft, target: String, actions: [CompanionFeed.Action], ledger: CommandLedger) -> Bool {
+        actionID(for: draft, in: actions).map { ledger.latest(target: target, actionID: $0)?.state == .done } ?? false
+    }
+    /// Names one discarded draft across launches: card, draft id and a fixed hash of the text, so a rewritten draft comes back.
+    public static func discardKey(target: String, draft: CompanionFeed.Draft) -> String {
+        var hash: UInt64 = 14695981039346656037
+        for byte in draft.text.utf8 { hash = (hash ^ UInt64(byte)) &* 1099511628211 }
+        return target + "|" + draft.id + "|" + String(hash, radix: 16)
+    }
+    /// Drafts still to decide: not posted and not discarded (`discarded` holds discard keys).
+    public static func remaining(_ drafts: [CompanionFeed.Draft], target: String, actions: [CompanionFeed.Action], ledger: CommandLedger, discarded: Set<String>) -> [CompanionFeed.Draft] {
+        drafts.filter { !discarded.contains(discardKey(target: target, draft: $0)) && !isPosted($0, target: target, actions: actions, ledger: ledger) }
+    }
+}

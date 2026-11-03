@@ -659,3 +659,55 @@ import Foundation
         #expect(CompanionBoard.tickets(feed: value, raw: nil)[0].detail?.priority == "Urgent")
     }
 }
+
+@Suite struct ReviewDraftTests {
+    private func feed() throws -> CompanionFeed {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        var mrs = try #require(root["mrs"] as? [[String: Any]])
+        let url = "https://gitlab.com/peter-park/devops/observability/-/merge_requests/101"
+        mrs.insert(["ref": "obs !101", "url": url, "title": "fix(statuspage): drafter", "role": "reviewer", "verdict": "notyet", "label": "3 review comments to post",
+                    "next_owner": "You", "pipeline": NSNull(), "open_threads": NSNull(),
+                    "drafts": [["id": "f1", "target": "modules/x/plan.js:84", "target_url": url, "text": "First comment.\n\nSecond paragraph.", "placement": "inline modules/x/plan.js:84 @abc", "finding": "F1", "severity": "required"],
+                               ["id": "f2", "target": "modules/x/plan.js:80", "target_url": url, "text": "Non-blocking. Second.", "finding": "F2", "severity": "non-blocking"],
+                               ["id": "f3", "target": "General note", "target_url": url, "text": "Third.", "finding": "F3"]],
+                    "actions": [["id": "row-mr-obs-101.comment-f1", "label": "Post plan.js:84", "outward": true], ["id": "row-mr-obs-101.comment-f2", "label": "Post plan.js:80", "outward": true],
+                                ["id": "row-mr-obs-101.comment-f3", "label": "Post General", "outward": true], ["id": "row-mr-obs-101.wait-what", "label": "Wait, what?", "outward": false]],
+                    "state": "opened"], at: 0)
+        root["mrs"] = mrs
+        return try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+    }
+    private func line(_ id: String, _ state: String, action: String) -> String {
+        String(data: try! JSONSerialization.data(withJSONObject: ["id": id, "action_id": action, "target": "obs !101", "state": state, "at": "2026-11-03T08:00:00Z"]), encoding: .utf8)!
+    }
+    @Test func everyDraftKeepsItsFullTextPlacementAndSeverity() throws {
+        let mr = try #require(try feed().mrs.first { $0.ref == "obs !101" })
+        #expect(mr.drafts.count == 3)
+        #expect(mr.drafts[0].text == "First comment.\n\nSecond paragraph.")
+        #expect(mr.drafts[0].target == "modules/x/plan.js:84" && mr.drafts[0].finding == "F1")
+        #expect(ReviewDrafts.label(mr.drafts[0].severity) == "Required" && ReviewDrafts.label(mr.drafts[1].severity) == "Non-blocking")
+        #expect(ReviewDrafts.label(mr.drafts[2].severity) == nil)   // the report states no severity: none is invented
+    }
+    @Test func eachDraftHasItsOwnPostActionAndTheButtonRowHidesThem() throws {
+        let mr = try #require(try feed().mrs.first { $0.ref == "obs !101" })
+        #expect(ReviewDrafts.isPerDraft(mr.drafts, actions: mr.actions))
+        #expect(mr.drafts.map { ReviewDrafts.actionID(for: $0, in: mr.actions) } == ["row-mr-obs-101.comment-f1", "row-mr-obs-101.comment-f2", "row-mr-obs-101.comment-f3"])
+        #expect(ReviewDrafts.buttons(mr.actions).map(\.label) == ["Wait, what?"])
+        #expect(CompanionFeed.postAction(of: mr.actions) == nil)
+    }
+    @Test func aCardWithoutPerDraftActionsKeepsTheOldPanel() throws {
+        let plain = try #require(try feed().mrs.first { $0.ref != "obs !101" && !$0.drafts.isEmpty })
+        #expect(!ReviewDrafts.isPerDraft(plain.drafts, actions: plain.actions))
+        #expect(ReviewDrafts.buttons(plain.actions) == plain.actions)
+    }
+    @Test func postedAndDiscardedDraftsLeaveTheCardIndependently() throws {
+        let mr = try #require(try feed().mrs.first { $0.ref == "obs !101" })
+        let ledger = CommandLedger(lines: [line("c1", "queued", action: "row-mr-obs-101.comment-f1"), line("c1", "done", action: "row-mr-obs-101.comment-f1"),
+                                           line("c2", "queued", action: "row-mr-obs-101.comment-f2")])
+        let left = ReviewDrafts.remaining(mr.drafts, target: "obs !101", actions: mr.actions, ledger: ledger, discarded: [ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[2])])
+        #expect(left.map(\.id) == ["f2"])   // f1 posted, f3 discarded, f2 only queued so still shown (its button is blocked by the card activity)
+        #expect(ReviewDrafts.remaining(mr.drafts, target: "obs !101", actions: mr.actions, ledger: CommandLedger(), discarded: []).count == 3)
+        // The key follows the text: a rewritten draft under the same id is offered again.
+        let key = ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[0])
+        #expect(key == ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[0]) && key != ReviewDrafts.discardKey(target: "obs !101", draft: mr.drafts[1]))
+    }
+}

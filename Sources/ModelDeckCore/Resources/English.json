@@ -633,5 +633,11 @@
   "Tutte le schede": "All cards",
   "Nessun comando ancora.": "No commands yet.",
   "%@ righe del registro ignorate": "%@ log lines ignored",
-  "Cronologia (%@)": "History (%@)"
+  "Cronologia (%@)": "History (%@)",
+  "Commenti di review da inviare": "Review comments to post",
+  "Invia tutti": "Post all",
+  "Nota generale": "General note",
+  "Fine": "Done",
+  "Inviare tutti i commenti a firstmate?": "Send all comments to firstmate?",
+  "Invia commento": "Post comment"
 }

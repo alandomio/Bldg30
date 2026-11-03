@@ -45,7 +45,12 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     }
     /// The colleague comment a draft answers (`drafts[].reply_to`); optional.
     public struct ReplyTo: Decodable, Equatable, Sendable { public let author: String?, text: String, at: String?, location: String? }
-    public struct Draft: Decodable, Equatable, Sendable, Identifiable { public let id: String, targetUrl: String, text: String; public let replyTo: ReplyTo? }
+    public struct Draft: Decodable, Equatable, Sendable, Identifiable {
+        public let id: String, targetUrl: String, text: String; public let replyTo: ReplyTo?
+        /// Optional review-comment context: where it goes (file:line or a general note), the finding it answers, and
+        /// "required" or "non-blocking" when the review says so.
+        public let target: String?, placement: String?, finding: String?, severity: String?
+    }
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }
     public struct MergeRequest: Decodable, Equatable, Sendable, Identifiable {
         public var id: String { ref }

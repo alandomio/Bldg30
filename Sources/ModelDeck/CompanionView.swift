@@ -164,7 +164,7 @@ struct CompanionView: View {
                             decisionText(item)
                             VStack(spacing: 8) {
                                 ForEach(Array(specific.enumerated()), id: \.offset) { letterIndex, entry in
-                                    optionRow(item, option: entry.element, offset: entry.offset, letter: DecisionKeys.letter(letterIndex), recommended: entry.offset == recommendedOffset, selected: letterIndex == (selection[item.id] ?? specific.firstIndex { $0.offset == recommendedOffset } ?? 0), locked: locked)
+                                    optionRow(item, option: entry.element, offset: entry.offset, letter: DecisionKeys.keycap(letterIndex), recommended: entry.offset == recommendedOffset, selected: letterIndex == (selection[item.id] ?? specific.firstIndex { $0.offset == recommendedOffset } ?? 0), locked: locked)
                                 }
                             }
                             if let hint = keyHint(count: specific.count) { Text(hint).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
@@ -268,16 +268,21 @@ struct CompanionView: View {
     }
 
     /// One option as a full-width row: keycap letter, label, consequence under it; the recommended row gets the mint edge.
-    private func optionRow(_ item: CompanionFeed.Decision, option: CompanionFeed.Option, offset: Int, letter: String, recommended: Bool, selected: Bool, locked: Bool) -> some View {
+    private func optionRow(_ item: CompanionFeed.Decision, option: CompanionFeed.Option, offset: Int, letter: String?, recommended: Bool, selected: Bool, locked: Bool) -> some View {
         let key = CompanionAnswer.actionID(decisionID: item.id, option: option, optionIndex: offset) + "|" + item.id
         return VStack(alignment: .leading, spacing: 3) {
             Button { sendDecision(item, option: option, index: offset) } label: {
                 HStack(alignment: .top, spacing: 12) {
-                    Text(letter).font(.system(size: 12, weight: .semibold, design: .monospaced)).frame(width: 26, height: 26)
+                    Text(letter ?? "·").font(.system(size: 12, weight: .semibold, design: .monospaced)).frame(width: 26, height: 26)
                         .foregroundStyle(recommended ? DeckTheme.mint : DeckTheme.buttonTextOther)
                         .background(DeckTheme.subtle.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
                         .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(DeckTheme.subtle.opacity(0.25), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 3) {
+                        if recommended {
+                            Text(L("RECOMMENDED")).font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1)
+                                .foregroundStyle(DeckTheme.mint).padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(DeckTheme.mint.opacity(0.15), in: Capsule())
+                        }
                         Text(option.label).font(.system(size: recommended ? 16 : 14, weight: recommended ? .semibold : .medium)).foregroundStyle(DeckTheme.foreground)
                         Text(option.consequence).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
                     }.multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -295,8 +300,9 @@ struct CompanionView: View {
 
     private func keyHint(count: Int) -> String? {
         guard count > 0 else { return nil }
-        let first = DecisionKeys.letter(0), last = DecisionKeys.letter(count - 1)
-        let letters = count == 1 ? first : count == 2 ? "\(first)/\(last)" : "\(first)–\(last)"
+        let lettered = min(count, DecisionKeys.maxLettered)
+        let first = DecisionKeys.letter(0), last = DecisionKeys.letter(lettered - 1)
+        let letters = lettered == 1 ? first : lettered == 2 ? "\(first)/\(last)" : "\(first)–\(last)"
         return L("\(letters) oppure ↑ ↓ e Invio per scegliere · ← → per passare da una decisione all’altra")
     }
 

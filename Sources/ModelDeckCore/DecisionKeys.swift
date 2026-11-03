@@ -5,6 +5,10 @@ public enum DecisionKeys {
     public enum Command: Equatable, Sendable { case pick(Int), previous, next, selectUp, selectDown, confirm }
     public enum Key: Equatable, Sendable { case character(String), left, right, up, down, enter }
 
+    /// A decision card carries up to five lettered options (A to E); more rows stay clickable but have no keycap.
+    public static let maxLettered = 5
+    /// Keycap of the n-th specific option, nil past the fifth.
+    public static func keycap(_ index: Int) -> String? { (0..<maxLettered).contains(index) ? letter(index) : nil }
     /// Keycap letter of the n-th specific option: A, B, C ...
     public static func letter(_ index: Int) -> String { String(UnicodeScalar(UInt8(65 + min(max(index, 0), 25)))) }
     /// The selected option after Up or Down: stays inside the list, starts on the recommended one (or the first).
@@ -25,7 +29,7 @@ public enum DecisionKeys {
         case .character(let text):
             guard text.count == 1, let scalar = text.uppercased().unicodeScalars.first, ("A"..."Z").contains(Character(scalar)) else { return nil }
             let index = Int(scalar.value) - 65
-            return index < optionCount ? .pick(index) : nil
+            return index < min(optionCount, maxLettered) ? .pick(index) : nil
         }
     }
 }

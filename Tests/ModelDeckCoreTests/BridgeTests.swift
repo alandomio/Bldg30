@@ -329,6 +329,27 @@ import Foundation
 }
 
 @Suite struct DecisionKeysTests {
+    @Test func fiveOptionsAreLetteredAToE() {
+        for (i, letter) in ["a", "b", "c", "d", "e"].enumerated() {
+            #expect(DecisionKeys.command(.character(letter), optionCount: 5, typing: false) == .pick(i))
+            #expect(DecisionKeys.keycap(i) == letter.uppercased())
+        }
+        #expect(DecisionKeys.command(.character("f"), optionCount: 5, typing: false) == nil)
+        // a sixth row is still reachable by arrows but has no letter
+        #expect(DecisionKeys.keycap(5) == nil)
+        #expect(DecisionKeys.command(.character("f"), optionCount: 6, typing: false) == nil)
+        #expect(DecisionKeys.moved(selected: 4, recommended: nil, by: 1, count: 5) == 4)
+        #expect(DecisionKeys.moved(selected: 3, recommended: nil, by: 1, count: 5) == 4)
+    }
+    @Test func selectionIsIndependentOfRecommended() {
+        // starts on the recommended row (index 2), then moves away from it
+        #expect(DecisionKeys.moved(selected: nil, recommended: 2, by: 1, count: 5) == 3)
+        #expect(DecisionKeys.moved(selected: nil, recommended: 2, by: -1, count: 5) == 1)
+        // the selection can land back on the recommended row: both markers then show on one row
+        #expect(DecisionKeys.moved(selected: 3, recommended: 2, by: -1, count: 5) == 2)
+        // with a selection set, the recommended index no longer matters
+        #expect(DecisionKeys.moved(selected: 0, recommended: 4, by: 1, count: 5) == 1)
+    }
     @Test func lettersPickOptionsThatExist() {
         #expect(DecisionKeys.command(.character("a"), optionCount: 2, typing: false) == .pick(0))
         #expect(DecisionKeys.command(.character("B"), optionCount: 2, typing: false) == .pick(1))

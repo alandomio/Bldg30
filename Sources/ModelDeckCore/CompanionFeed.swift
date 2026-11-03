@@ -33,6 +33,14 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         /// The summary parts that have text, at most four; empty when the feed has none.
         public var summaryParts: [SummaryPart] { Array((summary ?? []).filter { CompanionFeed.text($0.text) != nil }.prefix(4)) }
         /// The original record, or `why_now` while the producer sends none.
+        /// Without a headed summary, the plain legacy reason is split into one here.
+        var legacy: (title: String, parts: [SummaryPart])? {
+            summaryParts.isEmpty ? LegacyReason.parse(CompanionFeed.text(fullContext) ?? whyNow, rowTitle: title, id: id) : nil
+        }
+        /// The title, or one derived from the legacy reason while the feed still carries the task id.
+        public var displayTitle: String { title == id ? (legacy?.title ?? title) : title }
+        /// The feed's headed summary, else the legacy reason split into sections.
+        public var displayParts: [SummaryPart] { summaryParts.isEmpty ? (legacy?.parts ?? []) : summaryParts }
         public var contextText: String { CompanionFeed.text(fullContext) ?? whyNow }
         public var created: Date? { CompanionFeed.day(createdAt) }
         public func ageDays(now: Date = Date()) -> Int? {

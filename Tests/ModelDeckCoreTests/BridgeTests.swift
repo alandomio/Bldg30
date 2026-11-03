@@ -739,3 +739,36 @@ import Foundation
         #expect(blank.allSatisfy { $0.waitingOn == nil })
     }
 }
+
+@Suite struct LegacyReasonTests {
+    static let reason = "What and where: decide what to do with typescript-backends merge request https://gitlab.com/peter-park/typescript-backends/-/merge_requests/5743 (trim the Docker context and stabilise the node_modules layer). Why now: main already ships the digest fix, so about 12 MB is left; Klemens asked on 28 Sep. Options: (a) close it with the drafted reply, so the 12 MB stays; (b) rewrite it as a small new merge request. Recommendation: (a), because trimming needs risky carve-outs. Detail: /Users/a.domio/firstmate/data/ts5743-rework/replies.md and the card (/private/tmp/claude-501/board-1021/linear-action-board.html)."
+    private func decision(id: String = "ts5743-rework", title: String = "ts5743-rework", summary: [[String: Any]]? = nil) throws -> CompanionFeed.Decision {
+        var root = try #require(try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: Date()).utf8)) as? [String: Any])
+        var d: [String: Any] = ["id": id, "title": title, "project": "", "why_now": Self.reason, "full_context": Self.reason, "options": [["label": "close it", "consequence": "close it"]],
+                                "recommendation": "", "links": [], "urgent": false]
+        if let summary { d["summary"] = summary }
+        root["decisions"] = [d]
+        return try #require(try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root)).decisions.first)
+    }
+    @Test func theTitleIsReadableNotTheTaskID() throws {
+        #expect(try decision().displayTitle == "typescript-backends !5743: Trim the Docker context and stabilise the node_modules layer")
+        #expect(try decision(id: "x", title: "Own title with words").displayTitle == "Own title with words")
+    }
+    @Test func theReasonSplitsIntoHeadedParagraphsWithoutPaths() throws {
+        let parts = try decision().displayParts
+        #expect(parts.map { $0.heading ?? "" } == ["What and where", "Why now", "Options", "Recommendation"])
+        #expect(parts[0].text.hasPrefix("Decide what to do with typescript-backends !5743"))
+        #expect(parts[2].text == "A. Close it with the drafted reply, so the 12 MB stays\nB. Rewrite it as a small new merge request")
+        #expect(parts[3].text.hasPrefix("A, because trimming"))
+        #expect(!parts.contains { $0.text.contains("/Users/") || $0.text.contains("/private/") || $0.text.contains("Detail") })
+    }
+    @Test func theFeedsOwnSummaryWins() throws {
+        let own = [["heading": "Why now", "text": "Own words."], ["heading": "Options", "text": "A. one"]]
+        let d = try decision(title: "Real title here", summary: own)
+        #expect(d.displayParts.map(\.text) == ["Own words.", "A. one"] && d.displayTitle == "Real title here")
+    }
+    @Test func aPlainReasonWithoutLabelsStaysAsItIs() {
+        #expect(LegacyReason.parse("Just one wall of words with no labels at all") == nil)
+        #expect(LegacyReason.sections("Why now: only one label").isEmpty)
+    }
+}

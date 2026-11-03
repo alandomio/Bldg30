@@ -251,10 +251,10 @@ struct CompanionView: View {
 
     /// Title, headed summary (or `why_now` when the feed has none) and the collapsed full record.
     private func decisionText(_ item: CompanionFeed.Decision) -> some View {
-        let parts = item.summaryParts
+        let parts = item.displayParts
         let open = openContext.contains(item.id)
         return VStack(alignment: .leading, spacing: 14) {
-            Text(item.title).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(item.displayTitle).font(.system(size: 18, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
             if !item.project.isEmpty { Text(item.project).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
             if parts.isEmpty {
                 if !item.whyNow.isEmpty { Text(item.whyNow).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true) }

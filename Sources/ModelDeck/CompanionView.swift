@@ -50,7 +50,7 @@ private struct PendingClick: Identifiable {
 
 struct CompanionView: View {
     @EnvironmentObject var store: DeckStore
-    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : CommandLine.arguments.contains("--tickets-tab") ? "tickets" : "decisions"
+    @State private var tab = CommandLine.arguments.contains("--mrs-tab") ? "mrs" : CommandLine.arguments.contains("--tickets-tab") ? "tickets" : CommandLine.arguments.contains("--workers-tab") ? "workers" : "decisions"
     @State private var index = 0
     @State private var openDrafts = Set<String>()
     @State private var confirm: PendingClick?
@@ -88,11 +88,13 @@ struct CompanionView: View {
                     tabButton("decisions", L("Decisioni (\(openDecisions.count))"))
                     tabButton("mrs", L("MR e revisioni (\(store.boardMRs.filter { $0.waitingOn == nil }.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
+                    tabButton("workers", L("Lavoratori"))
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
                     if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(openDecisions) ?? openDecisions, locked: false) }
                     else if tab == "mrs" { mrs(store.boardMRs.filter { $0.waitingOn == nil }, locked: false); waitingGroup(store.boardMRs.filter { $0.waitingOn != nil }); finishedNote(feed) }
+                    else if tab == "workers" { WorkersView(openDecisions: { tab = "decisions" }) }
                     else { tickets(store.boardTickets, locked: false) }
                 }
             } else {

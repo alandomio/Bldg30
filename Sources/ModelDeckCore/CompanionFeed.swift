@@ -58,6 +58,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         /// Optional review-comment context: where it goes (file:line or a general note), the finding it answers, and
         /// "required" or "non-blocking" when the review says so.
         public let target: String?, placement: String?, finding: String?, severity: String?
+        /// The worker task whose report these drafts came from (optional); the Workers tab keeps such a worker out of Sweep.
+        public let source: String?
     }
     public struct Action: Decodable, Equatable, Sendable, Identifiable { public let id: String, label: String; public let outward: Bool }
     public struct MergeRequest: Decodable, Equatable, Sendable, Identifiable {

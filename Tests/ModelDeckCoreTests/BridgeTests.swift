@@ -772,3 +772,92 @@ import Foundation
         #expect(LegacyReason.sections("Why now: only one label").isEmpty)
     }
 }
+
+@Suite struct WorkerTests {
+    static let now = Date(timeIntervalSince1970: 1_793_600_000)
+    func meta(_ id: String, extra: String = "") -> WorkerMeta { WorkerMeta.parse(id: id, text: "kind=ship\nharness=claude\nworktree=/w/\(id)\nbranch=fm/\(id)\nbackend=herdr\nherdr_workspace_id=w1\nherdr_tab_id=w1:t2\n" + extra) }
+    func events(_ text: String) -> [StatusEvent] { StatusLog.parse(text) }
+    func at(_ ago: TimeInterval) -> Int { Int(Self.now.timeIntervalSince1970 - ago) }
+
+    @Test func statusLogParsesVerbsTimesKeysAndContinuations() {
+        let log = "working [at=100]: started\nneeds-decision [at=200] [key=k1]: pick one\nsecond line of the reason\nresolved [key=k1]: answered\n2026-10-08T14:44:57Z paused: waiting"
+        let e = events(log)
+        #expect(e.map(\.verb) == ["working", "needs-decision", "resolved", "paused"])
+        #expect(e[1].key == "k1" && e[1].text.contains("second line") && e[1].at == Date(timeIntervalSince1970: 200))
+        #expect(e[3].at != nil)
+    }
+    @Test func openDecisionsCloseOnResolvedWithTheSameKey() {
+        let open = StatusLog.openDecisions(events("needs-decision [key=a]: x\nblocked [key=b]: y\nresolved [key=a]: ok"))
+        #expect(open.map(\.key) == ["b"])
+    }
+    @Test func feedDecisionsMatchByTaskIdOrSuffix() {
+        let ds = ["rv-pi-2050-comment", "ts5743-rework", "rv-pi-20"].map { (id: $0, title: "T " + $0) }
+        let m = WorkerBoard.feedDecisions(ds, workers: ["rv-pi-2050", "ts5743-rework", "other"])
+        #expect(m["rv-pi-2050"] != nil && m["ts5743-rework"] != nil && m["other"] == nil)
+    }
+    @Test func crewStateLineParses() {
+        let s = CrewState.parse("state: parked · source: status-log · a · b")
+        #expect(s?.kind == .parked && s?.source == "status-log" && s?.detail == "a · b")
+        #expect(CrewState.parse("garbage") == nil)
+    }
+    @Test func groupsFollowTheSixRules() {
+        let done = events("done [at=\(at(3600))]: shipped the thing\nmore")
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .working), events: done, now: Self.now).group == .working)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .done), events: done, now: Self.now).group == .done)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .blocked), events: done, now: Self.now).group == .needsYou)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .parked), events: events("needs-decision [at=\(at(60))] [key=k]: q"), now: Self.now).group == .needsYou)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .paused), events: events("paused [at=\(at(3600))]: waiting for CI"), now: Self.now).group == .waiting)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .parked), events: events("paused [at=\(at(3 * 86400))]: waiting"), now: Self.now).group == .stale)
+        #expect(Worker(meta: meta("a", extra: "remote_host=box\n"), crew: nil, events: done, now: Self.now).group == .remote)
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .done), events: done, refusedCleanup: "unlanded work", now: Self.now).group == .needsYou)
+    }
+    @Test func aWorkingWorkerWithAnOpenDecisionStaysWorking() {
+        #expect(Worker(meta: meta("a"), crew: CrewState(kind: .working), events: events("needs-decision [at=\(at(60))] [key=k]: q"), now: Self.now).group == .working)
+    }
+    @Test func sweepShowsTheVerdictAndExcludesDraftsAndOpenDecisions() {
+        let log = events("done [at=\(at(100))]: Verdict: all green\nbody")
+        let clean = Worker(meta: meta("a"), crew: CrewState(kind: .done), events: log, now: Self.now)
+        #expect(clean.sweepable && clean.verdict == "Verdict: all green")
+        #expect(WorkerActions.sweepClick(clean)?.draftText == "Verdict: all green" && WorkerActions.sweepClick(clean)?.target == "worker:a")
+        let drafts = Worker(meta: meta("a"), crew: CrewState(kind: .done), events: log, unpostedDrafts: 2, now: Self.now)
+        #expect(!drafts.sweepable && drafts.sweepBlocker == "2 review comments are not posted yet" && WorkerActions.sweepClick(drafts) == nil)
+        let decision = Worker(meta: meta("a"), crew: CrewState(kind: .done), events: log, feedDecisions: ["Pick one"], now: Self.now)
+        #expect(!decision.sweepable && decision.group == .needsYou)
+        // A status ask the worker moved on from is history.
+        #expect(StatusLog.openDecisions(events("needs-decision [key=k]: q\ndone: x")).isEmpty)
+    }
+    @Test func groupedKeepsTheFixedOrderAndNewestFirst() {
+        let a = Worker(meta: meta("old"), crew: CrewState(kind: .done), events: events("done [at=\(at(9000))]: a"), now: Self.now)
+        let b = Worker(meta: meta("new"), crew: CrewState(kind: .done), events: events("done [at=\(at(10))]: b"), now: Self.now)
+        let w = Worker(meta: meta("w"), crew: CrewState(kind: .working), events: [], now: Self.now)
+        let grouped = WorkerBoard.grouped([a, b, w])
+        #expect(grouped.map(\.0) == [.working, .done] && grouped[1].1.map(\.id) == ["new", "old"])
+    }
+    @Test func promptJSONParsesWithEitherKeySet() {
+        let p = WorkerPrompt.parse(#"{"prompt":"Allow rm -rf?","options":[{"id":"1","label":"Yes"},{"id":"2","label":"No"}],"sha":"abc"}"#)
+        #expect(p?.text == "Allow rm -rf?" && p?.options.map(\.label) == ["Yes", "No"] && p?.sha == "abc")
+        let q = WorkerPrompt.parse(#"{"text":"Go on?","options":["a","b"],"prompt_sha":"z"}"#)
+        #expect(q?.options.map(\.id) == ["1", "2"] && q?.sha == "z")
+        #expect(WorkerPrompt.parse(#"{"prompt":"no sha"}"#) == nil)
+    }
+    @Test func verbDetectionReadsTheScriptNotTheComments() {
+        let script = "# answer is planned\ncase $VERB in\n  interrupt) x;;\n  exit|quit) y;;\nesac"
+        #expect(WorkerVerbs.supports("interrupt", controlScript: script) && !WorkerVerbs.supports("answer", controlScript: script) && !WorkerVerbs.supports("prompt", controlScript: script))
+        #expect(WorkerVerbs.supports("answer", controlScript: script + "\n  answer) z;;"))
+    }
+    @Test func refusedCleanupComesFromTheFailedCommand() {
+        let lines = [#"{"id":"c1","action_id":"worker.cleanup","target":"worker:a","state":"queued","at":"2026-11-04T01:00:00Z"}"#, #"{"id":"c1","action_id":"worker.cleanup","target":"worker:a","state":"failed","at":"2026-11-04T01:01:00Z","note":"refused: 2 unpushed commits"}"#]
+        #expect(WorkerBoard.refusedCleanup(task: "a", ledger: CommandLedger(lines: lines)) == "refused: 2 unpushed commits")
+        #expect(WorkerBoard.refusedCleanup(task: "b", ledger: CommandLedger(lines: lines)) == nil)
+        let w = Worker(meta: meta("a"), crew: CrewState(kind: .done), events: [], refusedCleanup: "refused: 2 unpushed commits", now: Self.now)
+        #expect(WorkerActions.discardLoss(w).contains { $0.contains("/w/a") } && WorkerActions.discardLoss(w).contains { $0.contains("2 unpushed commits") })
+    }
+    @Test func steerNeedsTextAndShellRunsWithTimeout() async {
+        #expect(WorkerActions.steerClick(task: "a", text: "  \n") == nil)
+        #expect(WorkerActions.steerClick(task: "a", text: "use the new API \n")?.draftText == "use the new API")
+        let ok = await Shell.run("/bin/echo", ["hi"], timeout: 5)
+        #expect(ok.ok && ok.output == "hi\n")
+        let slow = await Shell.run("/bin/sleep", ["5"], timeout: 0.3)
+        #expect(slow.timedOut && !slow.ok)
+    }
+}

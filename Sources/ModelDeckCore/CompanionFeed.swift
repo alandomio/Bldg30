@@ -110,7 +110,9 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public static func postAction(of actions: [Action]) -> Action? { actions.first { $0.id.contains(".post") || $0.id.hasSuffix("-post") } }
     public struct Approval: Decodable, Equatable, Sendable {
         public let approvedBy: [String]?, approvedByMe: Bool?, approvalsLeft: Int?, atHead: Bool?
-        public init(approvedBy: [String]?, approvedByMe: Bool?, approvalsLeft: Int?, atHead: Bool?) { self.approvedBy = approvedBy; self.approvedByMe = approvedByMe; self.approvalsLeft = approvalsLeft; self.atHead = atHead }
+        /// The MR's head commit when the producer read it; a dismissal lasts until it changes.
+        public let headSha: String?
+        public init(approvedBy: [String]?, approvedByMe: Bool?, approvalsLeft: Int?, atHead: Bool?, headSha: String? = nil) { self.approvedBy = approvedBy; self.approvedByMe = approvedByMe; self.approvalsLeft = approvalsLeft; self.atHead = atHead; self.headSha = headSha }
         /// Nil when nobody approved. `approvedBy` names the other approvers; the user is `approvedByMe`.
         public var badge: (byMe: Bool, others: [String])? {
             let names = approvedBy ?? []

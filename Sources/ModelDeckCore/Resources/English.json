@@ -703,5 +703,12 @@
   "Rispondere da qui non è ancora disponibile: ecco il terminale. Aprilo per rispondere.": "Answering from here is not available yet: here is the terminal. Open it to answer.",
   "Consegnato, non ancora al lavoro": "Delivered, not working yet",
   "Di nuovo al lavoro": "Working again",
-  "Non riuscito": "Failed"
+  "Non riuscito": "Failed",
+  "Nascondi": "Dismiss",
+  "Nascondi finché non c’è qualcosa di nuovo": "Hide until something new happens",
+  "Nascondi i commenti facoltativi": "Hide optional comments",
+  "%@ commenti facoltativi": "%@ optional comments",
+  "Commenti di review facoltativi": "Optional review comments",
+  "%@ rimaste": "%@ left",
+  "1 commento facoltativo": "1 optional comment"
 }

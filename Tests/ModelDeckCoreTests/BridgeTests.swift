@@ -861,3 +861,31 @@ import Foundation
         #expect(slow.timedOut && !slow.ok)
     }
 }
+
+
+@Suite struct DismissalTests {
+    static func mr(head: String?, waiting: String?, threads: Int? = 0, left: Int? = 0) -> BoardMR {
+        let json = """
+        {"schema":"companion-feed.v1","generated_at":"2026-11-04T09:00:00Z","producer":"test","decisions":[],"tickets":[],"mrs":[{"ref":"obs !103","url":"https://example.com/o/-/merge_requests/103","title":"t","role":"reviewer","verdict":"hold","label":"","next_owner":"","drafts":[],"actions":[],"state":"opened","open_threads":\(threads.map(String.init) ?? "null"),\(waiting.map { "\"waiting_on\":\"\($0)\"," } ?? "")"approval":{"approved_by":["omar.pp"],"approved_by_me":false,"approvals_left":\(left.map(String.init) ?? "null")\(head.map { ",\"head_sha\":\"\($0)\"" } ?? "")}}]}
+        """
+        let feed = try! CompanionFeed.decode(Data(json.utf8))
+        return CompanionBoard.mrs(feed: feed, raw: nil)[0]
+    }
+
+    @Test func bannerNamesTheLiveApproversAndSaysYouOnlyWhenTheUserApproved() {
+        let m = Self.mr(head: "a", waiting: "kmang")
+        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn) == "Approved by omar.pp · 0 left · waiting on kmang to merge")
+        let mine = CompanionFeed.Approval(approvedBy: ["omar.pp"], approvedByMe: true, approvalsLeft: 0, atHead: true)
+        #expect(MRDismissal.banner(approval: mine, waitingOn: "kmang") == "Approved by you, omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: CompanionFeed.Approval(approvedBy: [], approvedByMe: false, approvalsLeft: 1, atHead: nil), waitingOn: nil) == nil)
+    }
+
+    @Test func dismissalHoldsUntilANewCommitOrACommentToTheUser() {
+        let m = Self.mr(head: "a", waiting: "kmang")
+        let stored = MRDismissal.dismiss(m, in: [:])
+        #expect(MRDismissal.isDismissed(m, in: stored))
+        #expect(!MRDismissal.isDismissed(Self.mr(head: "b", waiting: "kmang"), in: stored))      // new commit
+        #expect(!MRDismissal.isDismissed(Self.mr(head: "a", waiting: nil), in: stored))          // addressed to the user again
+        #expect(!MRDismissal.isDismissed(Self.mr(head: "a", waiting: "kmang", threads: 2), in: stored))
+    }
+}

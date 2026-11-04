@@ -68,6 +68,8 @@ struct CompanionView: View {
     @State private var keyPress: KeyEvent?
     @State private var selection: [String: Int] = [:]
     @State private var mrIndex = 0
+    @State private var dismissedMRs = (UserDefaults.standard.dictionary(forKey: "dismissedMRs") as? [String: String]) ?? [:]
+    @State private var optionalOpen = Set<String>()
     @State private var draftIndex: [String: Int] = [:]
     @State private var discarded = Set<String>()
     @State private var editingDrafts = Set<String>()
@@ -86,14 +88,14 @@ struct CompanionView: View {
                 if stale { Text(L("Il feed è vecchio: leggi con cautela. I click vengono salvati e aspettano firstmate.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber) }
                 HStack(spacing: 8) {
                     tabButton("decisions", L("Decisioni (\(openDecisions.count))"))
-                    tabButton("mrs", L("MR e revisioni (\(store.boardMRs.filter { $0.waitingOn == nil }.count))"))
+                    tabButton("mrs", L("MR e revisioni (\(visibleMRs.filter { $0.waitingOn == nil }.count))"))
                     tabButton("tickets", L("Ticket (\(store.boardTickets.count))"))
                     tabButton("workers", L("Lavoratori"))
                 }
                 Group {
                     // A stale feed stays readable and clickable; the click state warns when firstmate does not answer.
                     if tab == "decisions" { decisions(DecisionOrder(rawValue: decisionOrder)?.apply(openDecisions) ?? openDecisions, locked: false) }
-                    else if tab == "mrs" { mrs(store.boardMRs.filter { $0.waitingOn == nil }, locked: false); waitingGroup(store.boardMRs.filter { $0.waitingOn != nil }); finishedNote(feed) }
+                    else if tab == "mrs" { mrs(visibleMRs.filter { $0.waitingOn == nil }, locked: false); waitingGroup(visibleMRs.filter { $0.waitingOn != nil }); finishedNote(feed) }
                     else if tab == "workers" { WorkersView(openDecisions: { tab = "decisions" }) }
                     else { tickets(store.boardTickets, locked: false) }
                 }
@@ -385,6 +387,7 @@ struct CompanionView: View {
                 DeckCard {
                     VStack(alignment: .leading, spacing: 10) {
                         mrHeader(mr, position: position, count: items.count)
+                        approvalBanner(mr)
                         Button { open(mr.ref) } label: { Text(mr.title).font(.system(size: 14, weight: .semibold)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
                             .buttonStyle(.plain).help(L("Apri i dettagli"))
                         Text(L("pipeline \(unknown(mr.pipeline)) · \(unknown(mr.openThreads)) thread aperti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
@@ -408,6 +411,42 @@ struct CompanionView: View {
         }
     }
 
+    private func optionalDrafts(_ mr: BoardMR) -> [CompanionFeed.Draft] {
+        guard ReviewDrafts.isPerDraft(mr.drafts, actions: mr.actions) else { return [] }
+        return ReviewDrafts.remaining(mr.drafts, target: mr.ref, actions: mr.actions, ledger: store.commandLedger, discarded: discardedReview)
+    }
+
+    /// MRs the user did not dismiss, or whose dismissal no longer holds (new commit, new comment to the user, state change).
+    private var visibleMRs: [BoardMR] { store.boardMRs.filter { !MRDismissal.isDismissed($0, in: dismissedMRs) } }
+    private func dismiss(_ mr: BoardMR) {
+        dismissedMRs = MRDismissal.dismiss(mr, in: dismissedMRs)
+        UserDefaults.standard.set(dismissedMRs, forKey: "dismissedMRs")
+    }
+    private func dismissButton(_ mr: BoardMR) -> some View {
+        Button(L("Nascondi")) { dismiss(mr) }.buttonStyle(DeckButtonStyle(small: true)).help(L("Nascondi finché non c’è qualcosa di nuovo"))
+    }
+
+    /// Green line at the top of a card with approvals: who approved, how many are left, who merges. Read from the live feed row.
+    private func bannerText(_ mr: BoardMR) -> String? {
+        guard let badge = mr.feedRow?.approval?.badge else { return nil }
+        let others = badge.others.joined(separator: ", ")
+        let who = badge.byMe ? (others.isEmpty ? L("Approvata da te") : L("Approvata da te e \(others)")) : L("Approvata da \(others)")
+        let left = mr.feedRow?.approval?.approvalsLeft.map { " · " + L("\(String($0)) rimaste") } ?? ""
+        let merge = mr.waitingOn.map { " · " + L("in attesa di \($0) per il merge") } ?? ""
+        return who + left + merge
+    }
+    @ViewBuilder private func approvalBanner(_ mr: BoardMR) -> some View {
+        if let text = bannerText(mr) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                Text(text).font(.system(size: 12, weight: .semibold))
+                Spacer()
+            }
+            .foregroundStyle(DeckTheme.mint).padding(.horizontal, 10).padding(.vertical, 7)
+            .background(DeckTheme.mint.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
     /// MRs the user approved at the current head with nothing waiting on them: collapsed, one line each.
     @ViewBuilder private func waitingGroup(_ items: [BoardMR]) -> some View {
         if !items.isEmpty {
@@ -418,9 +457,19 @@ struct CompanionView: View {
                             Link(mr.ref, destination: mr.url).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(DeckTheme.blue).underline().buttonStyle(.plain).pointerCursor()
                             Text(mr.title).font(.system(size: 12)).lineLimit(1)
                             Spacer()
-                            approvalBadge(mr.feedRow?.approval)
-                            Text(L("in attesa di \(mr.waitingOn ?? "") per il merge")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted)
+                            if let text = bannerText(mr) {
+                                Text(text).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
+                                    .foregroundStyle(DeckTheme.mint).background(DeckTheme.mint.opacity(0.15), in: Capsule())
+                            }
                             Button(L("Dettagli")) { open(mr.ref) }.buttonStyle(DeckButtonStyle(small: true))
+                            dismissButton(mr)
+                        }
+                        let optional = optionalDrafts(mr)
+                        if !optional.isEmpty {
+                            Button(optionalOpen.contains(mr.ref) ? L("Nascondi i commenti facoltativi") : (optional.count == 1 ? L("1 commento facoltativo") : L("\(String(optional.count)) commenti facoltativi"))) {
+                                if optionalOpen.contains(mr.ref) { optionalOpen.remove(mr.ref) } else { optionalOpen.insert(mr.ref) }
+                            }.buttonStyle(DeckButtonStyle(small: true))
+                            if optionalOpen.contains(mr.ref) || CommandLine.arguments.contains("--optional-open") { reviewDraftsPanel(mr, drafts: optional, locked: false, optional: true) }
                         }
                     }
                 }.padding(.top, 8)
@@ -448,8 +497,7 @@ struct CompanionView: View {
         let ticketURL = ticketID.flatMap { MRTicket.url(identifier: $0, feedURL: mr.feedRow?.ticketUrl, tickets: store.boardTickets) }
         return HStack(spacing: 8) {
             Text(L("MR \(position + 1) di \(count)")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted)
-            verdictPill(mr.verdict, stale: mr.verdictStale)
-            approvalBadge(mr.feedRow?.approval)
+            if !(mr.waitingOn != nil && mr.feedRow?.approval?.badge != nil) { verdictPill(mr.verdict, stale: mr.verdictStale) }
             if let step = MROrder.stepLabel(mr.feedRow?.closeStep) {
                 Text(D(step)).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
                     .foregroundStyle(DeckTheme.buttonTextOther).background(DeckTheme.buttonFill, in: Capsule()).help(L("Passo per chiudere"))
@@ -462,6 +510,7 @@ struct CompanionView: View {
             Text(D(mr.role == "author" ? "Autore" : "Revisore") + (CompanionFeed.text(mr.feedRow?.author).map { " · " + $0 } ?? "")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
             Spacer()
             detailsToggle(mr.ref)
+            dismissButton(mr)
             detailsButton(mr.ref)
             Button { mrIndex = Pager.move(position, by: -1, count: count, wrap: true) } label: { Image(systemName: "chevron.left") }.help(L("MR precedente (←)")).disabled(count < 2)
             Button { mrIndex = Pager.move(position, by: 1, count: count, wrap: true) } label: { Image(systemName: "chevron.right") }.help(L("MR successiva (→)")).disabled(count < 2)
@@ -504,10 +553,10 @@ struct CompanionView: View {
 
 
     /// Review comments, all in full: where each goes, whether it is required, the exact text, and its own Post, Edit and Discard.
-    private func reviewDraftsPanel(_ mr: BoardMR, drafts: [CompanionFeed.Draft], locked: Bool) -> some View {
+    private func reviewDraftsPanel(_ mr: BoardMR, drafts: [CompanionFeed.Draft], locked: Bool, optional: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Commenti di review da inviare").uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
+                Text((optional ? L("Commenti di review facoltativi") : L("Commenti di review da inviare")).uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
                 Spacer()
                 if drafts.count > 1 {
                     Button(L("Invia tutti")) { postAll(mr, drafts: drafts) }

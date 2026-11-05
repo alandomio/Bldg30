@@ -497,5 +497,10 @@
   "Defender": "Defender",
   "CPU somma di %@ processi · RAM %@": "CPU sum of %@ processes · RAM %@",
   "Defender non installato": "Defender not installed",
-  "non installato": "not installed"
+  "non installato": "not installed",
+  "Commenta": "Comment",
+  "Scrivi a Deck Officer": "Write to Deck Officer",
+  "Commento per Deck Officer su questo elemento": "Comment for Deck Officer on this item",
+  "Commenti a Deck Officer": "Deck Officer comments",
+  "Mostra una casella di commento globale e una per ogni elemento. Un interruttore nel menu laterale la accende e la spegne. Usa la cartella inbox.": "Shows a global comment box and one per item. A switch in the side menu turns it on and off. Uses the inbox folder."
 }

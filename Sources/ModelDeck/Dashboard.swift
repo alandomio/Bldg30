@@ -4,6 +4,8 @@ import ModelDeckCore
 struct Dashboard: View {
     @EnvironmentObject var store: DeckStore
     @State private var section: String
+    @AppStorage("deckCommentsEnabled") private var commentsAvailable = false
+    @AppStorage("deckCommentsOn") private var commentsOn = true
     @State private var processSort: ProcessSort
     var appearanceOverride: DeckAppearance? = nil
     init(initialSection: String = "overview", initialProcessSort: ProcessSort = .cpu, appearanceOverride: DeckAppearance? = nil) {
@@ -34,6 +36,7 @@ struct Dashboard: View {
                             ModelLibrary(limit: section == "overview" ? 5 : nil)
                         }
                     }
+                    DeckCommentBox(target: "global")
                     HStack {
                         if store.demo { Text(L("ANTEPRIMA · DATI FITTIZI")) }
                         Spacer()
@@ -70,6 +73,10 @@ struct Dashboard: View {
             nav("settings", "Impostazioni", "slider.horizontal.3")
             nav("credits", "Crediti", "info.circle")
             Spacer()
+            if commentsAvailable {
+                Toggle(L("Commenti a Deck Officer"), isOn: $commentsOn).toggleStyle(.switch).controlSize(.small)
+                    .font(.system(size: 10)).foregroundStyle(DeckTheme.muted).padding(.bottom, 12)
+            }
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: "laptopcomputer").font(.system(size: 22)).foregroundStyle(DeckTheme.muted)
                 Text(store.machine.chip).font(.system(size: 12, weight: .medium))

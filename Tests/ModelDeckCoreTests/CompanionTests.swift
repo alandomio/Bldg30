@@ -102,4 +102,19 @@ final class CompanionTests: XCTestCase {
         XCTAssertEqual(title(nil), "Defender —")
         XCTAssertEqual(title(usage), "Defender " + DeckFormat.percent(6.5))
     }
+    func testCommentClickCarriesTargetAndTextAndReplyIsReadByKey() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let inbox = root.appendingPathComponent("inbox"), replies = root.appendingPathComponent("replies")
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: replies, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let click = CompanionClick(actionID: CompanionReply.commentAction, target: "global", draftText: "ciao", now: now, key: "abcdef12")
+        let note = try CompanionInbox.file(click, inbox: inbox.path, now: now)
+        let saved = try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as! [String: String]
+        XCTAssertEqual(saved["action_id"], "comment_deck_officer"); XCTAssertEqual(saved["target"], "global"); XCTAssertEqual(saved["draft_text"], "ciao")
+        XCTAssertNil(CompanionReply.read(key: "abcdef12", inbox: inbox.path))
+        try Data(#"{"schema":"companion-reply.v1","idempotency_key":"abcdef12","note_id":"n","status":"done","text":"Fatto.","updated_at":"t"}"#.utf8).write(to: replies.appendingPathComponent("abcdef12.json"))
+        XCTAssertEqual(CompanionReply.read(key: "abcdef12", inbox: inbox.path)?.text, "Fatto.")
+        XCTAssertNil(CompanionReply.read(key: "../x", inbox: inbox.path))
+    }
 }

@@ -86,6 +86,7 @@ struct CompanionView: View {
                             }
                         }
                         ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
+                        DeckCommentBox(target: item.id, compact: true)
                     }
                 }
             }
@@ -124,6 +125,7 @@ struct CompanionView: View {
                             }
                         }
                         actions(mr.actions, target: mr.url.absoluteString, locked: locked)
+                        DeckCommentBox(target: mr.ref, compact: true)
                     }
                 }
             }
@@ -148,6 +150,7 @@ struct CompanionView: View {
                         }
                         if !ticket.linkedMrs.isEmpty { Text(ticket.linkedMrs.joined(separator: " · ")).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
                         actions(ticket.actions, target: ticket.identifier, locked: locked)
+                        DeckCommentBox(target: ticket.identifier, compact: true)
                     }
                 }
             }

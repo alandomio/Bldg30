@@ -49,3 +49,31 @@ public enum CompanionInbox {
         return manager.fileExists(atPath: note.path) ? .sent : .pickedUp
     }
 }
+
+/// `companion-reply.v1`: written by the assistant to `replies/<idempotency_key>.json`, a sibling of the inbox folder.
+public struct CompanionReply: Decodable, Equatable, Sendable {
+    public let idempotencyKey: String, status: String
+    public let text: String?
+    private enum CodingKeys: String, CodingKey { case idempotencyKey = "idempotency_key", status, text }
+
+    public static let commentAction = "comment_deck_officer"
+
+    public static func read(key: String, inbox: String) -> CompanionReply? {
+        guard !key.isEmpty, !key.contains("/") else { return nil }
+        let path = (inbox.trimmingCharacters(in: .whitespaces) as NSString).expandingTildeInPath
+        guard !path.isEmpty else { return nil }
+        let file = URL(fileURLWithPath: path).deletingLastPathComponent().appendingPathComponent("replies/\(key).json")
+        guard let data = try? Data(contentsOf: file), let reply = try? JSONDecoder().decode(CompanionReply.self, from: data), reply.idempotencyKey == key else { return nil }
+        return reply
+    }
+}
+
+/// One comment sent to Deck Officer, kept so it shows with its reply after a restart.
+public struct DeckComment: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { key }
+    public let key: String, target: String, text: String, sentAt: Date
+    public let notePath: String
+    public init(key: String, target: String, text: String, sentAt: Date = Date(), notePath: String) {
+        self.key = key; self.target = target; self.text = text; self.sentAt = sentAt; self.notePath = notePath
+    }
+}

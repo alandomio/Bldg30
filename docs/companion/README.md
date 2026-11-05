@@ -13,5 +13,8 @@ Demo mode shows `CompanionFixture`; `fixture-feed.json` is the same content for 
 - Click status is inferred from files: in the inbox is sent, moved to `handled/` is picked up, a `<name>.reply.json` beside it is done. The producer must follow this.
 - The JSON Schema files from the ai-skills worker did not exist yet; the code follows PLAN section 0.
 
+## Deck Officer comments
+Settings, Companion, "Commenti a Deck Officer" makes the comment tool available; a switch in the sidebar turns it on and off (off: no boxes anywhere). A comment files a `companion-click.v1` with `action_id` `comment_deck_officer`, `target` `global` or the card/row id, and the text in `draft_text`. The reply is read from `replies/<idempotency_key>.json` (sibling of the inbox folder, `companion-reply.v1`, field `text`) and shown under the comment.
+
 ## Not done (next)
 Polling Linear and GitLab and writing events (PLAN step 4). Event kinds are fixed in `CompanionEvent.kinds`.

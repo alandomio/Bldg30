@@ -18,6 +18,7 @@ struct SettingsView: View {
     @AppStorage("companionEnabled") private var companionEnabled = false
     @AppStorage("companionFeedPath") private var companionFeedPath = ""
     @AppStorage("companionInboxPath") private var companionInboxPath = ""
+    @AppStorage("deckCommentsEnabled") private var deckCommentsEnabled = false
     @State private var linearKey = ""
     @State private var linearKeyEdited = false
     @State private var linearKeySaved = DeckKeychain.read(account: "linear") != nil
@@ -119,6 +120,9 @@ struct SettingsView: View {
                         Text(L("Cartella inbox")).frame(width: 115, alignment: .leading)
                         TextField(L("Obbligatoria per inviare azioni"), text: $companionInboxPath).textFieldStyle(.roundedBorder)
                     }.font(.system(size: 11)).disabled(!companionEnabled)
+                    Toggle(L("Commenti a Deck Officer"), isOn: $deckCommentsEnabled).font(.system(size: 12, weight: .semibold))
+                    Text(L("Mostra una casella di commento globale e una per ogni elemento. Un interruttore nel menu laterale la accende e la spegne. Usa la cartella inbox."))
+                        .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                 }
             }
             DeckCard {

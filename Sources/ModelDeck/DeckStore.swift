@@ -22,6 +22,8 @@ import Security
     @Published var companionError: String?
     @Published var companionNotes: [String: URL] = [:]
     @Published var companionStatuses: [String: CompanionClickStatus] = [:]
+    @Published var deckComments: [DeckComment] = CompanionSettings.loadComments()
+    @Published var deckReplies: [String: CompanionReply] = [:]
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()

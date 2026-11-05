@@ -86,7 +86,7 @@ struct CompanionView: View {
                             }
                         }
                         ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)) }
-                        DeckCommentBox(target: item.id, compact: true)
+                        DeckCommentBox(target: item.id, compact: true).id(item.id)
                     }
                 }
             }

@@ -115,3 +115,33 @@ final class CompanionTests: XCTestCase {
         XCTAssertNil(CompanionReply.read(key: "../x", inbox: inbox.path))
     }
 }
+
+final class CompanionLiveTests: XCTestCase {
+    private let json = """
+    {"schema":"companion-live.v1","generated_at":"2026-11-05T14:00:00Z","events":[
+     {"task":"a","state":"done","at":"2026-11-05T13:00:00Z","text":"old"},
+     {"task":"b","state":"needs-decision","key":"k","at":"2026-11-05T13:59:00Z","text":"new"},
+     {"task":"c","state":"working","at":"bad","text":"dropped"}]}
+    """
+    func testDecodeSortsNewestFirstAndKeepsKey() throws {
+        let live = try CompanionLive.decode(Data(json.utf8))
+        XCTAssertEqual(live.events.map(\.task), ["b", "a"])
+        XCTAssertEqual(live.events.first?.key, "k")
+    }
+    func testWrongSchemaIsRejected() {
+        XCTAssertThrowsError(try CompanionLive.decode(Data(#"{"schema":"x","generated_at":"2026-11-05T14:00:00Z","events":[]}"#.utf8)))
+    }
+    func testRunRule() {
+        let now = Date()
+        XCTAssertFalse(CompanionLive.shouldRun(generatedAt: now - 10, lastRun: nil, now: now))
+        XCTAssertTrue(CompanionLive.shouldRun(generatedAt: now - 31, lastRun: nil, now: now))
+        XCTAssertFalse(CompanionLive.shouldRun(generatedAt: now - 300, lastRun: now - 14, now: now))
+        XCTAssertTrue(CompanionLive.shouldRun(generatedAt: now - 300, lastRun: now - 16, now: now))
+        XCTAssertTrue(CompanionLive.shouldRun(generatedAt: nil, lastRun: nil, now: now))
+    }
+    func testTones() {
+        XCTAssertEqual(CompanionLive.tone(of: "needs-decision"), .decision)
+        XCTAssertEqual(CompanionLive.tone(of: "failed"), .bad)
+        XCTAssertEqual(CompanionLive.tone(of: "whatever"), .neutral)
+    }
+}

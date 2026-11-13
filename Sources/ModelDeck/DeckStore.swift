@@ -22,6 +22,9 @@ import Security
     @Published var defender: DefenderUsage?
     @Published var companionFeed: CompanionFeed?
     @Published var companionError: String?
+    @Published var fleet: FleetSnapshot?
+    @Published var fleetError: String?
+    var fleetModified: Date?
     @Published var commandLedger = CommandLedger()
     @Published var rawBoard: RawBoard?
     @Published var pollError: String?
@@ -61,7 +64,7 @@ import Security
             while !Task.isCancelled, let self { defender = DefenderUsage.summarize(await defenderMonitor.sample()); try? await Task.sleep(for: .seconds(5)) }
         }
         Task { [weak self] in
-            while !Task.isCancelled, let self { refreshCompanion(); await pollBoard(); flushEvents(); try? await Task.sleep(for: .seconds(10)) }
+            while !Task.isCancelled, let self { refreshCompanion(); refreshFleet(); await pollBoard(); flushEvents(); try? await Task.sleep(for: .seconds(10)) }
         }
     }
     private func append(_ value: Double, to history: inout [Double]) {

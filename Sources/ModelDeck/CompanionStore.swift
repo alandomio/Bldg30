@@ -19,6 +19,29 @@ enum CompanionSettings {
     }
 }
 
+extension CompanionSettings {
+    /// `workers.json` sits beside the feed file; `--workers-file` overrides it for tests.
+    static var fleetPath: String {
+        if let i = CommandLine.arguments.firstIndex(of: "--workers-file"), i + 1 < CommandLine.arguments.count { return CommandLine.arguments[i + 1] }
+        return URL(fileURLWithPath: (feedPath as NSString).expandingTildeInPath).deletingLastPathComponent().appendingPathComponent("workers.json").path
+    }
+}
+
+extension DeckStore {
+    /// Re-reads workers.json only when its modification time changed. A bad file keeps the last good snapshot and shows the error.
+    func refreshFleet() {
+        guard !demo else { return }
+        let path = CompanionSettings.fleetPath
+        guard let modified = (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate]) as? Date else {
+            fleet = nil; fleetError = nil; fleetModified = nil; return
+        }
+        guard modified != fleetModified else { return }
+        fleetModified = modified
+        do { fleet = try FleetSnapshot.read(path: path); fleetError = nil }
+        catch { fleetError = error.localizedDescription }
+    }
+}
+
 extension DeckStore {
     /// Reads the feed file. A bad or missing file keeps the last good feed visible with its age and shows the error.
     func refreshCompanion() {

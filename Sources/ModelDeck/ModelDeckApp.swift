@@ -113,6 +113,7 @@ import ModelDeckCore
         if CommandLine.arguments.contains("--real-gemini"), let usage = try? GeminiUsage.readBlocking() { store.gemini = usage }
         if CommandLine.arguments.contains("--real-feed") {
             store.companionFeed = try? CompanionFeed.read(path: CompanionSettings.feedPath)
+            store.fleet = try? FleetSnapshot.read(path: CompanionSettings.fleetPath)
             store.commandLedger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
         }
         let resource: ProcessSort = CommandLine.arguments.contains("--gpu") ? .gpu : CommandLine.arguments.contains("--memory") ? .memory : .cpu
@@ -135,7 +136,8 @@ import ModelDeckCore
         if fit { store.machine.memory = UInt64(16 * gibibyte); store.machine.metalWorkingSet = UInt64(12 * gibibyte); store.snapshot.memoryTotal = store.machine.memory; store.snapshot.memoryUsed = UInt64(8 * gibibyte) }
         let content: AnyView = fit ? AnyView(ModelFitView(demonstration: true, demonstrateSearch: CommandLine.arguments.contains("--search"), appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT"))) : AnyView(Dashboard(initialSection: section, initialProcessSort: resource, appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT")))
         let hosting = NSHostingView(rootView: content)
-        let height = fit ? 850 : section == "processes" ? 1580 : section == "settings" ? 1500 : section == "credits" ? 850 : 1360
+        let override = CommandLine.arguments.firstIndex(of: "--preview-height").flatMap { Double(CommandLine.arguments[$0 + 1]) }
+        let height = override ?? (fit ? 850 : section == "processes" ? 1580 : section == "settings" ? 1500 : section == "credits" ? 850 : 1360)
         writePreview(hosting, to: url, width: fit ? 840 : CommandLine.arguments.contains("--narrow") ? 940 : 1180, height: CGFloat(height))
     }
     @MainActor private static func writePreview<Content: View>(_ hosting: NSHostingView<Content>, to url: URL, width: CGFloat, height: CGFloat) {

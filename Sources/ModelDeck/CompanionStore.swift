@@ -22,7 +22,7 @@ extension DeckStore {
         refreshCommands()
     }
 
-    /// Reads `commands.jsonl` beside the inbox; the pills and the History panel show exactly what its lines say.
+    /// Reads `commands.jsonl` beside the inbox for card status and per-card history.
     func refreshCommands() {
         let ledger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
         if ledger != commandLedger { commandLedger = ledger }

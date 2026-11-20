@@ -1,6 +1,6 @@
 # Plan: Linear Action Board in ModelDeck
 
-Status: draft for review. No code written yet.
+Original proposal. See the [Command Bridge reference](../docs/companion/README.md) for the implementation in ShipDeck.
 
 ## Goal
 
@@ -11,7 +11,7 @@ Out of scope for v1: posting, approving, merging or messaging from the app; Lavi
 ## Architecture findings
 
 - SwiftPM package, two targets: `ModelDeckCore` (pure logic, parsers, readers; tested) and `ModelDeck` (SwiftUI app, menu bar, dashboard). XcodeGen `project.yml` mirrors it. macOS 14, no package dependencies, not sandboxed.
-- Build: `swift build`, `swift test`, `bash scripts/build.sh` (produces `build/ModelDeck.app`). Localization strings live in `Sources/ModelDeckCore/Resources/English.json` and are checked by `python3 scripts/check-localization.py`. Italian is the default UI language.
+- See the [current build instructions](../README.md#build-and-run). Localization strings live in `Sources/ModelDeckCore/Resources/English.json` and are checked by `python3 scripts/check-localization.py`. Italian is the default UI language.
 - `DeckStore` (`@MainActor ObservableObject`) owns state and refresh loops (`Task` + `Task.sleep`, interval from `UserDefaults`). Secrets go through `DeckKeychain` (generic password, per-account) in `DeckStore.swift`.
 - External data readers live in Core as enums with a pure `parse(Data)` plus a reader that shells out with `Process` and a deadline (`CodexUsage`, `ClaudeBridge`). Tests feed JSON fixtures to `parse`.
 - Menu bar text comes from `MenuBarSummary` / `MenuBarOptions` (Codable in UserDefaults), rendered by `MenuBarBadge`; settings in `MenuBarSettingsView` and `SettingsView`. Dashboard pages are SwiftUI views in `Dashboard.swift`.

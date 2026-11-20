@@ -4,7 +4,7 @@
 >
 > **Reconnect Claude Code after installing ShipDeck.** The status line bridge points at the old `ModelDeck.app` executable. Use **Ripristina status line** in the old app (or `~/Applications/ModelDeck.app/Contents/MacOS/ModelDeck --disconnect-claude`), then run **Collega Claude Code** in ShipDeck. Delete the old `ModelDeck.app` afterwards.
 
-**The captain's deck.** A native macOS dashboard for your Mac, local LLMs, and Claude Code / Codex subscription quotas, plus the Command Bridge for tickets and merge requests.
+**The captain's deck.** A native macOS dashboard for your Mac, local LLMs, and Claude Code, Codex and Antigravity subscription quotas. The Command Bridge brings firstmate decisions, merge requests, tickets and workers into the app.
 
 Built with SwiftUI and Swift Charts. macOS 14 or later. No package dependencies, telemetry, browser cookies, or model inference requests.
 
@@ -124,6 +124,14 @@ The same reversible setup is available from the installed app's command line:
 
 Only quota percentages, reset timestamps and capture time are written to `claude-usage.json` in the same application support directory (permissions `0600`). No prompts, transcript paths, tokens, email addresses or account identifiers are stored. The bridge does not make network requests. Claude's quota display updates from active sessions; it is not independent background polling. Project-specific status line overrides may take precedence over the user settings bridge.
 
+### Google / Antigravity
+
+Sign in to the Antigravity CLI (`agy`). ShipDeck looks for the executable in `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`. The Subscriptions page reads quota windows through `agy -p "/usage" --output-format json` using the CLI's existing login.
+
+### Command Bridge
+
+Enable **Settings → Command Bridge** and enter the feed file and inbox folder provided by firstmate. Open **Command Bridge** from the menu bar panel to review decisions, work through MR drafts, and check tickets and workers. Optional read-only Linear and GitLab polling adds live status. See the [Command Bridge setup and integration reference](docs/companion/README.md).
+
 ## Does a model fit this Mac?
 
 In **Modelli locali**, choose **Verifica hardware** to check any model, or the gauge icon on a model row to prefill its local weight size and attention metadata.
@@ -142,11 +150,13 @@ This estimates **text-inference memory**, not software compatibility, speed, tra
 
 ## Refresh and metric semantics
 
-System metrics refresh every 2 seconds by default (configurable to 5 or 10). Model discovery refreshes every 30 seconds; Codex quotas every 90 seconds. Claude snapshots older than 10 minutes are marked for refresh. Reset windows that have expired are marked as needing new data, without assuming 0% usage.
+System metrics refresh every 2 seconds by default (configurable to 5 or 10). Model discovery refreshes every 30 seconds. Codex and Antigravity quota refreshes run on the same loop, with a 90-second wait between refreshes. Claude snapshots older than 10 minutes are marked for refresh. Reset windows that have expired are marked as needing new data, without assuming 0% usage.
 
 Memory is sampled from Mach VM statistics and excludes file cache and purgeable pages; it can differ from Activity Monitor. Disk availability uses the home volume's immediately available capacity. Model sizes are logical weight sizes and can overcount shared Ollama blobs. Network counters cover active `en*` interfaces, avoiding VPN/bridge duplication. The first CPU/network sample has no preceding delta and displays `—`. On counter resets/wraps, network deltas are unavailable for that sample.
 
 GPU registry counters are not a stable cross-model API; unsupported Macs display `—`. Temperature, power draw, memory bandwidth and per-model token speed are not estimated. Unified RAM is shared with the GPU; model file size is not runtime memory consumption.
+
+Microsoft Defender can appear as running even when macOS restricts access to some of its processes. ShipDeck shows usage as unavailable when it cannot read the measurements for every detected Defender process.
 
 ## Process inspection and termination
 
@@ -208,7 +218,7 @@ swift run ModelDeck --demo
 
 Tests cover API formats, unavailable versus zero values, multi-bucket quotas, sanitized quota persistence, HF cache symlinks/revisions, Unsloth settings read-only behavior, endpoint restrictions, reversible Claude status line installation, CPU delta units and process termination identity checks. Calculator tests cover KV scaling/precision, budgets, unsupported architectures, incomplete shard sets and bounded GGUF parsing. Search tests cover request encoding, fixed-host restrictions, result validation and limits. Menu bar tests cover selection, quota windows, remaining percentages, stale/expired values, missing samples and exhausted weekly quotas. Tests use fixtures without external services. The process termination test creates and stops only its own disposable child process. `--check-menu` exercises native panel opening/closing, template icon configuration, dashboard reopening, image-plus-text mode, live value changes, icon-only mode and title persistence while the panel opens/closes. `--check-fit` and `--check-search` are optional live public-metadata checks.
 
-Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, symlink exclusion, cancellation, limits and invalid roots. Localization tests cover Italian/English labels, interpolation and expired Claude windows; the catalog check rejects duplicate keys and mismatched interpolation counts.
+Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, symlink exclusion, cancellation, limits and invalid roots. Localization tests cover Italian/English labels, interpolation and expired Claude windows; the catalog check rejects duplicate keys and mismatched interpolation counts. Set `SHIPDECK_REAL_FEED_TESTS=1` only when you want the optional Bridge tests to read the local firstmate feed and dossiers.
 
 ## Versioning and release tags
 

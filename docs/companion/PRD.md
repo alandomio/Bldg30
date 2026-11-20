@@ -1,6 +1,6 @@
 # PRD: ModelDeck as the firstmate companion
 
-Status: accepted (grill with Alan, 2026-11-01). Owner: Alan Domio.
+Original product decisions accepted on 2026-11-01. Owner is Alan Domio. See the [Command Bridge reference](README.md) for current behavior.
 
 ## Problem
 
@@ -49,4 +49,4 @@ Alan first. The app must stay generic so any firstmate user can run it.
 - **Feed drift between Lavish and the app.** Mitigation: one feed schema, versioned, validated on both sides.
 - **Event floods.** Mitigation: fingerprints, batching, and a cap per window.
 - **Secrets.** The Linear key and GitLab token stay in the Keychain; the feed holds no tokens.
-- **Stale feed.** The feed carries `generated_at`; the app shows its age and greys out when stale.
+- **Stale feed.** The feed carries `generated_at` so the app can warn users when the information is old.

@@ -1,6 +1,6 @@
 # Command lifecycle: `commands.jsonl`
 
-ShipDeck (the app) and firstmate's click bridge share one append-only log of commands. A command is one button click in the Command Bridge.
+ShipDeck and firstmate's click bridge share one append-only log of commands. A command corresponds to one inbox note.
 
 **File:** `~/Library/Application Support/ModelDeck/companion/commands.jsonl`, next to the `inbox/` folder (it is always `<inbox folder>/../commands.jsonl`). UTF-8, one JSON object per line, ending in `\n`. Never rewrite or delete lines; only append.
 
@@ -14,10 +14,10 @@ ShipDeck (the app) and firstmate's click bridge share one append-only log of com
 |---|---|
 | `id` | The click id. Same value as `idempotency_key` in the inbox note `<epoch>-<id>.json`. |
 | `action_id` | The action of the click (`<id>.opt-1`, `<ref>.add-context`, ...). Copy it from the note. |
-| `target` | The card the click came from (decision id, MR ref, ticket id). Copy it from the note. |
+| `target` | The click target (decision id, MR ref, ticket id or `worker:<task>`). Copy it from the note. |
 | `state` | `queued`, `picked_up`, `done` or `failed`. |
 | `at` | When this transition happened, ISO 8601 UTC. |
-| `note` | Optional text shown on the card and in History, for example the result or the reason for a failure. |
+| `note` | Optional result or failure reason. A failed command can display its reason on the card. |
 | `label` | Optional, on the `queued` line only: the button text. |
 
 ## Who writes what
@@ -34,6 +34,6 @@ The app ignores, and counts as ignored: lines that are not valid JSON, unknown `
 
 ## What the app shows
 
-A status pill on the card that issued the latest command (click it to open the history of that card), a status line under each button, and a History tab: newest first, filterable by card, with id, label, target, state and the three timestamps. The app reads the last 1 MB of the file every few seconds.
+Decision, MR and ticket cards show a status line for the in-flight or most recent command. The decision card has a History disclosure, and MRs and tickets show history in their Details sections. Each history lists the card's commands newest first with their labels, states and available timestamps. The app reads the last 1 MB during its Bridge refresh, which waits 10 seconds between cycles.
 
 The older `replies/<key>.json` receipts are no longer read.

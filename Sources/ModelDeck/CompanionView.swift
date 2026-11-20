@@ -486,7 +486,6 @@ struct CompanionView: View {
             let others = badge.others.joined(separator: ", ")
             Text(badge.byMe ? (others.isEmpty ? L("Approvata da te") : L("Approvata da te e \(others)")) : L("Approvata da \(others)")).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
                 .foregroundStyle(DeckTheme.mint).background(DeckTheme.mint.opacity(0.15), in: Capsule())
-                
         }
     }
 

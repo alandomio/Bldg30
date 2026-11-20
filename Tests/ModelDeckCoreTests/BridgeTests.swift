@@ -2,6 +2,11 @@ import Testing
 import Foundation
 @testable import ModelDeckCore
 
+private let requiresRealFeed = ConditionTrait.enabled(
+    if: ProcessInfo.processInfo.environment["SHIPDECK_REAL_FEED_TESTS"] == "1",
+    "Set SHIPDECK_REAL_FEED_TESTS=1 to run live-feed tests."
+)
+
 // Swift Testing so these also run with the Command Line Tools, which lack XCTest.
 @Suite struct BridgeTests {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
@@ -141,7 +146,7 @@ import Foundation
         let row = CompanionBoard.mrs(feed: value, raw: nil)[0]
         #expect(row.pipeline == nil && row.openThreads == nil)
     }
-    @Test func realFeedDecodesWhenPresent() throws {
+    @Test(requiresRealFeed) func realFeedDecodesWhenPresent() throws {
         let path = NSString(string: CompanionFeed.defaultPath).expandingTildeInPath
         guard let data = FileManager.default.contents(atPath: path) else { return }
         let value = try CompanionFeed.decode(data)
@@ -217,7 +222,7 @@ import Foundation
         #expect(CompanionInbox.status(of: note) == .sent)
     }
 
-    @Test func realDossiersDecodeWhenPresent() throws {
+    @Test(requiresRealFeed) func realDossiersDecodeWhenPresent() throws {
         let feedPath = NSString(string: CompanionFeed.defaultPath).expandingTildeInPath
         guard let data = FileManager.default.contents(atPath: feedPath) else { return }
         let value = try CompanionFeed.decode(data)
@@ -276,7 +281,7 @@ import Foundation
         #expect(fixture.mrs[0].postAction?.id == "mr-12-post")
         #expect(CompanionAnswer.postClick(mr: fixture.mrs[1], text: "x") == nil)  // no post action in the feed: no click
     }
-    @Test func everyButtonActionIDExistsInTheRealFeedWhenPresent() throws {
+    @Test(requiresRealFeed) func everyButtonActionIDExistsInTheRealFeedWhenPresent() throws {
         guard let data = FileManager.default.contents(atPath: NSString(string: CompanionFeed.defaultPath).expandingTildeInPath) else { return }
         try assertClicksUseFeedIDs(try CompanionFeed.decode(data))
     }

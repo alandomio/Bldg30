@@ -23,7 +23,7 @@ struct ClaudeRefreshView: View {
                         try ClaudeBridge.install(executable: executable); installed = ClaudeBridge.isInstalled()
                         feedback = "Collegato. Riapri la sessione Claude Code e attendi una risposta."
                     } catch { feedback = error.localizedDescription }
-                }.buttonStyle(.bordered).disabled(store.demo)
+                }.buttonStyle(DeckButtonStyle()).disabled(store.demo)
             }
             step("2", "Usa Claude Code", "Apri o riprendi una sessione nel terminale. Se hai appena collegato ShipDeck, riapri la sessione. Invia una richiesta e attendi la risposta.")
             step("3", "Torna in ShipDeck", "Le quote vengono lette automaticamente. Puoi anche premere Rileggi dati: controlla i dati già ricevuti, senza avviare richieste a Claude.")
@@ -39,7 +39,7 @@ struct ClaudeRefreshView: View {
                     let previous = store.claude.updatedAt
                     if !store.demo { store.claude = ClaudeUsage.read() }
                     feedback = store.claude.updatedAt == previous ? "Nessun nuovo dato ricevuto. Attendi una risposta in Claude Code; se non cambia, verifica il collegamento e gli eventuali override della status line nel progetto." : "Dati aggiornati da Claude Code."
-                }.buttonStyle(.borderedProminent)
+                }.buttonStyle(DeckButtonStyle(primary: true))
             }.font(.system(size: 11))
         }.padding(26).frame(width: 620).background(DeckTheme.background).foregroundStyle(DeckTheme.foreground).tint(DeckTheme.mint)
     }

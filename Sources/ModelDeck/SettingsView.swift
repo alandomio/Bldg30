@@ -18,6 +18,13 @@ struct SettingsView: View {
     @AppStorage("companionEnabled") private var companionEnabled = false
     @AppStorage("companionFeedPath") private var companionFeedPath = ""
     @AppStorage("companionInboxPath") private var companionInboxPath = ""
+    @AppStorage("gitlabEnabled") private var gitlabEnabled = false
+    @AppStorage("gitlabHost") private var gitlabHost = "gitlab.com"
+    @AppStorage("gitlabUsername") private var gitlabUsername = ""
+    @AppStorage("companionEventsPath") private var companionEventsPath = ""
+    @State private var gitlabToken = ""
+    @State private var gitlabTokenEdited = false
+    @State private var gitlabTokenSaved = DeckKeychain.read(account: "gitlab") != nil
     @State private var linearKey = ""
     @State private var linearKeyEdited = false
     @State private var linearKeySaved = DeckKeychain.read(account: "linear") != nil
@@ -75,7 +82,7 @@ struct SettingsView: View {
                             feedback = "Impostazioni salvate."
                             Task { await store.refreshModels() }
                         } catch { feedback = error.localizedDescription }
-                    }.buttonStyle(.bordered)
+                    }.buttonStyle(DeckButtonStyle())
                 }
             }
             DeckCard {
@@ -103,13 +110,44 @@ struct SettingsView: View {
                                 feedback = "Chiave Linear rimossa."
                             } catch { feedback = error.localizedDescription }
                         }.disabled(!linearKeySaved)
-                    }.buttonStyle(.bordered).disabled(!boardEnabled)
+                    }.buttonStyle(DeckButtonStyle()).disabled(!boardEnabled)
                 }
             }
             DeckCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Toggle(L("Companion"), isOn: $companionEnabled).font(.system(size: 15, weight: .semibold))
-                    Text(L("Spento di default. Legge un file feed JSON scritto dal tuo assistente e scrive note JSON in una cartella inbox. Non contatta nessun servizio."))
+                    Toggle(L("GitLab"), isOn: $gitlabEnabled).font(.system(size: 15, weight: .semibold))
+                    Text(L("Spento di default. Se attivo, legge le tue MR aperte (autore e revisore) con un token personale di sola lettura. Vale solo con il Command Bridge acceso."))
+                        .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
+                    field("Host GitLab", value: $gitlabHost).disabled(!gitlabEnabled)
+                    field("Utente GitLab", value: $gitlabUsername).disabled(!gitlabEnabled)
+                    HStack {
+                        Text(L("Token GitLab")).frame(width: 115, alignment: .leading)
+                        SecureField(D(gitlabTokenSaved ? "Salvato nel Portachiavi" : "Incolla il token · salvato nel Portachiavi"), text: $gitlabToken).textFieldStyle(.roundedBorder).onChange(of: gitlabToken) { _, _ in gitlabTokenEdited = true }
+                    }.font(.system(size: 11)).disabled(!gitlabEnabled)
+                    HStack {
+                        Button(L("Salva token")) {
+                            do {
+                                _ = try GitLabBoard.endpoint(host: gitlabHost)
+                                if gitlabTokenEdited { try DeckKeychain.save(gitlabToken.trimmingCharacters(in: .whitespacesAndNewlines), account: "gitlab") }
+                                gitlabToken = ""; gitlabTokenEdited = false
+                                gitlabTokenSaved = DeckKeychain.read(account: "gitlab") != nil
+                                feedback = gitlabTokenSaved ? "Token GitLab salvato." : "Token GitLab rimosso."
+                            } catch { feedback = error.localizedDescription }
+                        }
+                        Button(L("Rimuovi token")) {
+                            do {
+                                try DeckKeychain.save("", account: "gitlab")
+                                gitlabToken = ""; gitlabTokenEdited = false; gitlabTokenSaved = false
+                                feedback = "Token GitLab rimosso."
+                            } catch { feedback = error.localizedDescription }
+                        }.disabled(!gitlabTokenSaved)
+                    }.buttonStyle(DeckButtonStyle()).disabled(!gitlabEnabled)
+                }
+            }
+            DeckCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Toggle(L("Command Bridge"), isOn: $companionEnabled).font(.system(size: 15, weight: .semibold))
+                    Text(L("Spento di default. Legge un file feed JSON scritto dal tuo assistente e scrive note JSON in una cartella inbox. Con Linear o GitLab accesi interroga anche quei servizi, in sola lettura, ogni 2 minuti."))
                         .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                     HStack {
                         Text(L("File feed")).frame(width: 115, alignment: .leading)
@@ -118,6 +156,10 @@ struct SettingsView: View {
                     HStack {
                         Text(L("Cartella inbox")).frame(width: 115, alignment: .leading)
                         TextField(L("Obbligatoria per inviare azioni"), text: $companionInboxPath).textFieldStyle(.roundedBorder)
+                    }.font(.system(size: 11)).disabled(!companionEnabled)
+                    HStack {
+                        Text(L("File eventi")).frame(width: 115, alignment: .leading)
+                        TextField(L("Opzionale · eventi companion-event.v1"), text: $companionEventsPath).textFieldStyle(.roundedBorder)
                     }.font(.system(size: 11)).disabled(!companionEnabled)
                 }
             }
@@ -145,7 +187,7 @@ struct SettingsView: View {
                     HStack {
                         Button(L("Aggiungi cartella…")) { chooseFolder(unsloth: false) }
                         Button(L("Aggiungi cartella Unsloth…")) { chooseFolder(unsloth: true) }
-                    }.buttonStyle(.bordered)
+                    }.buttonStyle(DeckButtonStyle())
                     Text(L("La cache Hugging Face può essere usata da più applicazioni; i suoi pesi sono raggruppati sotto Unsloth."))
                         .font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
                 }
@@ -166,7 +208,7 @@ struct SettingsView: View {
                                 bridgeInstalled = ClaudeBridge.isInstalled()
                                 feedback = bridgeInstalled ? "Collegato. Riavvia la sessione Claude Code e invia un messaggio." : "Status line precedente ripristinata."
                             } catch { feedback = error.localizedDescription }
-                        }.buttonStyle(.bordered)
+                        }.buttonStyle(DeckButtonStyle())
                         Link(L("Documentazione"), destination: URL(string: "https://code.claude.com/docs/en/statusline")!).font(.system(size: 11))
                     }
                     Text(L("Le quote di Codex non rappresentano tutti i limiti dell’app ChatGPT. Non sono costi API né percentuali di contesto."))

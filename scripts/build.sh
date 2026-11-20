@@ -23,8 +23,9 @@ app="build/ShipDeck.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary_dir/ModelDeck" "$app/Contents/MacOS/ShipDeck"
 ditto "$binary_dir/ModelDeck_ModelDeckCore.bundle" "$app/Contents/Resources/ModelDeck_ModelDeckCore.bundle"
-"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift build/ShipDeck.iconset
-iconutil -c icns build/ShipDeck.iconset -o "$app/Contents/Resources/AppIcon.icns"
+"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift assets build/ShipDeck.iconset
+iconutil -c icns build/ShipDeck.iconset -o assets/AppIcon.icns
+cp assets/AppIcon.icns assets/MenuBarTemplate.png "assets/MenuBarTemplate@2x.png" assets/Logo.png "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -33,6 +34,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <key>CFBundleIdentifier</key><string>io.github.alandomio.ShipDeck</string>
 <key>CFBundleName</key><string>ShipDeck</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundleIconName</key><string>AppIcon</string>
 <key>CFBundleDisplayName</key><string>ShipDeck</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$app_version</string>

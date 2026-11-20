@@ -1,5 +1,7 @@
 # Todo: Linear Action Board in ModelDeck
 
+Checklist for the [original proposal](plan.md).
+
 Decisions first (see plan.md "Open decisions"):
 - [ ] D1 Port rules to Swift (recommended) or shell out to Python
 - [ ] D2 Linear API key in Keychain (recommended)

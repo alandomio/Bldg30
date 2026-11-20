@@ -25,7 +25,7 @@ struct DiskUsageView: View {
                         Spacer()
                         if busy { Button(L("Interrompi")) { scanTask?.cancel(); busy = false } }
                         else { Button(L("Analizza di nuovo")) { startScan() } }
-                    }.buttonStyle(.bordered).font(.system(size: 11))
+                    }.buttonStyle(DeckButtonStyle()).font(.system(size: 11))
                     HStack {
                         Button { folder.deleteLastPathComponent(); startScan() } label: { Image(systemName: "arrow.up") }
                             .disabled(folder.path == "/" || busy).help(L("Cartella superiore"))

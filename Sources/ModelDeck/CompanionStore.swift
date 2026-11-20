@@ -4,8 +4,8 @@ import ModelDeckCore
 
 enum CompanionSettings {
     static var enabled: Bool { UserDefaults.standard.bool(forKey: "companionEnabled") }
-    static var feedPath: String { UserDefaults.standard.string(forKey: "companionFeedPath").flatMap { $0.isEmpty ? nil : $0 } ?? CompanionFeed.defaultPath }
-    static var inboxPath: String { UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
+    static var feedPath: String { CommandLine.arguments.firstIndex(of: "--feed").map { CommandLine.arguments[$0 + 1] } ?? UserDefaults.standard.string(forKey: "companionFeedPath").flatMap { $0.isEmpty ? nil : $0 } ?? CompanionFeed.defaultPath }
+    static var inboxPath: String { CommandLine.arguments.firstIndex(of: "--inbox").map { CommandLine.arguments[$0 + 1] } ?? UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
 }
 
 extension DeckStore {
@@ -19,22 +19,32 @@ extension DeckStore {
             companionError = nil
             announceUrgent(feed)
         } catch { companionError = error.localizedDescription }
-        for (key, note) in companionNotes {
-            let status = CompanionInbox.status(of: note)
-            if companionStatuses[key] != status { companionStatuses[key] = status }
-        }
+        refreshCommands()
     }
 
-    /// Files one click note. Returns an error text, or nil on success.
+    /// Reads `commands.jsonl` beside the inbox for card status and per-card history.
+    func refreshCommands() {
+        let ledger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
+        if ledger != commandLedger { commandLedger = ledger }
+    }
+
+    /// Files one click note. The queued line goes into `commands.jsonl` first, so a pickup line can never come before it.
+    /// Returns an error text, or nil on success.
     @discardableResult
-    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil) -> String? {
-        if demo { companionStatuses[actionID + "|" + target] = .sent; return nil }
-        do {
-            let note = try CompanionInbox.file(CompanionClick(actionID: actionID, target: target, draftText: draftText), inbox: CompanionSettings.inboxPath)
-            let key = actionID + "|" + target
-            companionNotes[key] = note; companionStatuses[key] = .sent
-            return nil
-        } catch { return error.localizedDescription }
+    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, label: String? = nil) -> String? {
+        if demo { return nil }
+        let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
+        let log = CommandLog.url(inbox: CompanionSettings.inboxPath)
+        do { try CommandLog.append(CommandRecord(id: click.idempotencyKey, actionID: actionID, target: target, state: .queued, label: label), to: log) }
+        catch { return error.localizedDescription }
+        do { try CompanionInbox.file(click, inbox: CompanionSettings.inboxPath) }
+        catch {
+            try? CommandLog.append(CommandRecord(id: click.idempotencyKey, actionID: actionID, target: target, state: .failed, note: "Inbox write failed: " + error.localizedDescription), to: log)
+            refreshCommands()
+            return error.localizedDescription
+        }
+        refreshCommands()
+        return nil
     }
 
     private func announceUrgent(_ feed: CompanionFeed) {

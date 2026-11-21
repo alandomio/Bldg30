@@ -28,8 +28,7 @@ extension DeckStore {
         if ledger != commandLedger { commandLedger = ledger }
     }
 
-    /// Files one click note. The queued line goes into `commands.jsonl` first, so a pickup line can never come before it.
-    /// Returns an error text, or nil on success.
+    /// Refreshes card status even on failure so the ledger can show the result of the send.
     @discardableResult
     func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, label: String? = nil) -> String? {
         if demo { return nil }

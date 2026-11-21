@@ -218,7 +218,7 @@ struct CompanionView: View {
         }
     }
 
-    /// Feed decisions that are not dropped; a Drop whose undo window is over has already written its queued line.
+    /// Keep sent Drops out of the open list while the feed catches up.
     private var openDecisions: [CompanionFeed.Decision] {
         OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).filter { !drops.sent.contains($0.id) }
     }
@@ -428,7 +428,6 @@ struct CompanionView: View {
         Button(L("Nascondi")) { dismiss(mr) }.buttonStyle(DeckButtonStyle(small: true)).help(L("Nascondi finché non c’è qualcosa di nuovo"))
     }
 
-    /// Green line at the top of a card with approvals: who approved, how many are left, who merges. Read from the live feed row.
     private func bannerText(_ mr: BoardMR) -> String? { MRDismissal.banner(approval: mr.feedRow?.approval, waitingOn: mr.waitingOn) }
     @ViewBuilder private func approvalBanner(_ mr: BoardMR) -> some View {
         if let text = bannerText(mr) {
@@ -931,7 +930,6 @@ struct CardStatusLine: View {
 }
 
 enum CardStyle {
-    /// Localized plain status of a command; the failure reason follows "Failed".
     static func title(_ command: Command) -> String { CardActivity.statusText(command) }
     static func color(_ state: CommandState) -> Color {
         switch state { case .queued: DeckTheme.muted; case .pickedUp: DeckTheme.blue; case .done: DeckTheme.mint; case .failed: .red }

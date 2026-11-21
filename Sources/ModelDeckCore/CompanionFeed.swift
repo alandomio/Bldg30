@@ -232,7 +232,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public func age(now: Date = Date()) -> TimeInterval { max(0, now.timeIntervalSince(generatedAt)) }
     public func isStale(now: Date = Date()) -> Bool { age(now: now) > Self.staleAfter }
 
-    /// Decodes and validates. Any malformed or unknown value throws, so a producer bug never reads as "nothing to do".
+    /// Top-level decode failures throw. Invalid rows are reported in `skipped` so valid rows remain usable.
     public static func decode(_ data: Data) throws -> CompanionFeed {
         let decoder = Self.jsonDecoder()
         let feed: CompanionFeed

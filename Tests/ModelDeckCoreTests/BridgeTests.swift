@@ -63,6 +63,24 @@ private let requiresRealFeed = ConditionTrait.enabled(
         #expect(tickets.first { $0.identifier == "IN-1" }!.status == "Done" && tickets.first { $0.identifier == "IN-1" }!.finishStale)
         #expect(tickets.map(\.identifier) == ["IN-1", "IN-9"])
     }
+    @Test func sameMeaningPipelineWordsFromFeedAndPollDoNotMarkVerdictStale() throws {
+        // The feed says "success" (GitLab REST); the poll maps SUCCESS to "passed". Same state, so no stale verdict.
+        let data = try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: t0).utf8)) as! [String: Any]
+        var root = data; var rows = root["mrs"] as! [[String: Any]]
+        rows[0]["pipeline"] = "SUCCESS"; rows[0]["open_threads"] = 2; rows[1]["pipeline"] = "success"; rows[1]["open_threads"] = 0
+        root["mrs"] = rows
+        let value = try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+        let raw = RawBoard(tickets: [], mrs: [mr(12, pipeline: "passed", threads: 2, updated: -30), mr(7, pipeline: "passed", threads: 0, updated: -30)].map { live in
+            RawMR(ref: live.ref, title: live.title, role: live.role, pipeline: live.pipeline, projectPath: live.projectPath, iid: live.iid, openThreads: live.openThreads,
+                  url: URL(string: live.iid == 7 ? "https://example.com/tool/-/merge_requests/7" : live.url.absoluteString)!, updatedAt: live.updatedAt)
+        }, linearOK: true, gitlabOK: true, fetchedAt: t0.addingTimeInterval(600))
+        let mrs = CompanionBoard.mrs(feed: value, raw: raw)
+        #expect(mrs.filter { $0.ref == "svc !12" || $0.ref == "tool !7" }.allSatisfy { !$0.verdictStale })
+        #expect(PipelineState.canonical("success") == "passed" && PipelineState.canonical("PASSED") == "passed")
+        #expect(PipelineState.canonical("cancelled") == "canceled" && PipelineState.canonical("failed") == "failed")
+        #expect(PipelineState.canonical("created") == PipelineState.canonical("pending") && PipelineState.canonical(nil) == "none")
+        #expect(PipelineState.canonical("success") != PipelineState.canonical("failed"))
+    }
     @Test func olderOrFailedRawDataNeverTouchesTheFeed() throws {
         let older = RawBoard(tickets: [ticket("IN-1", state: "Done")], mrs: [mr(12, pipeline: "failed", threads: 9)], linearOK: true, gitlabOK: true, fetchedAt: t0.addingTimeInterval(-60))
         #expect(CompanionBoard.mrs(feed: try feed(), raw: older).first { $0.ref == "svc !12" }!.openThreads == 2)

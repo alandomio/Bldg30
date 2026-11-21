@@ -29,17 +29,7 @@ public enum GitLabBoard {
     }
 
     static func status(_ raw: String?) -> String {
-        switch raw?.uppercased() {
-        case "SUCCESS": "passed"
-        case "FAILED": "failed"
-        case "RUNNING": "running"
-        case "PENDING", "CREATED", "WAITING_FOR_RESOURCE", "PREPARING", "SCHEDULED": "pending"
-        case "CANCELED", "CANCELING": "canceled"
-        case "MANUAL": "manual"
-        case "SKIPPED": "skipped"
-        case nil: "none"
-        default: raw!.lowercased()
-        }
+        PipelineState.canonical(raw)
     }
 
     /// Parses the GraphQL response. A malformed node throws, so a schema change never reads as "no MRs".
@@ -129,5 +119,20 @@ extension GitLabBoard {
         guard let url = URL(string: base.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/api/v4/projects/\(encoded)/merge_requests/\(iid)") else { throw DeckError.invalidResponse }
         var request = URLRequest(url: url); request.setValue(token, forHTTPHeaderField: "PRIVATE-TOKEN")
         return try isMerged(try await BoardHTTP.send(request))
+    }
+}
+
+/// Pipeline words differ between the feed (GitLab REST) and the poll (GraphQL); compare them through one vocabulary.
+public enum PipelineState {
+    public static func canonical(_ raw: String?) -> String {
+        guard let word = raw?.trimmingCharacters(in: .whitespaces).lowercased(), !word.isEmpty else { return "none" }
+        switch word {
+        case "success", "passed": return "passed"
+        case "failed": return "failed"
+        case "running": return "running"
+        case "pending", "created", "waiting_for_resource", "preparing", "scheduled": return "pending"
+        case "canceled", "cancelled", "canceling": return "canceled"
+        default: return word
+        }
     }
 }

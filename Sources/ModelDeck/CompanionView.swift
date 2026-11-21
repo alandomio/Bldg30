@@ -427,14 +427,7 @@ struct CompanionView: View {
     }
 
     /// Green line at the top of a card with approvals: who approved, how many are left, who merges. Read from the live feed row.
-    private func bannerText(_ mr: BoardMR) -> String? {
-        guard let badge = mr.feedRow?.approval?.badge else { return nil }
-        let others = badge.others.joined(separator: ", ")
-        let who = badge.byMe ? (others.isEmpty ? L("Approvata da te") : L("Approvata da te e \(others)")) : L("Approvata da \(others)")
-        let left = mr.feedRow?.approval?.approvalsLeft.map { " · " + L("\(String($0)) rimaste") } ?? ""
-        let merge = mr.waitingOn.map { " · " + L("in attesa di \($0) per il merge") } ?? ""
-        return who + left + merge
-    }
+    private func bannerText(_ mr: BoardMR) -> String? { MRDismissal.banner(approval: mr.feedRow?.approval, waitingOn: mr.waitingOn) }
     @ViewBuilder private func approvalBanner(_ mr: BoardMR) -> some View {
         if let text = bannerText(mr) {
             HStack(spacing: 6) {
@@ -477,15 +470,6 @@ struct CompanionView: View {
                 Text(L("In attesa di altri (\(items.count))")).font(.system(size: 12, weight: .semibold)).foregroundStyle(DeckTheme.muted)
             }
             .padding(12).background(DeckTheme.subtle.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
-        }
-    }
-
-    /// "Approved by you" or "Approved by omar.pp, kmang"; nothing when nobody approved.
-    @ViewBuilder private func approvalBadge(_ approval: CompanionFeed.Approval?) -> some View {
-        if let badge = approval?.badge {
-            let others = badge.others.joined(separator: ", ")
-            Text(badge.byMe ? (others.isEmpty ? L("Approvata da te") : L("Approvata da te e \(others)")) : L("Approvata da \(others)")).font(.system(size: 10, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 2)
-                .foregroundStyle(DeckTheme.mint).background(DeckTheme.mint.opacity(0.15), in: Capsule())
         }
     }
 
@@ -946,14 +930,7 @@ struct CardStatusLine: View {
 
 enum CardStyle {
     /// Localized plain status of a command; the failure reason follows "Failed".
-    static func title(_ command: Command) -> String {
-        switch command.state {
-        case .queued: D("Inviato")
-        case .pickedUp: D("Firstmate se ne sta occupando")
-        case .done: D("Fatto")
-        case .failed: command.note.map { D("Fallito") + ": " + String($0.prefix(160)) } ?? D("Fallito")
-        }
-    }
+    static func title(_ command: Command) -> String { CardActivity.statusText(command) }
     static func color(_ state: CommandState) -> Color {
         switch state { case .queued: DeckTheme.muted; case .pickedUp: DeckTheme.blue; case .done: DeckTheme.mint; case .failed: .red }
     }

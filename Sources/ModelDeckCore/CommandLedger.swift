@@ -114,12 +114,13 @@ public enum CardActivity {
     }
 
     /// One short sentence about the card's newest command: Sent, Firstmate is on it, Done, Failed: reason.
-    public static func statusText(_ command: Command) -> String {
+    public static func statusText(_ command: Command, language: DeckLanguage = .current) -> String {
+        func t(_ key: String) -> String { DeckLocalization.dynamic(key, language: language) }
         switch command.state {
-        case .queued: return "Sent"
-        case .pickedUp: return "Firstmate is on it"
-        case .done: return "Done"
-        case .failed: return command.note.map { "Failed: " + String($0.prefix(160)) } ?? "Failed"
+        case .queued: return t("Inviato")
+        case .pickedUp: return t("Firstmate se ne sta occupando")
+        case .done: return t("Fatto")
+        case .failed: return command.note.map { t("Fallito") + ": " + String($0.prefix(160)) } ?? t("Fallito")
         }
     }
     /// The button text the person pressed, or the action id turned into words.

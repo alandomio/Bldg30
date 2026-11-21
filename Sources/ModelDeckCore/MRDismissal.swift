@@ -2,14 +2,15 @@ import Foundation
 
 /// The banner line and the dismissal rule of an MR card, both read from live facts of the feed row.
 public enum MRDismissal {
-    /// "Approved by omar.pp · 0 left · waiting on kmang to merge". "You" only when the user approved. Nil when nobody approved.
-    public static func banner(approval: CompanionFeed.Approval?, waitingOn: String?) -> String? {
+    /// The green line of a card with approvals, in the interface language. "You" only when the user approved. Nil when nobody approved.
+    public static func banner(approval: CompanionFeed.Approval?, waitingOn: String?, language: DeckLanguage = .current) -> String? {
         guard let badge = approval?.badge else { return nil }
-        let names = (badge.byMe ? ["you"] : []) + badge.others
-        var line = "Approved by " + names.joined(separator: ", ")
-        if let left = approval?.approvalsLeft { line += " · \(left) left" }
-        if let who = CompanionFeed.text(waitingOn) { line += " · waiting on \(who) to merge" }
-        return line
+        func t(_ value: DeckLocalizedString) -> String { DeckLocalization.text(value, language: language) }
+        let others = badge.others.joined(separator: ", ")
+        let who = badge.byMe ? (others.isEmpty ? t("Approvata da te") : t("Approvata da te e \(others)")) : t("Approvata da \(others)")
+        let left = approval?.approvalsLeft.map { " · " + t("\(String($0)) rimaste") } ?? ""
+        let merge = CompanionFeed.text(waitingOn).map { " · " + t("in attesa di \($0) per il merge") } ?? ""
+        return who + left + merge
     }
 
     /// What must stay the same for a dismissal to hold: the head commit, the state, whether something is owed by the user and the open threads.

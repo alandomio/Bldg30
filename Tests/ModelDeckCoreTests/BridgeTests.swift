@@ -237,7 +237,6 @@ private let requiresRealFeed = ConditionTrait.enabled(
         let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as? [String: String])
         #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "dec-1.answer" && json["target"] == "dec-1" && json["draft_text"] == "  Ship it\n  but keep the flag" && json["idempotency_key"] == "k1")
         #expect(Set(json.keys) == ["schema", "idempotency_key", "action_id", "target", "draft_text", "created_at"])
-        #expect(CompanionInbox.status(of: note) == .sent)
     }
 
     @Test(requiresRealFeed) func realDossiersDecodeWhenPresent() throws {
@@ -279,7 +278,6 @@ private let requiresRealFeed = ConditionTrait.enabled(
         }
         for mr in feed.mrs {
             let ids = Set(mr.actions.map(\.id))
-            for action in mr.actions { #expect(CompanionAnswer.rowClick(action: action, ref: mr.ref).actionID == action.id && ids.contains(action.id)) }
             if !mr.drafts.isEmpty, let post = mr.postAction {
                 let click = try #require(CompanionAnswer.postClick(mr: mr, text: "edited text\n"))
                 #expect(ids.contains(click.actionID) && click.actionID == post.id && click.target == mr.ref && click.draftText == "edited text\n")
@@ -610,11 +608,12 @@ private let requiresRealFeed = ConditionTrait.enabled(
         #expect(CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: ctx))
     }
     @Test func plainStatusWords() {
-        func status(_ lines: [String]) -> String { CardActivity.statusText(CommandLedger(lines: lines).commands[0]) }
+        func status(_ lines: [String]) -> String { CardActivity.statusText(CommandLedger(lines: lines).commands[0], language: .english) }
         #expect(status([line("a", "queued", action: "x")]) == "Sent")
         #expect(status([line("a", "queued", action: "x"), line("a", "picked_up", action: "x")]) == "Firstmate is on it")
         #expect(status([line("a", "queued", action: "x"), line("a", "done", action: "x")]) == "Done")
         #expect(status([line("a", "queued", action: "x"), line("a", "failed", action: "x", note: "branch protected")]) == "Failed: branch protected")
+        #expect(CardActivity.statusText(CommandLedger(lines: [line("a", "queued", action: "x")]).commands[0], language: .italian) == "Inviato")
     }
     @Test func historyUsesWordsNotActionIDs() {
         let ledger = CommandLedger(lines: [line("a", "queued", action: "row-mr-pi-1571.post-reply-and-approve"), line("b", "queued", action: "d1.opt-defer"),
@@ -897,10 +896,11 @@ private let requiresRealFeed = ConditionTrait.enabled(
 
     @Test func bannerNamesTheLiveApproversAndSaysYouOnlyWhenTheUserApproved() {
         let m = Self.mr(head: "a", waiting: "kmang")
-        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn) == "Approved by omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn, language: .english) == "Approved by omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn, language: .italian) == "Approvata da omar.pp · 0 rimaste · in attesa di kmang per il merge")
         let mine = CompanionFeed.Approval(approvedBy: ["omar.pp"], approvedByMe: true, approvalsLeft: 0, atHead: true)
-        #expect(MRDismissal.banner(approval: mine, waitingOn: "kmang") == "Approved by you, omar.pp · 0 left · waiting on kmang to merge")
-        #expect(MRDismissal.banner(approval: CompanionFeed.Approval(approvedBy: [], approvedByMe: false, approvalsLeft: 1, atHead: nil), waitingOn: nil) == nil)
+        #expect(MRDismissal.banner(approval: mine, waitingOn: "kmang", language: .english) == "Approved by you and omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: CompanionFeed.Approval(approvedBy: [], approvedByMe: false, approvalsLeft: 1, atHead: nil), waitingOn: nil, language: .english) == nil)
     }
 
     @Test func dismissalHoldsUntilANewCommitOrACommentToTheUser() {

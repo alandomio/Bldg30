@@ -131,24 +131,4 @@ import ModelDeckCore
     }
 
     static func spin(_ seconds: TimeInterval) { RunLoop.main.run(until: Date().addingTimeInterval(seconds)) }
-
-    static func dump(_ element: Any, _ depth: Int) {
-        guard depth < 12, let item = element as? NSAccessibilityProtocol else { print(String(repeating: " ", count: depth), "non-ax", type(of: element)); return }
-        print(String(repeating: " ", count: depth), item.accessibilityRole()?.rawValue ?? "?", item.accessibilityLabel() ?? "", (item.accessibilityChildren() ?? []).count)
-        for child in item.accessibilityChildren() ?? [] { dump(child, depth + 1) }
-    }
-    struct Node { let label: String; let frame: NSRect }
-    static func buttons(in root: Any) -> [Node] {
-        var found: [Node] = []
-        func walk(_ element: Any, depth: Int) {
-            guard depth < 40, let item = element as? NSAccessibilityProtocol else { return }
-            if item.accessibilityRole() == .button {
-                let label = item.accessibilityLabel() ?? item.accessibilityTitle() ?? ""
-                if !label.isEmpty { found.append(Node(label: label, frame: item.accessibilityFrame())) }
-            }
-            for child in item.accessibilityChildren() ?? [] { walk(child, depth: depth + 1) }
-        }
-        walk(root, depth: 0)
-        return found
-    }
 }

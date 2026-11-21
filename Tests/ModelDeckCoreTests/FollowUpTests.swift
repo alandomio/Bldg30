@@ -15,13 +15,13 @@ import Foundation
     // queued-line-before-inbox-check
     @Test func noInboxFolderMeansNoQueuedLineAndAnError() throws {
         let click = CompanionClick(actionID: "a.opt-1", target: "a")
-        let stray = FileManager.default.currentDirectoryPath + "/commands.jsonl"
-        try? FileManager.default.removeItem(atPath: stray)
-        defer { try? FileManager.default.removeItem(atPath: stray) }
         for inbox in ["", "   "] {
+            let stray = CommandLog.url(inbox: inbox)
+            let before = try FileManager.default.fileExists(atPath: stray.path) ? Data(contentsOf: stray) : nil
             let error = ClickSender.send(click, label: "Go", inbox: inbox)
+            let after = try FileManager.default.fileExists(atPath: stray.path) ? Data(contentsOf: stray) : nil
             #expect(error == CompanionError.noInbox.errorDescription)
-            #expect(!FileManager.default.fileExists(atPath: stray), "a commands.jsonl was written into the working directory")
+            #expect(after == before, "commands.jsonl changed without an inbox")
         }
     }
     @Test func aWorkingInboxQueuesThenFilesAndABrokenOneQueuesThenFails() throws {
@@ -63,6 +63,7 @@ import Foundation
         for action in [WorkerActions.sweep, WorkerActions.cleanup, WorkerActions.discard] {
             #expect(!WorkerActions.mayRun(action, task: "a", ledger: queued))
         }
+        #expect(WorkerActions.mayRun(WorkerActions.steer, task: "a", ledger: queued))
         #expect(WorkerActions.mayRun(WorkerActions.sweep, task: "b", ledger: queued))
         let failed = CommandLedger(lines: [line("c1", "queued", WorkerActions.sweep), line("c1", "failed", WorkerActions.sweep)])
         #expect(WorkerActions.mayRun(WorkerActions.sweep, task: "a", ledger: failed))

@@ -267,9 +267,11 @@ public enum WorkerBoard {
 public enum WorkerActions {
     public static let sweep = "worker.sweep", cleanup = "worker.cleanup", discard = "worker.discard", steer = "worker.steer"
     public static func target(_ task: String) -> String { "worker:" + task }
-    /// Sweep, cleanup, discard and steer wait for the command still in flight on the same worker.
     public static func mayRun(_ action: String, task: String, ledger: CommandLedger) -> Bool {
-        CardActivity.canRun(actionID: action, target: target(task), ledger: ledger)
+        switch action {
+        case sweep, cleanup, discard: return CardActivity.inFlight(target: target(task), ledger: ledger) == nil
+        default: return true
+        }
     }
     public static func task(of target: String) -> String? { target.hasPrefix("worker:") ? String(target.dropFirst(7)) : nil }
 

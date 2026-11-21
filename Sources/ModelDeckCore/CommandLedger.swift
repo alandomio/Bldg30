@@ -174,3 +174,44 @@ public enum ReviewDrafts {
         drafts.filter { !discarded.contains(discardKey(target: target, draft: $0)) && !isPosted($0, target: target, actions: actions, ledger: ledger) }
     }
 }
+
+public enum CommandArguments {
+    /// The word after `flag`; nil when the flag is missing, last, or followed by another flag.
+    public static func value(after flag: String, in arguments: [String] = CommandLine.arguments) -> String? {
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1), !arguments[index + 1].hasPrefix("--") else { return nil }
+        return arguments[index + 1]
+    }
+}
+
+/// Files one click: the queued line first (so a pickup can never precede it), then the inbox note.
+public enum ClickSender {
+    /// Returns an error text, or nil on success. Without an inbox folder nothing is written at all.
+    public static func send(_ click: CompanionClick, label: String?, inbox: String) -> String? {
+        guard !inbox.trimmingCharacters(in: .whitespaces).isEmpty else { return CompanionError.noInbox.errorDescription }
+        let log = CommandLog.url(inbox: inbox)
+        let record = { (state: CommandState, note: String?, label: String?) in
+            CommandRecord(id: click.idempotencyKey, actionID: click.actionID, target: click.target, state: state, note: note, label: label)
+        }
+        do { try CommandLog.append(record(.queued, nil, label), to: log) } catch { return error.localizedDescription }
+        do { try CompanionInbox.file(click, inbox: inbox) } catch {
+            try? CommandLog.append(record(.failed, "Inbox write failed: " + error.localizedDescription, nil), to: log)
+            return error.localizedDescription
+        }
+        return nil
+    }
+}
+
+/// Decisions the person dropped: hidden during the undo window and after the click is filed; a failed send brings the card back.
+public struct DropQueue: Equatable, Sendable {
+    public private(set) var pending = Set<String>(), sent = Set<String>()
+    public init() {}
+    public func isHidden(_ id: String) -> Bool { pending.contains(id) || sent.contains(id) }
+    public mutating func begin(_ id: String) { pending.insert(id) }
+    public mutating func undo(_ id: String) { pending.remove(id) }
+    /// The undo window ended. True when the drop was still pending, so its click must be sent now.
+    public mutating func expire(_ id: String) -> Bool {
+        guard pending.remove(id) != nil else { return false }
+        sent.insert(id); return true
+    }
+    public mutating func sendFailed(_ id: String) { sent.remove(id) }
+}

@@ -281,6 +281,7 @@ struct WorkersView: View {
     }
 
     private func send(_ action: String, _ task: String, _ text: String?, label: String) {
+        guard WorkerActions.mayRun(action, task: task, ledger: store.commandLedger) else { return }
         feedback = store.sendCompanionClick(actionID: action, target: WorkerActions.target(task), draftText: text, label: text == nil ? label : nil)
     }
 

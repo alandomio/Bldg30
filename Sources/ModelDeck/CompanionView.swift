@@ -62,8 +62,7 @@ struct CompanionView: View {
     @State private var draftTexts: [String: String] = [:]
     @State private var openContext = Set<String>()
     @State private var detailsOpen = Set<String>()
-    @State private var dropPending = Set<String>()
-    @State private var dropSent = Set<String>()
+    @State private var drops = DropQueue()
     @State private var dropTasks: [String: Task<Void, Never>] = [:]
     @State private var keyPress: KeyEvent?
     @State private var selection: [String: Int] = [:]
@@ -166,7 +165,7 @@ struct CompanionView: View {
                 DeckCard {
                     VStack(alignment: .leading, spacing: 14) {
                         decisionHeader(item, position: position, count: items.count)
-                        if dropPending.contains(item.id) || dropSent.contains(item.id) {
+                        if drops.isHidden(item.id) {
                             droppedRow(item, standard: standard)
                         } else {
                             CardStatusLine(target: item.id).environmentObject(store)
@@ -208,10 +207,10 @@ struct CompanionView: View {
                         selection[item.id] = DecisionKeys.moved(selected: selection[item.id], recommended: current, by: command == .selectUp ? -1 : 1, count: specific.count)
                     case .confirm:
                         let current = selection[item.id] ?? recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } } ?? 0
-                        guard !locked, !dropPending.contains(item.id), !dropSent.contains(item.id), specific.indices.contains(current) else { return }
+                        guard !locked, !drops.isHidden(item.id), specific.indices.contains(current) else { return }
                         sendDecision(item, option: specific[current].element, index: specific[current].offset)
                     case .pick(let letterIndex):
-                        guard !locked, !dropPending.contains(item.id), !dropSent.contains(item.id), specific.indices.contains(letterIndex) else { return }
+                        guard !locked, !drops.isHidden(item.id), specific.indices.contains(letterIndex) else { return }
                         sendDecision(item, option: specific[letterIndex].element, index: specific[letterIndex].offset)
                     }
                 }
@@ -221,7 +220,7 @@ struct CompanionView: View {
 
     /// Feed decisions that are not dropped; a Drop whose undo window is over has already written its queued line.
     private var openDecisions: [CompanionFeed.Decision] {
-        OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).filter { !dropSent.contains($0.id) }
+        OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).filter { !drops.sent.contains($0.id) }
     }
 
     /// MRs the feed marks merged or closed are not cards; one line says how many were left out.
@@ -335,22 +334,22 @@ struct CompanionView: View {
                 Text(L("Scartata")).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color(red: 1, green: 0.6, blue: 0.6))
                 Text(item.title).font(.system(size: 12)).foregroundStyle(DeckTheme.muted).lineLimit(2)
                 Spacer()
-                if dropPending.contains(item.id) { Button(L("Annulla")) { undoDrop(item.id) }.buttonStyle(DeckButtonStyle(small: true)) }
+                if drops.pending.contains(item.id) { Button(L("Annulla")) { undoDrop(item.id) }.buttonStyle(DeckButtonStyle(small: true)) }
             }
         }
     }
 
     private func startDrop(_ item: CompanionFeed.Decision, option: CompanionFeed.Option, offset: Int) {
-        dropPending.insert(item.id)
+        drops.begin(item.id)
         dropTasks[item.id] = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard !Task.isCancelled, dropPending.contains(item.id) else { return }
-            dropPending.remove(item.id); dropSent.insert(item.id); dropTasks[item.id] = nil
-            sendDecision(item, option: option, index: offset)
+            guard !Task.isCancelled, drops.expire(item.id) else { return }
+            dropTasks[item.id] = nil
+            if !sendDecision(item, option: option, index: offset) { drops.sendFailed(item.id) }
         }
     }
     private func undoDrop(_ id: String) {
-        dropTasks[id]?.cancel(); dropTasks[id] = nil; dropPending.remove(id)
+        dropTasks[id]?.cancel(); dropTasks[id] = nil; drops.undo(id)
     }
 
     private func answerField(_ item: CompanionFeed.Decision, locked: Bool) -> some View {
@@ -367,10 +366,13 @@ struct CompanionView: View {
         }
     }
 
-    private func sendDecision(_ item: CompanionFeed.Decision, option: CompanionFeed.Option?, index: Int) {
-        guard let click = CompanionAnswer.click(decisionID: item.id, option: option, optionIndex: index, text: answers[item.id] ?? "") else { return }
+    /// True when the click was filed (or there was nothing to send); false when filing failed.
+    @discardableResult
+    private func sendDecision(_ item: CompanionFeed.Decision, option: CompanionFeed.Option?, index: Int) -> Bool {
+        guard let click = CompanionAnswer.click(decisionID: item.id, option: option, optionIndex: index, text: answers[item.id] ?? "") else { return true }
         feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText, label: option?.label ?? L("Risposta libera"))
         if feedback == nil { answers[item.id] = "" }
+        return feedback == nil
     }
 
     private func mrs(_ items: [BoardMR], locked: Bool) -> some View {

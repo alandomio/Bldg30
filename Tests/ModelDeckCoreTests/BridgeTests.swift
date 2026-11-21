@@ -63,6 +63,24 @@ private let requiresRealFeed = ConditionTrait.enabled(
         #expect(tickets.first { $0.identifier == "IN-1" }!.status == "Done" && tickets.first { $0.identifier == "IN-1" }!.finishStale)
         #expect(tickets.map(\.identifier) == ["IN-1", "IN-9"])
     }
+    @Test func sameMeaningPipelineWordsFromFeedAndPollDoNotMarkVerdictStale() throws {
+        // The feed says "success" (GitLab REST); the poll maps SUCCESS to "passed". Same state, so no stale verdict.
+        let data = try JSONSerialization.jsonObject(with: Data(CompanionFixture.json(generatedAt: t0).utf8)) as! [String: Any]
+        var root = data; var rows = root["mrs"] as! [[String: Any]]
+        rows[0]["pipeline"] = "SUCCESS"; rows[0]["open_threads"] = 2; rows[1]["pipeline"] = "success"; rows[1]["open_threads"] = 0
+        root["mrs"] = rows
+        let value = try CompanionFeed.decode(try JSONSerialization.data(withJSONObject: root))
+        let raw = RawBoard(tickets: [], mrs: [mr(12, pipeline: "passed", threads: 2, updated: -30), mr(7, pipeline: "passed", threads: 0, updated: -30)].map { live in
+            RawMR(ref: live.ref, title: live.title, role: live.role, pipeline: live.pipeline, projectPath: live.projectPath, iid: live.iid, openThreads: live.openThreads,
+                  url: URL(string: live.iid == 7 ? "https://example.com/tool/-/merge_requests/7" : live.url.absoluteString)!, updatedAt: live.updatedAt)
+        }, linearOK: true, gitlabOK: true, fetchedAt: t0.addingTimeInterval(600))
+        let mrs = CompanionBoard.mrs(feed: value, raw: raw)
+        #expect(mrs.filter { $0.ref == "svc !12" || $0.ref == "tool !7" }.allSatisfy { !$0.verdictStale })
+        #expect(PipelineState.canonical("success") == "passed" && PipelineState.canonical("PASSED") == "passed")
+        #expect(PipelineState.canonical("cancelled") == "canceled" && PipelineState.canonical("failed") == "failed")
+        #expect(PipelineState.canonical("created") == PipelineState.canonical("pending") && PipelineState.canonical(nil) == "none")
+        #expect(PipelineState.canonical("success") != PipelineState.canonical("failed"))
+    }
     @Test func olderOrFailedRawDataNeverTouchesTheFeed() throws {
         let older = RawBoard(tickets: [ticket("IN-1", state: "Done")], mrs: [mr(12, pipeline: "failed", threads: 9)], linearOK: true, gitlabOK: true, fetchedAt: t0.addingTimeInterval(-60))
         #expect(CompanionBoard.mrs(feed: try feed(), raw: older).first { $0.ref == "svc !12" }!.openThreads == 2)
@@ -219,7 +237,6 @@ private let requiresRealFeed = ConditionTrait.enabled(
         let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: note)) as? [String: String])
         #expect(json["schema"] == "companion-click.v1" && json["action_id"] == "dec-1.answer" && json["target"] == "dec-1" && json["draft_text"] == "  Ship it\n  but keep the flag" && json["idempotency_key"] == "k1")
         #expect(Set(json.keys) == ["schema", "idempotency_key", "action_id", "target", "draft_text", "created_at"])
-        #expect(CompanionInbox.status(of: note) == .sent)
     }
 
     @Test(requiresRealFeed) func realDossiersDecodeWhenPresent() throws {
@@ -261,7 +278,6 @@ private let requiresRealFeed = ConditionTrait.enabled(
         }
         for mr in feed.mrs {
             let ids = Set(mr.actions.map(\.id))
-            for action in mr.actions { #expect(CompanionAnswer.rowClick(action: action, ref: mr.ref).actionID == action.id && ids.contains(action.id)) }
             if !mr.drafts.isEmpty, let post = mr.postAction {
                 let click = try #require(CompanionAnswer.postClick(mr: mr, text: "edited text\n"))
                 #expect(ids.contains(click.actionID) && click.actionID == post.id && click.target == mr.ref && click.draftText == "edited text\n")
@@ -592,11 +608,12 @@ private let requiresRealFeed = ConditionTrait.enabled(
         #expect(CardActivity.canRun(actionID: "c1.approve", target: "c1", ledger: ctx))
     }
     @Test func plainStatusWords() {
-        func status(_ lines: [String]) -> String { CardActivity.statusText(CommandLedger(lines: lines).commands[0]) }
+        func status(_ lines: [String]) -> String { CardActivity.statusText(CommandLedger(lines: lines).commands[0], language: .english) }
         #expect(status([line("a", "queued", action: "x")]) == "Sent")
         #expect(status([line("a", "queued", action: "x"), line("a", "picked_up", action: "x")]) == "Firstmate is on it")
         #expect(status([line("a", "queued", action: "x"), line("a", "done", action: "x")]) == "Done")
         #expect(status([line("a", "queued", action: "x"), line("a", "failed", action: "x", note: "branch protected")]) == "Failed: branch protected")
+        #expect(CardActivity.statusText(CommandLedger(lines: [line("a", "queued", action: "x")]).commands[0], language: .italian) == "Inviato")
     }
     @Test func historyUsesWordsNotActionIDs() {
         let ledger = CommandLedger(lines: [line("a", "queued", action: "row-mr-pi-1571.post-reply-and-approve"), line("b", "queued", action: "d1.opt-defer"),
@@ -879,10 +896,11 @@ private let requiresRealFeed = ConditionTrait.enabled(
 
     @Test func bannerNamesTheLiveApproversAndSaysYouOnlyWhenTheUserApproved() {
         let m = Self.mr(head: "a", waiting: "kmang")
-        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn) == "Approved by omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn, language: .english) == "Approved by omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: m.feedRow?.approval, waitingOn: m.waitingOn, language: .italian) == "Approvata da omar.pp · 0 rimaste · in attesa di kmang per il merge")
         let mine = CompanionFeed.Approval(approvedBy: ["omar.pp"], approvedByMe: true, approvalsLeft: 0, atHead: true)
-        #expect(MRDismissal.banner(approval: mine, waitingOn: "kmang") == "Approved by you, omar.pp · 0 left · waiting on kmang to merge")
-        #expect(MRDismissal.banner(approval: CompanionFeed.Approval(approvedBy: [], approvedByMe: false, approvalsLeft: 1, atHead: nil), waitingOn: nil) == nil)
+        #expect(MRDismissal.banner(approval: mine, waitingOn: "kmang", language: .english) == "Approved by you and omar.pp · 0 left · waiting on kmang to merge")
+        #expect(MRDismissal.banner(approval: CompanionFeed.Approval(approvedBy: [], approvedByMe: false, approvalsLeft: 1, atHead: nil), waitingOn: nil, language: .english) == nil)
     }
 
     @Test func dismissalHoldsUntilANewCommitOrACommentToTheUser() {

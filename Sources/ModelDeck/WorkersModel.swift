@@ -31,7 +31,7 @@ import ModelDeckCore
     var home: String { runner.home }
 
     static var cacheURL: URL {
-        if let i = CommandLine.arguments.firstIndex(of: "--workers-cache") { return URL(fileURLWithPath: CommandLine.arguments[i + 1]) }
+        if let path = CommandArguments.value(after: "--workers-cache") { return URL(fileURLWithPath: path) }
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ModelDeck/workers-crew.json")
     }
 

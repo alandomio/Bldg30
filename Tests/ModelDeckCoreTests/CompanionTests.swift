@@ -65,12 +65,6 @@ final class CompanionTests: XCTestCase {
         XCTAssertEqual(json["action_id"], "draft:d1"); XCTAssertEqual(json["draft_text"], "Exact \"text\"\nline two")
         XCTAssertNotNil(json["created_at"])
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: inbox.path).count, 1)
-        XCTAssertEqual(CompanionInbox.status(of: note), .sent)
-        let handled = inbox.appendingPathComponent("handled"); try FileManager.default.createDirectory(at: handled, withIntermediateDirectories: true)
-        try FileManager.default.moveItem(at: note, to: handled.appendingPathComponent(note.lastPathComponent))
-        XCTAssertEqual(CompanionInbox.status(of: note), .pickedUp)
-        try Data("{}".utf8).write(to: handled.appendingPathComponent(note.deletingPathExtension().lastPathComponent + ".reply.json"))
-        XCTAssertEqual(CompanionInbox.status(of: note), .done)
     }
     func testClickNeedsAnExistingInbox() {
         let click = CompanionClick(actionID: "a", target: "t")

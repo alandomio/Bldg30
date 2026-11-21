@@ -23,7 +23,7 @@ Alan first. The app must stay generic so any firstmate user can run it.
 ## Decisions (from the grill)
 
 1. **Generic app, firstmate-owned feed.** ModelDeck contains no company names, project paths or firstmate rules. It reads a local *companion feed* file that firstmate writes. The repo moves to private GitLab soon; the split still holds.
-2. **Clicks are inbox notes.** Every button files a structured firstmate inbox note (action, target, exact draft text, idempotency key). Firstmate handles it under its own gates and replies; the app shows the reply. The app never posts, approves or merges by itself.
+2. **Clicks are inbox notes.** Every button files a structured firstmate inbox note (action, target, exact draft text, idempotency key). Firstmate handles it under its own gates. See the [command lifecycle](../../COMMANDS.md) for how the app tracks status. The app never posts, approves or merges by itself.
 3. **Firstmate owns the judgment.** The feed carries firstmate's verdict, who moves next, drafts and urgency. A feed script refreshes MRs (glab) and tickets (a personal read-only Linear API key in the macOS Keychain) without an agent turn.
 4. **The app polls and reports changes.** The app polls Linear and GitLab and writes deduplicated, batched change events to one firstmate process-event source. Events never use the inbox. A fast "System 1" classifier may replace the fixed event rules later.
 5. **Health panel first, MCP server later.** Version 2 shows MCP servers, CLI logins and firstmate monitoring health. The app as its own MCP server is a later option.

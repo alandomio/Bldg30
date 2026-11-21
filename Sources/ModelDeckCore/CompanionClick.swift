@@ -20,8 +20,6 @@ public struct CompanionClick: Codable, Equatable, Sendable {
     }
 }
 
-public enum CompanionClickStatus: String, Sendable { case sent, queued, pickedUp, done, rejected, waiting }
-
 public enum CompanionInbox {
     /// Writes the note atomically (temp file, then rename) so the reader never sees a half-written file.
     @discardableResult
@@ -36,17 +34,6 @@ public enum CompanionInbox {
         let final = URL(fileURLWithPath: path).appendingPathComponent(name + ".json")
         try data.write(to: final, options: .atomic)
         return final
-    }
-
-    /// sent: the note is still in the inbox. pickedUp: it moved to `handled/`. done: a `<name>.reply.json` sits beside it.
-    public static func status(of note: URL) -> CompanionClickStatus {
-        let manager = FileManager.default
-        let base = note.deletingPathExtension().lastPathComponent
-        let folder = note.deletingLastPathComponent()
-        let handled = folder.appendingPathComponent("handled")
-        for place in [folder, handled] where manager.fileExists(atPath: place.appendingPathComponent(base + ".reply.json").path) { return .done }
-        if manager.fileExists(atPath: handled.appendingPathComponent(note.lastPathComponent).path) { return .pickedUp }
-        return manager.fileExists(atPath: note.path) ? .sent : .pickedUp
     }
 }
 
@@ -78,10 +65,6 @@ public enum CompanionAnswer {
     public static func postClick(mr: CompanionFeed.MergeRequest, text: String, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick? {
         guard let action = mr.postAction, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return CompanionClick(actionID: action.id, target: mr.ref, draftText: text, now: now, key: key)
-    }
-    /// A row action button: the feed's action id and the row ref.
-    public static func rowClick(action: CompanionFeed.Action, ref: String, draftText: String? = nil, now: Date = Date(), key: String = UUID().uuidString.lowercased()) -> CompanionClick {
-        CompanionClick(actionID: action.id, target: ref, draftText: draftText, now: now, key: key)
     }
 }
 

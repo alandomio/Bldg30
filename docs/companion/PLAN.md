@@ -35,7 +35,7 @@ Repo: Bldg30 (ModelDeck), branch per change.
 
 1. **Feed reader** in `ModelDeckCore`: decode and validate `companion-feed.v1`; staleness from `generated_at`. Unit tests with fixture feeds (valid, invalid, stale).
 2. **Panels**: Decisions (one card at a time, options, recommendation), My MRs and reviews (verdict pill, next owner, drafts behind a toggle, buttons), My tickets (status, step left to Done). Localized Italian and English like the rest.
-3. **Buttons** write `companion-click.v1` notes into firstmate's inbox path (configurable, no firstmate paths hard-coded), show "sent / picked up / done" from firstmate's reply.
+3. **Buttons** write `companion-click.v1` notes into firstmate's inbox, whose path comes from configuration. See the [command lifecycle](../../COMMANDS.md) for how the app tracks status.
 4. **Polling and events**: extend `LinearBoard` and add a GitLab reader with a personal token in the Keychain; diff against last poll; write `companion-event.v1` with fingerprints, batched.
 5. **Badge and notifications**: menu bar count of decisions waiting; macOS notification only for `urgent: true`.
 

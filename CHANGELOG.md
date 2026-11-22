@@ -4,6 +4,8 @@
 
 ## 1.1.0 — 2026-11-02
 
+- Add global and per-item Deck Officer comment boxes, saved comments and replies, with Settings and sidebar controls.
+
 - Rename the app to ShipDeck (bundle `ShipDeck.app`, identifier `io.github.alandomio.ShipDeck`); settings migrate once, Keychain and Application Support are unchanged. Reconnect the Claude Code bridge after installing.
 - Poll Linear and GitLab read-only, show newer raw state over a stale verdict, write companion-event.v1, show per-item dossiers with an Add context click, and use the R1 radar icon.
 - Read the feed exactly as its schema allows (null pipeline and open_threads) and skip a bad row with a warning instead of rejecting the whole feed.

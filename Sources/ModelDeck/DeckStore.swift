@@ -29,6 +29,8 @@ import Security
     var lastPoll: Date?
     var polling = false
     var dossierCache: [String: (modified: Date, lookup: Dossier.Lookup)] = [:]
+    @Published var deckComments: [DeckComment] = CompanionSettings.loadComments()
+    @Published var deckReplies: [String: CompanionReply] = [:]
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()

@@ -25,6 +25,7 @@ struct SettingsView: View {
     @State private var gitlabToken = ""
     @State private var gitlabTokenEdited = false
     @State private var gitlabTokenSaved = DeckKeychain.read(account: "gitlab") != nil
+    @AppStorage("deckCommentsEnabled") private var deckCommentsEnabled = false
     @State private var linearKey = ""
     @State private var linearKeyEdited = false
     @State private var linearKeySaved = DeckKeychain.read(account: "linear") != nil
@@ -161,6 +162,9 @@ struct SettingsView: View {
                         Text(L("File eventi")).frame(width: 115, alignment: .leading)
                         TextField(L("Opzionale · eventi companion-event.v1"), text: $companionEventsPath).textFieldStyle(.roundedBorder)
                     }.font(.system(size: 11)).disabled(!companionEnabled)
+                    Toggle(L("Commenti a Deck Officer"), isOn: $deckCommentsEnabled).font(.system(size: 12, weight: .semibold))
+                    Text(L("Mostra una casella di commento globale e una per ogni elemento. Un interruttore nel menu laterale la accende e la spegne. Usa la cartella inbox."))
+                        .font(.system(size: 11)).foregroundStyle(DeckTheme.muted).fixedSize(horizontal: false, vertical: true)
                 }
             }
             DeckCard {

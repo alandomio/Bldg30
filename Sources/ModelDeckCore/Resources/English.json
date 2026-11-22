@@ -710,5 +710,10 @@
   "%@ commenti facoltativi": "%@ optional comments",
   "Commenti di review facoltativi": "Optional review comments",
   "%@ rimaste": "%@ left",
-  "1 commento facoltativo": "1 optional comment"
+  "1 commento facoltativo": "1 optional comment",
+  "Commenta": "Comment",
+  "Scrivi a Deck Officer": "Write to Deck Officer",
+  "Commento per Deck Officer su questo elemento": "Comment for Deck Officer on this item",
+  "Commenti a Deck Officer": "Deck Officer comments",
+  "Mostra una casella di commento globale e una per ogni elemento. Un interruttore nel menu laterale la accende e la spegne. Usa la cartella inbox.": "Shows a global comment box and one per item. A switch in the side menu turns it on and off. Uses the inbox folder."
 }

@@ -191,6 +191,7 @@ struct CompanionView: View {
                                 }.environmentObject(store)
                             }
                             ForEach(item.links, id: \.self) { Link($0.absoluteString, destination: $0).font(.system(size: 10)).pointerCursor() }
+                            DeckCommentBox(target: item.id, compact: true).id(item.id)
                             CardHistory(target: item.id, labels: Dictionary(item.options.compactMap { o in o.actionId.map { ($0, o.label) } }, uniquingKeysWith: { a, _ in a })).environmentObject(store)
                         }
                     }
@@ -399,6 +400,7 @@ struct CompanionView: View {
                         if !drafts.isEmpty { draftPanel(mr, drafts: drafts, position: draftPos, locked: locked) }
                         actions(ReviewDrafts.buttons(mr.actions), target: mr.ref, locked: locked, recommended: recommended(for: mr), draft: drafts.indices.contains(draftPos) ? (draftTexts[mr.ref + "|" + drafts[draftPos].id] ?? drafts[draftPos].text) : nil, postID: mr.postActionID)
                         AddContextRow(ref: mr.ref).environmentObject(store)
+                        DeckCommentBox(target: mr.ref, compact: true)
                         if detailsOpen.contains(mr.ref) || CommandLine.arguments.contains("--details-open") { mrDetailsBox(mr) }
                     }
                 }
@@ -711,6 +713,7 @@ struct CompanionView: View {
                         actions(ticket.actions, target: ticket.identifier, locked: locked || ticket.finishStale, recommended: CompanionRecommendation.actionID(in: ticket.actions, texts: [ticket.finish?.step, ticket.status] + decisionTexts(ticket.decisionId)))
                         AddContextRow(ref: ticket.identifier).environmentObject(store)
                         CardStatusLine(target: ticket.identifier).environmentObject(store)
+                        DeckCommentBox(target: ticket.identifier, compact: true)
                         if detailsOpen.contains(ticket.identifier) || CommandLine.arguments.contains("--details-open") { ticketDetailsBox(ticket) }
                     }
                 }

@@ -782,7 +782,7 @@ def nudge(click, seen):
             run_inbox(["announce", "--json", new_id], home=home)
         except (OSError, subprocess.TimeoutExpired) as e:
             return f"nudge: fm-inbox announce failed: {e}"
-    # A second picked_up line on purpose: the app keeps the wait start and shows the note.
+    # Record the nudge in the ledger. The app ignores repeated states and keeps the original pickup time.
     _append_cmd(m, orig_key, "picked_up", f"nudged {now_iso()}")
     m.setdefault("nudges", []).append({"at": now_iso(), "note_id": new_id, "click": key})
     reply("done", f"nudge filed as note {new_id}", new_id)

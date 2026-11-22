@@ -24,12 +24,10 @@ the firstmate home, so nothing tested the contract between them and the app.
 
 ## Proving tests
 
-- Feed contract: `Tests/ModelDeckCoreTests/FeedContractTests.swift` and `wire/tests/test_feed_contract.py`. On the
-  main branch before ShipDeck 1.1 the app test failed: the decoder rejected `pipeline: null`, which the producer writes
-  for an MR without pipeline facts. ShipDeck 1.1 fixed the decoder; the test now guards that contract.
-- Click round trip: `Tests/ModelDeckCoreTests/ClickRoundTripTests.swift` and `wire/tests/test_click_roundtrip.py`. On
-  the main branch before ShipDeck 1.1 the option and draft buttons sent ids the pipe could not map. ShipDeck 1.1 fixed
-  the ids; the test now guards every button type end to end.
+- Feed contract: `Tests/ModelDeckCoreTests/FeedContractTests.swift` and `wire/tests/test_feed_contract.py`. The tests
+  guard ShipDeck 1.1's decoder fix for `pipeline: null`, which the producer writes for an MR without pipeline facts.
+- Click round trip: `Tests/ModelDeckCoreTests/ClickRoundTripTests.swift` and `wire/tests/test_click_roundtrip.py`.
+  The tests guard every button type end to end, including the option and draft action IDs fixed in ShipDeck 1.1.
 - Freshness: `wire/tests/test_freshness.py` and `Tests/ModelDeckCoreTests/FreshnessTests.swift`. Both failed before
   this change (no freshness check, no outdated state in the app).
 - Gate: `scripts/test.sh`.

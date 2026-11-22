@@ -58,8 +58,8 @@ overrides, see [`refresh.py`](../wire/bin/refresh.py).
 
 Every ShipDeck change goes through no-mistakes review and validation, with automatic merge when the gate passes.
 The [no-mistakes test step](../.no-mistakes.yaml) and the [CI workflow](../.github/workflows/ci.yml) both use
-`bash scripts/test.sh`. While GitHub Actions runs are unavailable, run the workflow's test and packaging commands on
-macOS at the pushed head and cite the local run as CI evidence.
+`bash scripts/test.sh`. The CI phase checks the GitHub Actions result for the pushed PR head. The workflow also
+packages and uploads the macOS app after the test gate passes.
 
 The test script runs four checks.
 
@@ -93,10 +93,11 @@ What the required tests prove:
 
 ## Freshness monitor
 
-`freshness.py` reads `generated_at` and stays silent through 30 minutes. For an older generation or a missing or
-unreadable feed, it prints one line and exits 1. A watcher check script turns that line into a wake. The check records
-the reported timestamp (or unreadable state) and suppresses repeats until the feed is fresh again or a different
-generation is reported.
+`freshness.py` reads `generated_at` and stays silent while the feed is within the age limit, which defaults to 30
+minutes (`--max-age-minutes`). When the check first reports an older generation or a missing or unreadable feed,
+it prints one line and exits 1. A watcher check script turns that line into a wake. The check records the reported
+timestamp (or unreadable state) and suppresses repeats until the feed is fresh again or a different generation is
+reported.
 To wake the ShipDeck owner agent, install the check in the owner's firstmate home as `state/shipdeck-feed-fresh.check.sh`:
 
 ```sh

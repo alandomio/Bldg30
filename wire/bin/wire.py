@@ -6,7 +6,7 @@
   wire.py clicks      click bridge: companion-click.v1 files -> bin/fm-inbox.sh note, then mirror receipts into replies/ and commands.jsonl
                       (picked_up = filed, acknowledged = firstmate moved the note to handled/, done = fm-inbox reply); a click with
                       "nudges": <key> files a fresh note pointing at that waiting click (a new wake). One run at a time (state/clicks.lock);
-                      ShipDeck runs it itself after each click and every minute, the main monitoring loop runs it too.
+                      The firstmate monitoring loop runs it.
                       A captain-hold click (option, typed answer, Defer, Drop it) is recorded with fm-captain-hold.sh in the same run;
                       Drop and Defer then need no note, and a failed hold call leaves the click in the inbox for the next run.
   wire.py live        companion/live.json: newest 200 status events of state/*.status (fast, no network; also run by clicks)
@@ -19,9 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-# Code (bin/, schema/) and runtime records (state/, purser/) sit together in the original firstmate home location
-# (data/shipdeck-wire). From this repo, SHIPDECK_WIRE_HOME names the runtime folder and FM_HOME the firstmate home
-# (see docs/shipdeck-wire.md); unset, both resolve exactly as before from where this file lives.
+# See docs/shipdeck-wire.md for runtime configuration when code and records live in different directories.
 WIRE = Path(os.environ.get("SHIPDECK_WIRE_HOME") or HERE.parent).expanduser().resolve()
 SCHEMA_DIR = HERE.parent / "schema"
 FM_HOME = Path(os.environ.get("FM_HOME") or WIRE.parent.parent).resolve()
@@ -167,7 +165,7 @@ def feed_job():
 
 
 def spawn_fleet():
-    """IN-3113: workers.json refreshes in its own session with its own lock, so a hung remote read never holds the feed."""
+    """Refresh workers.json with a separate session and lock so a hung remote read cannot block the feed."""
     lock = STATE / "fleet.lock"
     try:
         pid = int(lock.read_text() or 0)

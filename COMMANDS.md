@@ -23,7 +23,7 @@ ShipDeck and firstmate's click bridge share one append-only log of commands. A c
 ## Who writes what
 
 - **The app** requires a configured inbox path before writing. If the path is blank, it reports an error without writing a ledger entry or inbox note. It appends `queued` before writing the note, so a pickup for the same `id` always follows it. If writing the note fails after it was queued, the app attempts to append `failed` with the error reason.
-- **The consumer (click bridge)** writes `picked_up` when it takes a note, and `done` or `failed` when it has a result. Repeat `id`, `action_id` and `target` from the note. A consumer may write `done` or `failed` without a `picked_up` line, but never write a state it has not reached.
+- **The consumer (click bridge)** writes `picked_up` when it files the note for firstmate and `done` or `failed` when it has a result. Repeat `id`, `action_id` and `target` from the click. A consumer may write `done` or `failed` without a `picked_up` line, but never write a state it has not reached. When firstmate moves the note to its handled inbox, the bridge can also log an `acknowledged` receipt. The app ignores that receipt and continues to show the last accepted state.
 - Append each line with one `write()` on a file opened with `O_APPEND`, so lines stay whole.
 
 ## State rules
@@ -36,4 +36,4 @@ The app ignores, and counts as ignored: lines that are not valid JSON, unknown `
 
 Decision, MR and ticket cards show a status line for the in-flight or most recent command. The decision card has a History disclosure, and MRs and tickets show history in their Details sections. Each history lists the card's commands newest first with their labels, states and available timestamps. The app reads the last 1 MB during its Bridge refresh, which waits 10 seconds between cycles.
 
-The app uses the ledger as its sole source of command status. This replaces `replies/<key>.json` receipts and status inferred from inbox files or `<name>.reply.json`.
+The app uses the ledger as its source of command status. [Deck Officer comments](docs/companion/README.md#deck-officer-comments) use reply files.

@@ -5,7 +5,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public static let schema = "companion-feed.v1"
     /// The producer refreshes every 5 minutes; three missed refreshes count as stale.
     public static let staleAfter: TimeInterval = 15 * 60
-    /// Older than this the producer has stopped: the app shows a red badge and wire/bin/freshness.py wakes the owner agent.
+    /// Keep this threshold aligned with the default in `wire/bin/freshness.py`.
     public static let outdatedAfter: TimeInterval = 30 * 60
     public static let verdicts: Set<String> = ["close", "notyet", "blocked", "hold"]
     public static let roles: Set<String> = ["author", "reviewer"]

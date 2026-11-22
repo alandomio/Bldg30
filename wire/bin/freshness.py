@@ -3,11 +3,7 @@
 
   freshness.py [--feed FILE] [--max-age-minutes 30] [--state FILE] [--notify-home FM_HOME]
 
-Silent with exit 0 while the feed is fresh. When generated_at is older than the limit, or the feed is missing or
-unreadable, it prints one line and exits 1, once per stale feed (a newer feed that is stale again wakes again): run as a
-firstmate watcher check script, that line is the wake. With --notify-home it also files one note in that firstmate home's
-inbox (bin/fm-inbox.sh note), so the owner agent of that home wakes even when another home runs the check.
-State (the generated_at already reported) lives in --state, default state/freshness.json beside the wire runtime folder.
+See docs/shipdeck-wire.md for watcher setup and notification behavior.
 """
 import argparse, json, os, subprocess, sys
 from datetime import datetime, timezone

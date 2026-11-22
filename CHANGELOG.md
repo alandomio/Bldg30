@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Add the test gate: `scripts/test.sh` (translations, `wire/` tests, `swift test`, app build) runs in CI and as the no-mistakes test command.
-- Bring the feed producer, click pipe and their schemas into `wire/`, with feed contract, click round-trip and freshness tests on synthetic fixtures. Paths and organisation values are configurable (`docs/shipdeck-wire.md`).
-- Show a red badge (panel) and "Feed fermo" (menu bar) when the feed is older than 30 minutes; `wire/bin/freshness.py` wakes the owner agent.
+- Add the [ShipDeck test gate](docs/shipdeck-wire.md#tests-and-the-gate).
+- Bring the feed producer, click pipe and their schemas into [`wire/`](wire/).
+- Add an [outdated-feed warning](docs/companion/README.md#feed-freshness) and an installable [owner wake check](docs/shipdeck-wire.md#freshness-monitor).
 
 ## 1.1.0 — 2026-11-02
 

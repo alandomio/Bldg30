@@ -1,10 +1,10 @@
 # ShipDeck wire: feed producer, click pipe and freshness check
 
-ShipDeck only renders a feed file and files one click note per button. The code that writes the feed and handles the
-clicks is the "wire". It lived outside version control in the firstmate home (`<firstmate>/data/shipdeck-wire`). It now
-lives in this repo, in `wire/`, next to the app, so that every change to it goes through the same review and tests as the app.
+The "wire" writes ShipDeck's feed and handles the click notes the app files. The code now lives in `wire/` next to the
+app and goes through the same review and tests.
 
-The live feed still runs from the old location until the switch-over below. The two copies behave the same.
+The live feed still runs from the old firstmate copy until the [switch-over](#switch-over). The repo copy needs
+matching organisation values and runtime paths to reproduce the old output.
 
 ## What is where
 
@@ -13,9 +13,9 @@ The live feed still runs from the old location until the switch-over below. The 
 | `wire/bin/wire.py` | Entry point: `feed-job`, `spawn-feed`, `dossiers`, `clicks` (the click pipe), `live`, `check-report` |
 | `wire/bin/refresh.py`, `render.py`, `feed.py`, `collect_mrs.py`, `live_state.py`, `approvals.py`, `review_drafts.py`, `mr_steps.py`, `board_state.py`, `template.html` | The feed producer (pinned from ai-skills !57, with local additions 033, 034 and later) |
 | `wire/bin/workers.py` | Writes `companion/workers.json` (workers of every firstmate home, read only) |
-| `wire/bin/freshness.py` | Freshness check: wakes the owner agent when the feed is older than 30 minutes |
+| `wire/bin/freshness.py` | [Owner wake check](#freshness-monitor) |
 | `wire/bin/org.py` | Reads the organisation values (see below) |
-| `wire/schema/*.schema.json` | The contract: `companion-feed.v1`, `companion-click.v1`, `companion-reply.v1`, `companion-live.v1`, `companion-dossier.v1`, `companion-event.v1` |
+| [`wire/schema/`](../wire/schema/) | Versioned JSON Schema files |
 | `wire/fixtures/feeds/` | Synthetic sample feeds shared by the Python and Swift tests (no real names, tokens or customer data) |
 | `wire/tests/` | Python tests (stdlib `unittest`) |
 | `wire/org.example.json` | Shape of the organisation config |
@@ -31,28 +31,37 @@ group, the Linear workspace, the short project names (`pi !12`), the ticket pref
 does not reach production and the knowledge search named in the "Add context" prompt (`knowledge_search`) are read from
 a local JSON file:
 `$SHIPDECK_ORG_CONFIG`, or else `~/.config/shipdeck/org.json`. `wire/org.example.json` shows the shape. If the file is
-missing, neutral example values apply, and links and project names will be wrong. If the file is present, the producer
-behaves exactly as the original copy did.
+missing, the producer uses placeholder links and has no project aliases or ship rules. Supply the original values to
+preserve the existing links and rules.
 
 ## Configuration
 
-Every path has a default. With no variables set, each one resolves as before from where `wire.py` lives.
+The default runtime root follows the location of `wire.py`. When running the repo copy, set the runtime and firstmate
+homes as shown in the [switch-over](#switch-over) to reuse the existing state.
 
 | Variable | Default | Used for |
 |---|---|---|
 | `SHIPDECK_WIRE_HOME` | the folder above `bin/` | runtime records: `state/` (locks, status, clicks.json) and `purser/` |
-| `FM_HOME` | two folders above `SHIPDECK_WIRE_HOME` | the firstmate home: `bin/fm-inbox.sh`, `bin/fm-captain-hold.sh`, `state/*.status`, `data/` records |
+| `FM_HOME` | two folders above the resolved wire runtime root | the firstmate home for `wire.py` and its subprocesses, including the inbox, holds and review draft records |
 | `SHIPDECK_COMPANION` | `~/Library/Application Support/ModelDeck/companion` | feed.json, feed.actions.json, inbox/, replies/, dossiers/, live.json, workers.json, commands.jsonl |
-| `SHIPDECK_ORG_CONFIG` | `~/.config/shipdeck/org.json` | organisation values |
-| `DECK_OFFICER_HOME` | `~/.treehouse/firstmate-753674/3/firstmate` | where Deck Officer comment clicks are filed |
+| `DECK_OFFICER_HOME` | legacy local path in [`wire.py`](../wire/bin/wire.py) | where Deck Officer comment clicks are filed |
 | `SHIPDECK_OWNER_HOME` | none | `freshness.py --notify-home`: the firstmate home whose owner agent gets the stale-feed note |
 | `FM_MAIN_HOME` | `~/firstmate` | `workers.py`: the main firstmate home |
-| `SHIPDECK_SKILL`, `FM_SHIPDECK_BOARD`, `COMPANION_*`, `LINEAR_ACTION_BOARD_HOME` | as before | unchanged, see the module docstrings |
+| `SHIPDECK_SKILL` | `~/.claude/skills/shipdeck/shipdeck` | live MR and ticket input to `wire.py feed-job` |
+| `FM_SHIPDECK_BOARD` | empty board under `state/` | optional board input to `wire.py feed-job` |
+| `LINEAR_ACTION_BOARD_HOME` | `~/.config/linear-action-board` | durable decision records |
+
+Set `SHIPDECK_ORG_CONFIG` as described under [Organisation values](#organisation-values). For standalone refresh
+overrides, see [`refresh.py`](../wire/bin/refresh.py).
 
 ## Tests and the gate
 
-`bash scripts/test.sh` is the gate. CI (`.github/workflows/ci.yml`) and the no-mistakes pipeline run it, and every
-change runs it before it merges:
+Every ShipDeck change goes through no-mistakes review and validation, with automatic merge when the gate passes.
+The [no-mistakes test step](../.no-mistakes.yaml) and the [CI workflow](../.github/workflows/ci.yml) both use
+`bash scripts/test.sh`. While GitHub Actions runs are unavailable, run the workflow's test and packaging commands on
+macOS at the pushed head and cite the local run as CI evidence.
+
+The test script runs four checks.
 
 1. `scripts/check-localization.py`: the English catalog.
 2. `python3 -m unittest discover -s wire/tests -t wire/tests`: producer, click pipe and freshness.
@@ -62,13 +71,13 @@ change runs it before it merges:
 What the required tests prove:
 
 - **A. Feed contract.** `wire/tests/test_feed_contract.py` renders the synthetic `producer-board.json` with the real
-  producer. It checks that the output validates against `companion-feed.v1` and equals the committed
-  `producer.feed.json` and `producer.feed.actions.json`, that every sample feed validates, that the invalid samples
-  are rejected (`invalid/`: the whole feed is wrong; `invalid-rows/`: one row is wrong), and that every button has a
-  click mapping. `Tests/ModelDeckCoreTests/FeedContractTests.swift` decodes the same files in the app: valid samples
+  producer. It validates the output against the schema and compares it with the committed feed and action mappings,
+  ignoring the generation time. It checks that every valid sample feed validates, that the invalid samples
+  are rejected (`invalid/`: the whole feed is wrong; `invalid-rows/`: one row is wrong), and that each emitted
+  action ID has a click mapping. `Tests/ModelDeckCoreTests/FeedContractTests.swift` decodes the same files in the app: valid samples
   decode, an invalid feed is rejected, and an invalid row is skipped with a note while the rest stays. When a producer
-  change is meant to change the output, run `WIRE_UPDATE_FIXTURES=1 python3 -m unittest discover -s wire/tests -t wire/tests`
-  and commit the new fixtures. The app is then tested against the new shape.
+  change is meant to change the output, run `WIRE_UPDATE_FIXTURES=1 python3 wire/tests/test_feed_contract.py`
+  and commit the regenerated feed and sidecar. The app is then tested against the new shape.
 - **B. Click round trip.** `Tests/ModelDeckCoreTests/ClickRoundTripTests.swift` uses the app's code to send decision
   options, free answers, Add context, review drafts, MR and ticket row buttons, and worker controls through
   `ClickSender`. Deck Officer comments go straight to `CompanionInbox`. The harness runs the real `wire.clicks()`
@@ -76,30 +85,32 @@ What the required tests prove:
   The app reads completion through `CommandLedger` for commands and `CompanionReply` for comments.
   `wire/tests/test_click_roundtrip.py` drives the same pipe and checks the filed notes for the expected work item and home.
 - **C. Gate.** The whole suite plus the build, as above. Every bug fix adds a test that failed before the fix.
-- **D. Freshness.** `wire/tests/test_freshness.py` covers `freshness.py`. `Tests/ModelDeckCoreTests/FreshnessTests.swift`
-  covers the app's 30-minute outdated state (red badge in the panel, "Feed fermo" in the menu bar).
+- **D. Freshness.** `wire/tests/test_freshness.py` covers the owner wake check. `Tests/ModelDeckCoreTests/FreshnessTests.swift`
+  checks the app's age thresholds and menu bar summary.
 
 `wire/tests/test_hold_clicks.py` drives the real `bin/fm-captain-hold.sh` of a firstmate checkout. It runs only when
 `FM_ROOT_FOR_TESTS` points at one, because CI has no firstmate checkout.
 
 ## Freshness monitor
 
-`freshness.py` stays silent while `feed.json` is younger than 30 minutes. When the feed is older, missing or unreadable,
-it prints one line and exits 1. It does this once per stale feed. A watcher check script turns that line into a wake.
+`freshness.py` reads `generated_at` and stays silent through 30 minutes. For an older generation or a missing or
+unreadable feed, it prints one line and exits 1. A watcher check script turns that line into a wake. The check records
+the reported timestamp (or unreadable state) and suppresses repeats until the feed is fresh again or a different
+generation is reported.
 To wake the ShipDeck owner agent, install the check in the owner's firstmate home as `state/shipdeck-feed-fresh.check.sh`:
 
 ```sh
 #!/usr/bin/env bash
-# ShipDeck feed freshness: one line (a wake) when feed.json is older than 30 minutes; silent otherwise.
-python3 <repo>/wire/bin/freshness.py --state <firstmate>/data/shipdeck-wire/state/freshness.json 2>&1
+python3 "/path/to/repo/wire/bin/freshness.py" --state "/path/to/firstmate/data/shipdeck-wire/state/freshness.json" 2>&1
 exit 0
 ```
 
-If another home runs the check, add `--notify-home <owner's firstmate home>` (or set `SHIPDECK_OWNER_HOME`). The check
-then also files one note in that home's inbox, which wakes the owner agent there. The app shows the same condition as a
-red "Feed fermo da N min" badge in the companion panel and a "Feed fermo" reading in the menu bar.
+For a custom feed path, pass `--feed` or set `SHIPDECK_COMPANION` to its containing folder when the filename is
+`feed.json`. If another home runs the check, add `--notify-home <owner's firstmate home>` (or set
+`SHIPDECK_OWNER_HOME`). The check files a note in that home's inbox and retries on the next check if filing fails.
+See [feed freshness in the app](companion/README.md#feed-freshness) for what users see.
 
-## Switch-over (follow-up, not done by this change)
+## Switch-over
 
 The running feed and click pipe still use `<firstmate>/data/shipdeck-wire/bin`. To move them to this repo:
 
@@ -108,15 +119,16 @@ The running feed and click pipe still use `<firstmate>/data/shipdeck-wire/bin`. 
    `PROJECTS`, ticket prefixes from `render.py` `REF`, the two lists from `bin/ships.json`, and as `knowledge_search`
    the search the old "Add context" prompts name (in `wire.py` and `render.py`). Check it with
    `SHIPDECK_ORG_CONFIG=~/.config/shipdeck/org.json python3 -c 'import sys; sys.path.insert(0, "wire/bin"); import org; print(org.ORG)'`.
-2. Dry run without touching the live feed. Render the current board into a scratch file with both copies and compare
-   the feeds (ignore `generated_at`).
+2. Dry run without touching the live feed. Run each copy of `render.py` with the same board and captured inputs, and
+   pass separate scratch output paths for the HTML and `--feed`. Compare the HTML, feed and action sidecar, ignoring
+   `generated_at` in the JSON.
 3. In `<firstmate>/state/shipdeck-feed.check.sh` and `shipdeck-clicks.check.sh`, point `W=` at `<repo>/wire/bin/wire.py`
    and export `SHIPDECK_WIRE_HOME=<firstmate>/data/shipdeck-wire` and `FM_HOME=<firstmate>`. The runtime state stays in
    the old folder, so locks, `clicks.json` and the purser files carry over.
-4. Point ShipDeck's own wire command (the app runs `wire.py clicks` after each click and `wire.py live`) at the repo
-   copy, with the same two variables.
-5. Install the freshness check (above) in the owner's home.
-6. Watch one feed refresh and one click end to end (`state/feed.status.json`, `commands.jsonl`). To roll back, point
-   both check scripts and the app back at the old path.
+4. Keep the app's feed and inbox settings pointed at the existing output files. If they use a custom companion
+   directory, pass the same directory as `SHIPDECK_COMPANION` to the wire checks.
+5. Install the freshness check in the owner's home and point it at the same feed.
+6. Watch one feed refresh and one click end to end (`state/feed.status.json`, `commands.jsonl`). To roll back,
+   point the firstmate check scripts back at the old path.
 7. When the new path has run cleanly for a week, the old `bin/` and `schema/` can be archived. That is the firstmate
    owner's call: nothing in this repo deletes them.

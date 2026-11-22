@@ -25,7 +25,6 @@ import Security
     @Published var commandLedger = CommandLedger()
     @Published var rawBoard: RawBoard?
     @Published var pollError: String?
-    /// The feed is older than CompanionFeed.outdatedAfter (red badge in the panel and the menu bar).
     @Published var companionFeedOutdated = false
     var batcher = CompanionEventBatcher()
     var lastPoll: Date?

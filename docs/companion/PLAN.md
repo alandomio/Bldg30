@@ -15,7 +15,7 @@ Inbox note (app to firstmate), one JSON per click: `schema: "companion-click.v1"
 
 Change event (app to firstmate), JSON lines: `schema: "companion-event.v1"`, `fingerprint` (stable hash of source+id+state), `kind` (new_comment|review_requested|pipeline_changed|ticket_state|mr_merged), `ref`, `at`. Batched, at most one flush per 5 minutes.
 
-The plan called for both sides to validate against shared JSON Schema files.
+The plan called for both sides to validate against shared JSON Schema files. See the [current wire reference](../shipdeck-wire.md) for the shipped schemas and contract tests.
 
 ## Track A: firstmate side
 

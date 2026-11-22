@@ -22,7 +22,7 @@ Alan first. The app must stay generic so any firstmate user can run it.
 
 ## Decisions (from the grill)
 
-1. **Generic app, firstmate-owned feed.** ModelDeck contains no company names, project paths or firstmate rules. It reads a local *companion feed* file that firstmate writes. The repo moves to private GitLab soon; the split still holds.
+1. **Generic app, firstmate-owned feed.** The app reads a local *companion feed* file that firstmate writes. See the [wire configuration](../shipdeck-wire.md#organisation-values) for where organisation values live.
 2. **Clicks are inbox notes.** Every button files a structured firstmate inbox note (action, target, exact draft text, idempotency key). Firstmate handles it under its own gates. See the [command lifecycle](../../COMMANDS.md) for how the app tracks status. The app never posts, approves or merges by itself.
 3. **Firstmate owns the judgment.** The feed carries firstmate's verdict, who moves next, drafts and urgency. A feed script refreshes MRs (glab) and tickets (a personal read-only Linear API key in the macOS Keychain) without an agent turn.
 4. **The app polls and reports changes.** The app polls Linear and GitLab and writes deduplicated, batched change events to one firstmate process-event source. Events never use the inbox. A fast "System 1" classifier may replace the fixed event rules later.

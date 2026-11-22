@@ -1,8 +1,4 @@
-"""Organisation values the producer needs: GitLab group, Linear workspace, short project names, ticket prefixes, the
-projects where a merge does not reach production (ships) and the knowledge search the "Add context" prompt asks for. This repo is public, so these values live in a local JSON file
-outside it: $SHIPDECK_ORG_CONFIG, else ~/.config/shipdeck/org.json. wire/org.example.json shows the shape.
-Without the file the neutral defaults below apply (example names, no projects, no ship rules). Stdlib only.
-"""
+"""Load local organisation values. See docs/shipdeck-wire.md for configuration."""
 import json, os
 from pathlib import Path
 

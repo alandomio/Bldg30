@@ -1,10 +1,5 @@
 #!/bin/bash
-# The test gate. CI (.github/workflows/ci.yml) and the no-mistakes test step (.no-mistakes.yaml) run exactly this;
-# run it before every push.
-#   1. English translations are complete      scripts/check-localization.py
-#   2. Feed producer, click pipe, freshness    wire/tests (Python, stdlib only)
-#   3. Full Swift test suite                   swift test (XCTest and Swift Testing; needs Xcode)
-#   4. The app builds                          scripts/build.sh
+# See docs/shipdeck-wire.md for test gate requirements.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

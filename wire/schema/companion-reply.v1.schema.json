@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companion-reply.v1.schema.json",
+  "title": "companion-reply.v1",
+  "description": "Firstmate's receipt for one click, written to companion/replies/<idempotency_key>.json by the click bridge (mirrored from bin/fm-inbox.sh receipts). status: queued = note saved in firstmate's inbox, picked_up = firstmate acknowledged it, done = firstmate recorded a reply (text).",
+  "type": "object",
+  "required": ["schema", "idempotency_key", "note_id", "status", "updated_at"],
+  "properties": {
+    "schema": {"const": "companion-reply.v1"},
+    "idempotency_key": {"type": "string", "minLength": 8},
+    "note_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["queued", "picked_up", "done", "rejected"]},
+    "text": {"type": "string"},
+    "updated_at": {"type": "string"}
+  }
+}

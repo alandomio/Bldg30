@@ -1,2 +1,2 @@
 commands:
-  test: swift test
+  test: bash scripts/test.sh

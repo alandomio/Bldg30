@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companion-live.v1.schema.json",
+  "title": "companion-live.v1",
+  "description": "Newest status events from every firstmate state/*.status file, newest first, written by `wire.py live` to companion/live.json. at is ISO UTC; key is present only when the status line carries [key=...].",
+  "type": "object",
+  "required": ["schema", "generated_at", "events"],
+  "properties": {
+    "schema": {"const": "companion-live.v1"},
+    "generated_at": {"type": "string", "minLength": 10},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task", "state", "at", "text"],
+        "properties": {
+          "task": {"type": "string", "minLength": 1},
+          "state": {"type": "string", "minLength": 1},
+          "at": {"type": "string", "minLength": 10},
+          "key": {"type": "string", "minLength": 1},
+          "text": {"type": "string"}
+        }
+      }
+    }
+  }
+}

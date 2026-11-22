@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companion-dossier.v1.schema.json",
+  "title": "companion-dossier.v1",
+  "description": "One dossier per MR or ticket, written beside the feed as dossiers/<slug>.json (slug = lower-case ref, non-alphanumerics to '-': 'pi !1903' -> 'pi-1903', 'IN-2600' -> 'in-2600'). A view built from firstmate records and the assistant's per-item records; those records, the knowledge base and Linear stay the sources of truth.",
+  "type": "object",
+  "required": ["schema", "ref", "summary", "timeline", "open_decisions", "gotchas", "links", "next_action", "generated_at", "sources"],
+  "properties": {
+    "schema": {"const": "companion-dossier.v1"},
+    "ref": {"type": "string", "minLength": 1},
+    "summary": {"type": "string"},
+    "timeline": {"type": "array", "items": {"type": "object", "required": ["at", "text", "source"],
+      "properties": {"at": {"type": "string"}, "text": {"type": "string", "minLength": 1}, "source": {"type": "string"}}}},
+    "open_decisions": {"type": "array", "items": {"type": "object", "required": ["id", "title"],
+      "properties": {"id": {"type": "string"}, "title": {"type": "string"}, "recommendation": {"type": "string"}, "links": {"type": "array", "items": {"type": "string"}}}}},
+    "gotchas": {"type": "array", "items": {"type": "object", "required": ["text", "source"],
+      "properties": {"text": {"type": "string", "minLength": 1}, "source": {"type": "string"}}}},
+    "links": {"type": "array", "items": {"type": "object", "required": ["label", "url"],
+      "properties": {"label": {"type": "string"}, "url": {"type": "string", "minLength": 1}}}},
+    "next_action": {"type": "string"},
+    "generated_at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"},
+    "sources": {"type": "array", "items": {"type": "object", "required": ["kind", "ref"],
+      "properties": {"kind": {"enum": ["feed", "board", "firstmate-record", "purser"]}, "ref": {"type": "string", "minLength": 1}, "at": {"type": "string"}}}}
+  }
+}

@@ -1,0 +1,30 @@
+{
+ "schema": "companion-actions.v1",
+ "generated_at": "2026-11-19T12:00:00.250Z",
+ "actions": {
+  "row-mr-pi-7.fix-pipeline": {
+   "label": "Fix pipeline",
+   "target": "pi !7",
+   "outward": false,
+   "prompt": "Synthetic prompt for Fix pipeline on pi !7."
+  },
+  "row-mr-obs-9.comment-f1": {
+   "label": "Post comment F1",
+   "target": "obs !9",
+   "outward": true,
+   "prompt": "Synthetic prompt for Post comment F1 on obs !9."
+  },
+  "row-mr-obs-9.nevermind": {
+   "label": "Nevermind",
+   "target": "obs !9",
+   "outward": false,
+   "prompt": "Synthetic prompt for Nevermind on obs !9."
+  },
+  "row-t-in-7.ask-delivery-buddy": {
+   "label": "Ask delivery buddy",
+   "target": "IN-7",
+   "outward": false,
+   "prompt": "Synthetic prompt for Ask delivery buddy on IN-7."
+  }
+ }
+}

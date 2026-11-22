@@ -14,6 +14,7 @@ Demo mode shows `CompanionFixture`; `fixture-feed.json` is the same content for 
 - A decision option uses its supplied `action_id` or falls back to `decision:<id>:option:<zero-based index>`. The option label supplies `draft_text` when no answer text is entered. MR and ticket row buttons use the feed action id and the row ref or ticket identifier. Posting sends the shown draft text and the MR ref. A review draft with a matching action id ending in `.comment-<draft id>` uses that action when each draft has a match. **Post all** confirms once and sends one click per remaining draft. The legacy draft panel uses the row's post action.
 - See the [command lifecycle](../../COMMANDS.md) for click status and send failures.
 - See the [feed decoder](../../Sources/ModelDeckCore/CompanionFeed.swift) for row fields and validation rules.
+- The JSON Schema files, the feed producer and the click pipe live in [`wire/`](../../wire/); the contract, round-trip and freshness tests are described in [docs/shipdeck-wire.md](../shipdeck-wire.md).
 
 ## Decision dates
 A decision may carry `created_at` (YYYY-MM-DD). The card header shows the date and age. The age turns amber after 14 days and red after 30. Urgent decisions come first, then High, then the rest. Within each priority, the card menu switches between feed order and oldest first with undated decisions last. ShipDeck remembers the choice.

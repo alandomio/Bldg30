@@ -136,7 +136,11 @@ struct CompanionView: View {
     private func status(_ feed: CompanionFeed?, stale: Bool) -> some View {
         HStack(spacing: 10) {
             if let feed {
-                StatusPill(text: stale ? "Feed non aggiornato" : "Feed aggiornato", color: stale ? DeckTheme.amber : DeckTheme.mint)
+                if feed.isOutdated() {
+                    StatusPill(text: L("Feed fermo da \(Int(feed.age() / 60)) min"), color: .red)
+                } else {
+                    StatusPill(text: stale ? "Feed non aggiornato" : "Feed aggiornato", color: stale ? DeckTheme.amber : DeckTheme.mint)
+                }
                 Text(L("Generato \(feed.generatedAt.formatted(.relative(presentation: .named))) da \(feed.producer)")).font(.system(size: 10)).foregroundStyle(DeckTheme.muted)
             }
             if let raw = store.rawBoard {

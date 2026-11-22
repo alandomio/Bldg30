@@ -1,0 +1,90 @@
+{
+ "schema": "companion-actions.v1",
+ "generated_at": "2026-11-19T12:00:00Z",
+ "actions": {
+  "row-mr-obs-42.opt-approve-now": {
+   "label": "Approve now",
+   "target": "obs !42",
+   "outward": true,
+   "prompt": "Approve obs !42."
+  },
+  "row-mr-obs-42.opt-wait-for-the-test": {
+   "label": "Wait for the test",
+   "target": "obs !42",
+   "outward": false,
+   "prompt": "Note that obs !42 waits for the test."
+  },
+  "row-t-in-1.nudge-riley": {
+   "label": "Nudge Riley",
+   "target": "IN-1",
+   "outward": true,
+   "prompt": "Draft a short nudge to Riley about IN-1 with the user's writing-voice skill. Show the exact text and the channel, post only after the user confirms."
+  },
+  "row-t-in-1.wait-what": {
+   "label": "Wait, what?",
+   "target": "IN-1",
+   "outward": false,
+   "prompt": "Wait, what? on IN-1: run the wait-what skill on this card (use it if installed, else do what it does): re-explain the card's situation in plain English, adding the premise that is missing, in the vocabulary of the project. Write it back to the card with board_state.py (board-state.json) as an explained block {text, at} for this row (task board-t-in-1); change nothing else, post and message nothing."
+  },
+  "row-t-in-1.nevermind": {
+   "label": "Nevermind",
+   "target": "IN-1",
+   "outward": false,
+   "prompt": "Nevermind on IN-1: post and message nothing; set the row's task (board-t-in-1) to abandoned with buddy_merge(kind='task_update'), then append {\"key\": \"board-t-in-1\", \"date\": \"<today>\"} to ~/.config/linear-action-board/abandoned.json (that file is what later builds read)."
+  },
+  "row-t-in-2.draft-the-runbook-section": {
+   "label": "Draft the runbook section",
+   "target": "IN-2",
+   "outward": false,
+   "prompt": "Draft the runbook section for IN-2 and show it."
+  },
+  "row-t-in-2.wait-what": {
+   "label": "Wait, what?",
+   "target": "IN-2",
+   "outward": false,
+   "prompt": "Wait, what? on IN-2: run the wait-what skill on this card (use it if installed, else do what it does): re-explain the card's situation in plain English, adding the premise that is missing, in the vocabulary of the project. Write it back to the card with board_state.py (board-state.json) as an explained block {text, at} for this row (task board-t-in-2); change nothing else, post and message nothing."
+  },
+  "row-t-in-2.nevermind": {
+   "label": "Nevermind",
+   "target": "IN-2",
+   "outward": false,
+   "prompt": "Nevermind on IN-2: post and message nothing; set the row's task (board-t-in-2) to abandoned with buddy_merge(kind='task_update'), then append {\"key\": \"board-t-in-2\", \"date\": \"<today>\"} to ~/.config/linear-action-board/abandoned.json (that file is what later builds read)."
+  },
+  "row-mr-pi-1.nudge-riley": {
+   "label": "Nudge Riley",
+   "target": "pi !1",
+   "outward": true,
+   "prompt": "Draft a short nudge to Riley about pi !1 with the user's writing-voice skill. Show the exact text and the channel, post only after the user confirms."
+  },
+  "row-mr-pi-1.wait-what": {
+   "label": "Wait, what?",
+   "target": "pi !1",
+   "outward": false,
+   "prompt": "Wait, what? on pi !1: run the wait-what skill on this card (use it if installed, else do what it does): re-explain the card's situation in plain English, adding the premise that is missing, in the vocabulary of the project. Write it back to the card with board_state.py (board-state.json) as an explained block {text, at} for this row (task board-mr-pi-1); change nothing else, post and message nothing."
+  },
+  "row-mr-pi-1.nevermind": {
+   "label": "Nevermind",
+   "target": "pi !1",
+   "outward": false,
+   "prompt": "Nevermind on pi !1: post and message nothing; set the row's task (board-mr-pi-1) to abandoned with buddy_merge(kind='task_update'), then append {\"key\": \"board-mr-pi-1\", \"date\": \"<today>\"} to ~/.config/linear-action-board/abandoned.json (that file is what later builds read)."
+  },
+  "row-mr-obs-42.post-review-note": {
+   "label": "Post review note",
+   "target": "obs !42",
+   "outward": true,
+   "prompt": "Post the draft review note on obs !42 after the user confirms."
+  },
+  "row-mr-obs-42.wait-what": {
+   "label": "Wait, what?",
+   "target": "obs !42",
+   "outward": false,
+   "prompt": "Wait, what? on obs !42: run the wait-what skill on this card (use it if installed, else do what it does): re-explain the card's situation in plain English, adding the premise that is missing, in the vocabulary of the project. Write it back to the card with board_state.py (board-state.json) as an explained block {text, at} for this row (task board-mr-obs-42); change nothing else, post and message nothing."
+  },
+  "row-mr-obs-42.nevermind": {
+   "label": "Nevermind",
+   "target": "obs !42",
+   "outward": false,
+   "prompt": "Nevermind on obs !42: post and message nothing; set the row's task (board-mr-obs-42) to abandoned with buddy_merge(kind='task_update'), then append {\"key\": \"board-mr-obs-42\", \"date\": \"<today>\"} to ~/.config/linear-action-board/abandoned.json (that file is what later builds read)."
+  }
+ }
+}

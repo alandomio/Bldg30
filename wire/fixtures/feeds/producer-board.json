@@ -1,0 +1,25 @@
+{
+ "_doc": "Synthetic board (no real people, projects or tickets). test_feed_contract.py renders it with the real producer into producer-feed.json; the Swift tests decode that file.",
+ "date": "2026-11-19",
+ "user": "sam",
+ "tickets": [
+  {"id": "IN-1", "title": "Add the retry budget to the sync job", "status": "In Review", "verdict": "hold", "label": "Review owed",
+   "owner": "Riley", "mr": "pi !1", "finish": {"step": "Merge pi !1", "owner": "Riley"}, "next": "Riley reviews pi !1."},
+  {"id": "IN-2", "title": "Document the sync job alerts", "status": "To Do", "verdict": "close", "label": "Write the doc",
+   "owner": "You", "finish": {"step": "Write the runbook section", "owner": "You"}, "next": "Write it.",
+   "actions": [{"label": "Draft the runbook section", "outward": false, "prompt": "Draft the runbook section for IN-2 and show it."}]}
+ ],
+ "mrs": [
+  {"refs": [["https://gitlab.com/example-group/infra/platform/-/merge_requests/1", "pi !1", "feat(sync): retry budget"]],
+   "author": "sam", "verdict": "hold", "label": "Waiting on review", "headline": "Review owed by Riley.", "why": "", "next": "Riley reviews.",
+   "owner": "Riley", "ticket": "IN-1", "title": "feat(sync): retry budget", "what": "Retry budget for the sync job"},
+  {"refs": [["https://gitlab.com/example-group/ops/observability/-/merge_requests/42", "obs !42", "fix(alerts): quieter paging"]],
+   "author": "jdoe", "verdict": "close", "label": "Review now", "headline": "Your review is owed.", "why": "", "next": "Review and approve.",
+   "owner": "You", "title": "fix(alerts): quieter paging", "what": "Quieter paging",
+   "draft": "The threshold change looks right. Please add a test for the zero case.",
+   "actions": [{"label": "Post review note", "outward": true, "prompt": "Post the draft review note on obs !42 after the user confirms.", "draft": "The threshold change looks right. Please add a test for the zero case."}],
+   "decision": {"question": "Approve obs !42 now or wait for the test?", "options": [
+     {"label": "Approve now", "consequence": "The MR can merge today.", "outward": true, "prompt": "Approve obs !42.", "recommended": true},
+     {"label": "Wait for the test", "consequence": "Merge slips a day.", "outward": false, "prompt": "Note that obs !42 waits for the test."}]}}
+ ]
+}

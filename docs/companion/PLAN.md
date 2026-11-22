@@ -53,3 +53,9 @@ Health panel (MCP servers, CLI logins, firstmate monitoring), workers panel (stu
 4. A5 + B4 events.
 5. B5 badge and notifications.
 Nothing posts, approves or merges without Alan's word; clicks only file inbox notes.
+
+## Version 1.1 (decided 2026-11-01)
+
+- **Wiring runs inside firstmate monitoring** (option A): feed refresh and click bridge are firstmate check scripts, no launchd.
+- **ShipDeck polls on its own** while open: Linear (read-only key) and GitLab (read-only token) from the Keychain; shows newer raw state over a stale firstmate verdict; writes companion-event.v1.
+- **Dossier per ticket and MR** (`dossiers/<ref>.json` beside feed.json): summary, timeline, open decisions, gotchas, links (reports, knowledge-base entries), next action. Version 1.1 sources: the assistant's per-item records and firstmate's own records under data/. ShipDeck shows it in a detail pane; "Add context" sends a click that firstmate files to the item's record. Dossiers are a view; the assistant's records and Linear stay the sources of truth.

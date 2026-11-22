@@ -5,6 +5,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
     public static let schema = "companion-feed.v1"
     /// The producer refreshes every 5 minutes; three missed refreshes count as stale.
     public static let staleAfter: TimeInterval = 15 * 60
+    /// Older than this the producer has stopped: the app shows a red badge and wire/bin/freshness.py wakes the owner agent.
+    public static let outdatedAfter: TimeInterval = 30 * 60
     public static let verdicts: Set<String> = ["close", "notyet", "blocked", "hold"]
     public static let roles: Set<String> = ["author", "reviewer"]
 
@@ -231,6 +233,7 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
 
     public func age(now: Date = Date()) -> TimeInterval { max(0, now.timeIntervalSince(generatedAt)) }
     public func isStale(now: Date = Date()) -> Bool { age(now: now) > Self.staleAfter }
+    public func isOutdated(now: Date = Date()) -> Bool { age(now: now) > Self.outdatedAfter }
 
     /// Top-level decode failures throw. Invalid rows are reported in `skipped` so valid rows remain usable.
     public static func decode(_ data: Data) throws -> CompanionFeed {

@@ -1,6 +1,6 @@
 # PLAN: firstmate companion (version 1)
 
-Source: PRD.md (same folder). Two tracks run in parallel against one shared contract.
+Original implementation plan based on the [PRD](PRD.md). See the [Command Bridge reference](README.md) for the current integration.
 
 ## 0. Contract (both tracks, first)
 
@@ -15,7 +15,7 @@ Inbox note (app to firstmate), one JSON per click: `schema: "companion-click.v1"
 
 Change event (app to firstmate), JSON lines: `schema: "companion-event.v1"`, `fingerprint` (stable hash of source+id+state), `kind` (new_comment|review_requested|pipeline_changed|ticket_state|mr_merged), `ref`, `at`. Batched, at most one flush per 5 minutes.
 
-A JSON Schema file for all three lives in both repos; both sides validate.
+The plan called for both sides to validate against shared JSON Schema files.
 
 ## Track A: firstmate side
 
@@ -35,11 +35,11 @@ Repo: Bldg30 (ModelDeck), branch per change.
 
 1. **Feed reader** in `ModelDeckCore`: decode and validate `companion-feed.v1`; staleness from `generated_at`. Unit tests with fixture feeds (valid, invalid, stale).
 2. **Panels**: Decisions (one card at a time, options, recommendation), My MRs and reviews (verdict pill, next owner, drafts behind a toggle, buttons), My tickets (status, step left to Done). Localized Italian and English like the rest.
-3. **Buttons** write `companion-click.v1` notes into firstmate's inbox path (configurable, no firstmate paths hard-coded), show "sent / picked up / done" from firstmate's reply.
+3. **Buttons** write `companion-click.v1` notes into firstmate's inbox, whose path comes from configuration. See the [command lifecycle](../../COMMANDS.md) for how the app tracks status.
 4. **Polling and events**: extend `LinearBoard` and add a GitLab reader with a personal token in the Keychain; diff against last poll; write `companion-event.v1` with fingerprints, batched.
 5. **Badge and notifications**: menu bar count of decisions waiting; macOS notification only for `urgent: true`.
 
-Build note: Command Line Tools build needs `MODELDECK_SDK=.../MacOSX26.5.sdk MODELDECK_BUILD_SYSTEM=native` until Xcode is installed; XCTest needs full Xcode, so keep core logic testable with the existing test setup and say what could not run.
+See the [current build instructions](../../README.md#build-and-run) for toolchain requirements.
 
 ## Version 2 (not now)
 

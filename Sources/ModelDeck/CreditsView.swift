@@ -2,8 +2,9 @@ import SwiftUI
 import ModelDeckCore
 
 enum ProjectLinks {
-    static let author = URL(string: "https://github.com/tommasinigiovanni")!
-    static let repository = URL(string: "https://github.com/tommasinigiovanni/ModelDeck")!
+    static let author = URL(string: "https://github.com/alandomio")!
+    static let repository = URL(string: "https://github.com/alandomio/Bldg30")!
+    static let upstream = URL(string: "https://github.com/tommasinigiovanni/ModelDeck")!
     static let issues = repository.appendingPathComponent("issues")
     static let license = repository.appendingPathComponent("blob/main/LICENSE")
 }
@@ -14,17 +15,18 @@ struct CreditsView: View {
             DeckCard {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 15) {
-                        Image(systemName: "square.stack.3d.up.fill").font(.system(size: 38)).foregroundStyle(DeckTheme.mint)
+                        DeckLogo(size: 48)
                         VStack(alignment: .leading, spacing: 5) {
                             Text(L("ShipDeck")).font(.system(size: 25, weight: .semibold)).tracking(-0.7)
-                            Text(L("Il Mac, i modelli locali e i tuoi strumenti AI.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted)
+                            Text(L("Il ponte del capitano.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted)
                         }
                     }
                     Divider()
-                    Text(L("Sviluppato da Giovanni Tommasini")).font(.system(size: 16, weight: .semibold))
-                    creditLink("Giovanni Tommasini su GitHub", detail: "github.com/tommasinigiovanni", symbol: "person.crop.circle", url: ProjectLinks.author)
+                    Text(L("Sviluppato da Alan Domio")).font(.system(size: 16, weight: .semibold))
+                    creditLink("Alan Domio su GitHub", detail: "github.com/alandomio", symbol: "person.crop.circle", url: ProjectLinks.author)
                     creditLink("Repository del progetto", detail: "Codice sorgente e aggiornamenti", symbol: "chevron.left.forwardslash.chevron.right", url: ProjectLinks.repository)
                     creditLink("Segnalazioni e proposte", detail: "Issue su GitHub", symbol: "bubble.left.and.bubble.right", url: ProjectLinks.issues)
+                    creditLink("Basato su ModelDeck di Giovanni Tommasini (MIT)", detail: "github.com/tommasinigiovanni/ModelDeck", symbol: "heart", url: ProjectLinks.upstream)
                 }
             }
             DeckCard {

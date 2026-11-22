@@ -4,8 +4,8 @@ import ModelDeckCore
 
 enum CompanionSettings {
     static var enabled: Bool { UserDefaults.standard.bool(forKey: "companionEnabled") }
-    static var feedPath: String { UserDefaults.standard.string(forKey: "companionFeedPath").flatMap { $0.isEmpty ? nil : $0 } ?? CompanionFeed.defaultPath }
-    static var inboxPath: String { UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
+    static var feedPath: String { CommandArguments.value(after: "--feed") ?? UserDefaults.standard.string(forKey: "companionFeedPath").flatMap { $0.isEmpty ? nil : $0 } ?? CompanionFeed.defaultPath }
+    static var inboxPath: String { CommandArguments.value(after: "--inbox") ?? UserDefaults.standard.string(forKey: "companionInboxPath") ?? "" }
 }
 
 extension DeckStore {
@@ -19,22 +19,23 @@ extension DeckStore {
             companionError = nil
             announceUrgent(feed)
         } catch { companionError = error.localizedDescription }
-        for (key, note) in companionNotes {
-            let status = CompanionInbox.status(of: note)
-            if companionStatuses[key] != status { companionStatuses[key] = status }
-        }
+        refreshCommands()
     }
 
-    /// Files one click note. Returns an error text, or nil on success.
+    /// Reads `commands.jsonl` beside the inbox for card status and per-card history.
+    func refreshCommands() {
+        let ledger = CommandLedger(lines: CommandLog.read(CommandLog.url(inbox: CompanionSettings.inboxPath)))
+        if ledger != commandLedger { commandLedger = ledger }
+    }
+
+    /// Refreshes card status even on failure so the ledger can show the result of the send.
     @discardableResult
-    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil) -> String? {
-        if demo { companionStatuses[actionID + "|" + target] = .sent; return nil }
-        do {
-            let note = try CompanionInbox.file(CompanionClick(actionID: actionID, target: target, draftText: draftText), inbox: CompanionSettings.inboxPath)
-            let key = actionID + "|" + target
-            companionNotes[key] = note; companionStatuses[key] = .sent
-            return nil
-        } catch { return error.localizedDescription }
+    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, label: String? = nil) -> String? {
+        if demo { return nil }
+        let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
+        let error = ClickSender.send(click, label: label, inbox: CompanionSettings.inboxPath)
+        refreshCommands()
+        return error
     }
 
     private func announceUrgent(_ feed: CompanionFeed) {

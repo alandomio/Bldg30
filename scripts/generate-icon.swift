@@ -1,29 +1,29 @@
 import AppKit
 
-let destination = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
-try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+// Usage: generate-icon.swift <assets-dir> <iconset-dir> <png-dir>. Reads the R1 SVGs from assets-dir; writes the iconset and the in-app PNGs elsewhere.
+let assets = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+let iconset = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
+let pngs = URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
+try FileManager.default.createDirectory(at: pngs, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
+
+func render(_ svg: String, pixels: Int, to url: URL) throws {
+    guard let image = NSImage(contentsOf: assets.appendingPathComponent(svg)) else { fatalError("cannot read \(svg)") }
+    let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+    image.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels), from: .zero, operation: .copy, fraction: 1)
+    NSGraphicsContext.restoreGraphicsState()
+    try bitmap.representation(using: .png, properties: [:])!.write(to: url)
+}
+
 for size in [16, 32, 128, 256, 512] {
     for scale in [1, 2] {
         let pixels = size * scale
-        let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
-        let side = CGFloat(pixels)
-        NSColor(calibratedRed: 0.055, green: 0.085, blue: 0.09, alpha: 1).setFill()
-        NSBezierPath(roundedRect: NSRect(x: side * 0.06, y: side * 0.06, width: side * 0.88, height: side * 0.88), xRadius: side * 0.19, yRadius: side * 0.19).fill()
-        NSColor(calibratedRed: 0.40, green: 0.88, blue: 0.72, alpha: 1).setStroke()
-        for offset in [0.0, 0.16, 0.32] {
-            let y = side * (0.32 + offset)
-            let path = NSBezierPath()
-            path.move(to: NSPoint(x: side * 0.25, y: y + side * 0.09))
-            path.line(to: NSPoint(x: side * 0.50, y: y - side * 0.04))
-            path.line(to: NSPoint(x: side * 0.75, y: y + side * 0.09))
-            path.lineWidth = max(1, side * 0.035); path.lineCapStyle = .round; path.lineJoinStyle = .round
-            path.stroke()
-        }
-        NSGraphicsContext.restoreGraphicsState()
-        let suffix = scale == 2 ? "@2x" : ""
-        let name = "icon_\(size)x\(size)\(suffix).png"
-        try bitmap.representation(using: .png, properties: [:])!.write(to: destination.appendingPathComponent(name))
+        // The simplified artwork keeps the radar legible at 64 px and below.
+        try render(pixels <= 64 ? "icon-r1-small.svg" : "icon-r1.svg", pixels: pixels, to: iconset.appendingPathComponent("icon_\(size)x\(size)\(scale == 2 ? "@2x" : "").png"))
     }
 }
+try render("icon-r1-menubar.svg", pixels: 18, to: pngs.appendingPathComponent("MenuBarTemplate.png"))
+try render("icon-r1-menubar.svg", pixels: 36, to: pngs.appendingPathComponent("MenuBarTemplate@2x.png"))
+try render("icon-r1-small.svg", pixels: 96, to: pngs.appendingPathComponent("Logo.png"))

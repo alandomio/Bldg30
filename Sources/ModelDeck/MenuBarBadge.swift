@@ -4,7 +4,15 @@ import SwiftUI
 import ModelDeckCore
 
 @MainActor enum MenuBarBadge {
+    /// The R1 radar glyph (black template, 1x and 2x files in the app bundle); `swift run` falls back to a symbol.
     static func icon() -> NSImage? {
+        if let one = Bundle.main.url(forResource: "MenuBarTemplate", withExtension: "png"), let two = Bundle.main.url(forResource: "MenuBarTemplate@2x", withExtension: "png"),
+           let small = NSImage(contentsOf: one), let big = NSImage(contentsOf: two), let rep = big.representations.first {
+            let glyph = NSImage(size: NSSize(width: 17, height: 17))
+            glyph.addRepresentation(rep); small.representations.first.map { glyph.addRepresentation($0) }
+            glyph.isTemplate = true
+            return glyph
+        }
         let icon = NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: "ShipDeck")
         icon?.isTemplate = true; icon?.size = NSSize(width: 17, height: 18)
         return icon
@@ -55,6 +63,16 @@ import ModelDeckCore
     }
 }
 
+/// R1 radar logo for the sidebar, panel and credits; falls back to the old symbol outside the app bundle.
+struct DeckLogo: View {
+    var size: CGFloat
+    var body: some View {
+        if let url = Bundle.main.url(forResource: "Logo", withExtension: "png"), let image = NSImage(contentsOf: url) {
+            Image(nsImage: image).resizable().interpolation(.high).frame(width: size, height: size)
+        } else { Image(systemName: "square.stack.3d.up.fill").foregroundStyle(DeckTheme.mint).font(.system(size: size * 0.9)) }
+    }
+}
+
 struct MenuBarLayoutsPreview: View {
     @EnvironmentObject var store: DeckStore
     var body: some View {
@@ -68,7 +86,7 @@ struct MenuBarLayoutsPreview: View {
                         Text(D(layout.title)).font(.system(size: 12, weight: .semibold))
                         HStack(spacing: 7) {
                             if layout == .twoRows { Image(nsImage: MenuBarBadge.image(for: summary)).renderingMode(.template).fixedSize() }
-                            else { Image(systemName: "square.stack.3d.up"); Text(D(summary.title)).font(.system(size: 11, weight: .medium)).monospacedDigit() }
+                            else { Image(nsImage: MenuBarBadge.icon() ?? NSImage()).renderingMode(.template); Text(D(summary.title)).font(.system(size: 11, weight: .medium)).monospacedDigit() }
                             Spacer()
                         }.frame(height: 24)
                     }

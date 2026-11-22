@@ -2,12 +2,14 @@ import SwiftUI
 import ModelDeckCore
 import Security
 
+
 @MainActor final class DeckStore: ObservableObject {
     @Published var snapshot = SystemSnapshot()
     @Published var machine = SystemMonitor.machine()
     @Published var inventory = Inventory()
     @Published var codex = SubscriptionUsage(provider: "OpenAI", source: "Codex · app server", message: "Lettura quote…")
     @Published var claude = ClaudeUsage.read()
+    @Published var gemini = SubscriptionUsage(provider: "Google", source: "Antigravity · agy", message: "Lettura quote…")
     @Published var cpuHistory: [Double] = []
     @Published var memoryHistory: [Double] = []
     @Published var gpuHistory: [Double] = []
@@ -20,12 +22,17 @@ import Security
     @Published var defender: DefenderUsage?
     @Published var companionFeed: CompanionFeed?
     @Published var companionError: String?
-    @Published var companionNotes: [String: URL] = [:]
-    @Published var companionStatuses: [String: CompanionClickStatus] = [:]
+    @Published var commandLedger = CommandLedger()
+    @Published var rawBoard: RawBoard?
+    @Published var pollError: String?
+    var batcher = CompanionEventBatcher()
+    var lastPoll: Date?
+    var polling = false
+    var dossierCache: [String: (modified: Date, lookup: Dossier.Lookup)] = [:]
     private let monitor = SystemMonitor()
     private let scanner = ModelInventory()
     private let processMonitor = ProcessMonitor()
-    private let defenderMonitor = ProcessMonitor()
+    private let defenderMonitor = ProcessMonitor(includeUnreadable: true)
     private var started = false
 
     func start() {
@@ -51,7 +58,7 @@ import Security
             while !Task.isCancelled, let self { defender = DefenderUsage.summarize(await defenderMonitor.sample()); try? await Task.sleep(for: .seconds(5)) }
         }
         Task { [weak self] in
-            while !Task.isCancelled, let self { refreshCompanion(); try? await Task.sleep(for: .seconds(10)) }
+            while !Task.isCancelled, let self { refreshCompanion(); await pollBoard(); flushEvents(); try? await Task.sleep(for: .seconds(10)) }
         }
     }
     private func append(_ value: Double, to history: inout [Double]) {
@@ -77,6 +84,8 @@ import Security
             codex.message = error.localizedDescription
         }
         claude = ClaudeUsage.read()
+        do { gemini = try await GeminiUsage.read() }
+        catch { gemini.message = error.localizedDescription }
     }
     func refreshProcesses() async {
         guard !demo else { return }
@@ -116,6 +125,7 @@ import Security
         ]
         inventory.runtimes = [.init(name: "Ollama", online: true, detail: "2 modelli · API locale"), .init(name: "LM Studio", online: true, detail: "2 modelli · API locale")]
         codex = .init(provider: "OpenAI", plan: "Pro", windows: [.init(id: "codex-primary", title: "5 ore", usedPercent: 34, resetsAt: Date().addingTimeInterval(9500), durationMinutes: 300), .init(id: "codex-secondary", title: "7 giorni", usedPercent: 58, resetsAt: Date().addingTimeInterval(240000), durationMinutes: 10080)], updatedAt: Date(), source: "Codex · app server")
+        gemini = .init(provider: "Google", windows: [.init(id: "gemini-weekly", title: "Modelli Gemini · 7 giorni", usedPercent: 12, resetsAt: Date().addingTimeInterval(400000), durationMinutes: 10080), .init(id: "3p-weekly", title: "Modelli Claude e GPT · 7 giorni", usedPercent: 4, resetsAt: Date().addingTimeInterval(400000), durationMinutes: 10080)], updatedAt: Date(), source: "Antigravity · agy")
         claude = .init(provider: "Claude", windows: [.init(id: "five_hour", title: "5 ore", usedPercent: 23, resetsAt: Date().addingTimeInterval(7200), durationMinutes: 300), .init(id: "seven_day", title: "7 giorni", usedPercent: 41, resetsAt: Date().addingTimeInterval(180000), durationMinutes: 10080)], updatedAt: Date(), source: "Claude Code · status line")
     }
 }

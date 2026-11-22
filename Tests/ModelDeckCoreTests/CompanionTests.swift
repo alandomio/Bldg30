@@ -20,18 +20,21 @@ final class CompanionTests: XCTestCase {
         let value = try CompanionFeed.decode(try Data(contentsOf: path))
         XCTAssertEqual(value.decisions.map(\.id), ["dec-1", "dec-2"])
     }
-    func testRejectsWrongSchemaUnknownVerdictAndInsecureUrl() throws {
+    func testRejectsWrongSchemaAndBrokenTopLevelButSkipsBadRows() throws {
         XCTAssertThrowsError(try CompanionFeed.decode(try feed { $0["schema"] = "companion-feed.v2" })) { XCTAssertEqual($0 as? CompanionError, .unsupportedSchema("companion-feed.v2")) }
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["verdict"] = "maybe"; root["mrs"] = mrs }))
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["url"] = "http://example.com/x"; root["mrs"] = mrs }))
         XCTAssertThrowsError(try CompanionFeed.decode(Data("not json".utf8)))
         XCTAssertThrowsError(try CompanionFeed.decode(try feed { $0.removeValue(forKey: "generated_at") }))
+        let unknownVerdict = try CompanionFeed.decode(try feed { root in
+            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["verdict"] = "maybe"; root["mrs"] = mrs })
+        XCTAssertEqual(unknownVerdict.mrs.count, 1); XCTAssertEqual(unknownVerdict.skipped.count, 1)
+        let insecure = try CompanionFeed.decode(try feed { root in
+            var mrs = root["mrs"] as! [[String: Any]]; mrs[0]["url"] = "http://example.com/x"; root["mrs"] = mrs })
+        XCTAssertEqual(insecure.mrs.count, 1); XCTAssertEqual(insecure.skipped.count, 1)
     }
-    func testRejectsDuplicateDecisionIDs() throws {
-        XCTAssertThrowsError(try CompanionFeed.decode(try feed { root in
-            var items = root["decisions"] as! [[String: Any]]; items[1]["id"] = items[0]["id"]; root["decisions"] = items }))
+    func testDuplicateDecisionIDsSkipTheSecondRow() throws {
+        let value = try CompanionFeed.decode(try feed { root in
+            var items = root["decisions"] as! [[String: Any]]; items[1]["id"] = items[0]["id"]; root["decisions"] = items })
+        XCTAssertEqual(value.decisions.count, 1); XCTAssertEqual(value.skipped.count, 1)
     }
     func testStaleness() throws {
         let value = try CompanionFeed.decode(try feed())
@@ -62,12 +65,6 @@ final class CompanionTests: XCTestCase {
         XCTAssertEqual(json["action_id"], "draft:d1"); XCTAssertEqual(json["draft_text"], "Exact \"text\"\nline two")
         XCTAssertNotNil(json["created_at"])
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: inbox.path).count, 1)
-        XCTAssertEqual(CompanionInbox.status(of: note), .sent)
-        let handled = inbox.appendingPathComponent("handled"); try FileManager.default.createDirectory(at: handled, withIntermediateDirectories: true)
-        try FileManager.default.moveItem(at: note, to: handled.appendingPathComponent(note.lastPathComponent))
-        XCTAssertEqual(CompanionInbox.status(of: note), .pickedUp)
-        try Data("{}".utf8).write(to: handled.appendingPathComponent(note.deletingPathExtension().lastPathComponent + ".reply.json"))
-        XCTAssertEqual(CompanionInbox.status(of: note), .done)
     }
     func testClickNeedsAnExistingInbox() {
         let click = CompanionClick(actionID: "a", target: "t")

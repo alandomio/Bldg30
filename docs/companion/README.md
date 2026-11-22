@@ -38,3 +38,6 @@ ShipDeck calls local firstmate tools to refresh crew state, peek at a terminal, 
 
 ## Icon
 `assets/icon-r1*.svg` are the sources; `scripts/generate-icon.swift` renders the icon, the menu bar template glyph and the sidebar logo. `scripts/build.sh` renders them into `build/` and leaves `assets/` untouched. Run `scripts/refresh-assets.sh` to update the tracked files in `assets/` on purpose.
+
+## Deck Officer comments
+Settings, Companion, "Commenti a Deck Officer" makes the comment tool available; a switch in the sidebar turns it on and off (off: no boxes anywhere). A comment files a `companion-click.v1` with `action_id` `comment_deck_officer`, `target` `global` or the card/row id, and the text in `draft_text`. The reply is read from `replies/<idempotency_key>.json` (sibling of the inbox folder, `companion-reply.v1`, field `text`) and shown under the comment.

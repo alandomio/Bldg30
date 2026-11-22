@@ -6,8 +6,7 @@ says, per click, which work item the note names and how far it got.
 Used by test_click_roundtrip.py (clicks built like the app builds them) and by the Swift ClickRoundTripTests (clicks the
 app's own code wrote):  click_roundtrip.py --inbox DIR --feed FEED.json --actions ACTIONS.json [--commands FILE]
 -> JSON report on stdout. With --commands the pipe appends its command states to that file (the app passes the
-commands.jsonl it reads, beside the inbox); without it a temporary one is used. Nothing else outside the given inbox and
-a temporary folder is read or written.
+commands.jsonl it reads, beside the inbox) and writes replies beside the inbox. Otherwise both use a temporary folder.
 """
 import argparse, json, os, shutil, stat, sys, tempfile
 from contextlib import redirect_stdout
@@ -35,27 +34,40 @@ def roundtrip(inbox, feed_path, actions_path, commands=None):
     old = {n: getattr(wire, n) for n in NAMES}
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        home, support = root / "fmhome", root / "support"
-        for d in (home / "bin", home / "state", support):
-            d.mkdir(parents=True)
-        _tool(home / "bin" / "fm-inbox.sh", STUB)
+        home, officer, support = root / "fmhome", root / "officer", root / "support"
+        homes = {"main": home, "deck_officer": officer}
+        for directory in homes.values():
+            (directory / "bin").mkdir(parents=True)
+            _tool(directory / "bin" / "fm-inbox.sh", STUB)
+        (home / "state").mkdir()
+        for task in ("finished-worker", "running-worker"):
+            (home / "state" / f"{task}.meta").write_text("kind=scout\n")
+        support.mkdir()
         _tool(home / "bin" / "fm-captain-hold.sh", NOT_A_HOLD)
         shutil.copy(feed_path, support / "feed.json")
         shutil.copy(actions_path, support / "feed.actions.json")
         wire.FM_HOME, wire.SUPPORT, wire.FEED, wire.INBOX = home, support, support / "feed.json", inbox
-        wire.REPLIES, wire.STATE = support / "replies", root / "state"
+        wire.REPLIES = (inbox.parent if commands else support) / "replies"
+        wire.STATE = root / "state"
         wire.COMMANDS = Path(commands) if commands else support / "commands.jsonl"
-        wire.DECK_OFFICER_HOME, wire.HOLD_SH, wire.live = root / "officer", home / "bin" / "fm-captain-hold.sh", lambda: 0
-        notes = home / "state" / "inbox"
+        wire.DECK_OFFICER_HOME, wire.HOLD_SH, wire.live = officer, home / "bin" / "fm-captain-hold.sh", lambda: 0
+        notes = {name: directory / "state" / "inbox" for name, directory in homes.items()}
         try:
             runs = []
             with redirect_stdout(sys.stderr):
                 runs.append(wire.clicks())  # 1: each click becomes a firstmate note, the click moves to handled/
-                for n in sorted(notes.glob("*.note")):  # 2: firstmate acknowledges every note
-                    os.replace(n, notes / "handled" / n.name)
+                for directory in notes.values():  # 2: firstmate acknowledges every note
+                    for n in sorted(directory.glob("*.note")):
+                        os.replace(n, directory / "handled" / n.name)
                 runs.append(wire.clicks())
-                for n in sorted((notes / "handled").glob("*.note")):  # 3: firstmate replies to every note
-                    (notes / "replies" / f"{n.stem}.txt").write_text(f"done: {n.read_text().splitlines()[0]}")
+                filed = {}
+                for home_name, directory in notes.items():  # 3: firstmate replies to every note
+                    for n in sorted((directory / "handled").glob("*.note")):
+                        body = n.read_text()
+                        key = next(line.removeprefix("Idempotency key: ") for line in body.splitlines()
+                                   if line.startswith("Idempotency key: "))
+                        filed.setdefault(key, {})[home_name] = body
+                        (directory / "replies" / f"{n.stem}.txt").write_text(f"done: {home_name} {key}")
                 runs.append(wire.clicks())
             seen = json.loads((wire.STATE / "clicks.json").read_text()) if (wire.STATE / "clicks.json").exists() else {}
             commands = [json.loads(l) for l in wire.COMMANDS.read_text().splitlines()] if wire.COMMANDS.exists() else []
@@ -64,15 +76,17 @@ def roundtrip(inbox, feed_path, actions_path, commands=None):
             for name, click in clicks.items():
                 key = click.get("idempotency_key", "")
                 rec = seen.get(key, {})
-                note = notes / "handled" / f"{rec.get('note_id')}.note"
-                body = note.read_text() if rec and note.exists() else ""
-                reply = support / "replies" / f"{key}.json"
+                note_homes = filed.get(key, {})
+                body = next(iter(note_homes.values()), "")
+                reply = wire.REPLIES / f"{key}.json"
+                response = json.loads(reply.read_text()) if reply.exists() else {}
                 report["clicks"][name] = {
                     "action_id": click.get("action_id"), "target": click.get("target"),
-                    "filed": bool(rec), "note_head": body.splitlines()[0] if body else "",
+                    "filed": bool(rec and note_homes), "note_head": body.splitlines()[0] if body else "",
+                    "note_homes": list(note_homes),
                     "stale": "not in feed.actions.json" in body, "note": body,
                     "states": [c["state"] for c in commands if c["id"] == key],
-                    "reply": json.loads(reply.read_text()).get("status") if reply.exists() else None,
+                    "reply": response.get("status"), "reply_text": response.get("text"),
                     "handled": (inbox / "handled" / name).exists(),
                     "reply_beside": (inbox / "handled" / (Path(name).stem + ".reply.json")).exists()}
             return report

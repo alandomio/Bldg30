@@ -1,4 +1,4 @@
-import json, sys, unittest
+import json, os, shutil, subprocess, sys, tempfile, time, unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
 __import__("os").environ["SHIPDECK_ORG_CONFIG"] = str(Path(__file__).resolve().with_name("org.test.json"))  # hermetic org values
@@ -11,6 +11,21 @@ URL = "https://gitlab.com/example-group/ops/observability/-/merge_requests/101"
 class ReviewDrafts(unittest.TestCase):
     def feed(self):
         return {"decisions": [], "mrs": [{"ref": "obs !42", "url": "https://gitlab.com/example-group/ops/observability/-/merge_requests/42", "drafts": [], "actions": []}]}
+
+    def test_review_draft_subprocess_discovers_reports_under_the_wire_home(self):
+        bin_dir = Path(__file__).resolve().parents[1] / "bin"
+        child = "import json; from review_drafts import recent_reports; print(json.dumps([r['task'] for r in recent_reports()]))"
+        launch = "import subprocess, sys, wire; subprocess.run([sys.executable, '-c', sys.argv[1]], check=True)"
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "data"
+            task = data / REPORT.parent.name
+            task.mkdir(parents=True)
+            shutil.copyfile(REPORT, task / REPORT.name)
+            env = {**os.environ, "SHIPDECK_WIRE_HOME": str(data / "shipdeck-wire")}
+            env.pop("FM_HOME", None)
+            result = subprocess.run([sys.executable, "-c", launch, child], cwd=bin_dir, env=env,
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(json.loads(result.stdout), ["rv-obs-101"])
 
     @unittest.skipUnless(REPORT.is_file(), "report not on this machine")
     def test_parse_keeps_full_text_placement_severity(self):
@@ -67,7 +82,6 @@ if __name__ == "__main__":
 
 class TwoReportsSameMrTests(unittest.TestCase):
     def test_every_workers_drafts_stay_on_the_card_with_unique_ids(self):
-        import tempfile, os, time
         url = "https://gitlab.com/example-group/x/-/merge_requests/9"
         with tempfile.TemporaryDirectory() as tmp:
             for i, (task, text) in enumerate([("rv-x-9", "First finding here"), ("rv-x-9b", "Second finding here")]):

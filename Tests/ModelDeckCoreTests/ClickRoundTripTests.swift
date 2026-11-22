@@ -2,10 +2,6 @@ import Foundation
 import Testing
 @testable import ModelDeckCore
 
-/// Click round trip (test B), end to end: for every button of every sample feed, the app's own code builds the click and
-/// sends it (ClickSender: a `queued` line in commands.jsonl, then the note in a temporary inbox). The real click pipe
-/// (wire/tests/click_roundtrip.py runs wire.clicks with a stub firstmate inbox) must match it to the right work item,
-/// acknowledge it and answer it, writing its states into the same commands.jsonl, and the app's ledger must read it as done.
 struct ClickRoundTripTests {
     static let wire = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .appendingPathComponent("wire")
@@ -13,7 +9,15 @@ struct ClickRoundTripTests {
     static let now = Date(timeIntervalSince1970: 1_795_000_000)
 
     struct Report: Decodable {
-        struct Click: Decodable { let filed: Bool, stale: Bool, note: String, handled: Bool }
+        struct Click: Decodable {
+            let filed: Bool, stale: Bool, note: String, handled: Bool
+            let noteHomes: [String]
+
+            enum CodingKeys: String, CodingKey {
+                case filed, stale, note, handled
+                case noteHomes = "note_homes"
+            }
+        }
         let runs: [Int]
         let errors: String
         let clicks: [String: Click]
@@ -47,6 +51,17 @@ struct ClickRoundTripTests {
         return out
     }
 
+    static func workerButtons() throws -> [CompanionClick] {
+        let worker = Worker(meta: WorkerMeta(id: "finished-worker"), crew: nil,
+                            events: StatusLog.parse("done: Verdict: all green"), now: now)
+        let sweep = try #require(WorkerActions.sweepClick(worker, now: now))
+        let steer = try #require(WorkerActions.steerClick(task: "running-worker", text: "Check the failing test", now: now))
+        let target = WorkerActions.target(worker.id)
+        return [sweep, steer] + [WorkerActions.cleanup, WorkerActions.discard, "worker.merge"].map {
+            CompanionClick(actionID: $0, target: target, now: now)
+        }
+    }
+
     static func runPipe(inbox: URL, commands: URL, sample: String) throws -> Report {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -70,30 +85,48 @@ struct ClickRoundTripTests {
     @Test(arguments: ["producer", "edge-cases"])
     func everyButtonReachesItsWorkItemAndIsAnswered(sample: String) throws {
         let feed = try CompanionFeed.decode(try Data(contentsOf: Self.feeds.appendingPathComponent("\(sample).feed.json")))
-        let clicks = Self.buttons(of: feed)
-        #expect(clicks.count > feed.decisions.count + feed.mrs.count + feed.tickets.count)
+        let cardClicks = Self.buttons(of: feed)
+        #expect(cardClicks.count > feed.decisions.count + feed.mrs.count + feed.tickets.count)
+        let clicks = try cardClicks + Self.workerButtons()
+        let commentTargets = ["global"] + feed.decisions.map(\.id) + feed.mrs.map(\.ref) + feed.tickets.map(\.identifier)
+        let comments = commentTargets.map {
+            CompanionClick(actionID: CompanionReply.commentAction, target: $0, draftText: "Please check \($0)", now: Self.now)
+        }
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("roundtrip-\(UUID().uuidString)")
         let inbox = root.appendingPathComponent("inbox")
         try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         for click in clicks { #expect(ClickSender.send(click, label: nil, inbox: inbox.path) == nil, "\(click.actionID) was not sent") }
+        for comment in comments { try CompanionInbox.file(comment, inbox: inbox.path) }
         let commands = CommandLog.url(inbox: inbox.path)
-        #expect(CommandLedger(lines: CommandLog.read(commands)).commands.allSatisfy { $0.state == .queued })
+        let queued = CommandLedger(lines: CommandLog.read(commands)).commands
+        #expect(Set(queued.map(\.id)) == Set(clicks.map(\.idempotencyKey)))
+        #expect(queued.allSatisfy { $0.state == .queued })
 
         let report = try Self.runPipe(inbox: inbox, commands: commands, sample: sample)
         #expect(report.runs == [0, 0, 0])
         #expect(report.errors == "")
         let ledger = CommandLedger(lines: CommandLog.read(commands))
-        for click in clicks {
+        for click in clicks + comments {
             let name = report.clicks.keys.first { $0.hasSuffix("-\(click.idempotencyKey).json") }
             let result = try #require(name.flatMap { report.clicks[$0] }, "no result for \(click.actionID)")
             #expect(result.filed, "\(click.actionID) never reached firstmate")
             #expect(!result.stale, "\(click.actionID) is a dead button: the pipe cannot map it")
-            #expect(result.note.contains("Action id: \(click.actionID)"))
+            #expect(result.note.contains("Target: \(click.target)\n"))
             if let text = click.draftText { #expect(result.note.contains(text)) }
             #expect(result.handled)
+            if click.actionID == CompanionReply.commentAction {
+                #expect(result.noteHomes == ["deck_officer"])
+                let reply = try #require(CompanionReply.read(key: click.idempotencyKey, inbox: inbox.path))
+                #expect(reply.status == "done")
+                #expect(reply.text == "done: deck_officer \(click.idempotencyKey)")
+                continue
+            }
+            #expect(result.noteHomes == ["main"])
+            #expect(result.note.contains("Action id: \(click.actionID)\n"))
             let command = try #require(ledger.command(id: click.idempotencyKey), "\(click.actionID) is missing from the ledger")
             #expect(command.state == .done, "\(click.actionID) must read as done in the app")
+            #expect(command.actionID == click.actionID)
             #expect(command.target == click.target)
         }
     }

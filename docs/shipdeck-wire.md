@@ -57,7 +57,7 @@ change runs it before it merges:
 1. `scripts/check-localization.py`: the English catalog.
 2. `python3 -m unittest discover -s wire/tests -t wire/tests`: producer, click pipe and freshness.
 3. `swift test`: the full Swift suite (XCTest and Swift Testing; needs Xcode).
-4. `scripts/build.sh`: the app builds (skip with `--no-build` while iterating).
+4. `scripts/build.sh`: the app builds.
 
 What the required tests prove:
 
@@ -69,13 +69,12 @@ What the required tests prove:
   decode, an invalid feed is rejected, and an invalid row is skipped with a note while the rest stays. When a producer
   change is meant to change the output, run `WIRE_UPDATE_FIXTURES=1 python3 -m unittest discover -s wire/tests -t wire/tests`
   and commit the new fixtures. The app is then tested against the new shape.
-- **B. Click round trip.** `Tests/ModelDeckCoreTests/ClickRoundTripTests.swift` builds the click of every button of
-  every sample feed with the app's own code (decision options, free answer, Add context, review drafts, MR and ticket
-  row buttons) and sends it with `ClickSender`, which writes the `queued` line and the inbox note. It then runs
-  `wire/tests/click_roundtrip.py`, which passes the clicks through the real `wire.clicks()` against a temporary
-  firstmate home with a stub `fm-inbox.sh`, writing to the same `commands.jsonl`, then acknowledges and answers each
-  note. The test checks that the note names the right work item and that the app's `CommandLedger` reads every click as
-  `done`. `wire/tests/test_click_roundtrip.py` runs the same pipe with clicks built in Python.
+- **B. Click round trip.** `Tests/ModelDeckCoreTests/ClickRoundTripTests.swift` uses the app's code to send decision
+  options, free answers, Add context, review drafts, MR and ticket row buttons, and worker controls through
+  `ClickSender`. Deck Officer comments go straight to `CompanionInbox`. The harness runs the real `wire.clicks()`
+  against temporary main and Deck Officer homes with stub inbox commands that acknowledge and answer the notes.
+  The app reads completion through `CommandLedger` for commands and `CompanionReply` for comments.
+  `wire/tests/test_click_roundtrip.py` drives the same pipe and checks the filed notes for the expected work item and home.
 - **C. Gate.** The whole suite plus the build, as above. Every bug fix adds a test that failed before the fix.
 - **D. Freshness.** `wire/tests/test_freshness.py` covers `freshness.py`. `Tests/ModelDeckCoreTests/FreshnessTests.swift`
   covers the app's 30-minute outdated state (red badge in the panel, "Feed fermo" in the menu bar).

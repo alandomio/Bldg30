@@ -25,6 +25,7 @@ HERE = Path(__file__).resolve().parent
 WIRE = Path(os.environ.get("SHIPDECK_WIRE_HOME") or HERE.parent).expanduser().resolve()
 SCHEMA_DIR = HERE.parent / "schema"
 FM_HOME = Path(os.environ.get("FM_HOME") or WIRE.parent.parent).resolve()
+os.environ["FM_HOME"] = str(FM_HOME)
 DATA = FM_HOME / "data"
 STATE = WIRE / "state"
 SUPPORT = Path(os.environ.get("SHIPDECK_COMPANION", "~/Library/Application Support/ModelDeck/companion")).expanduser()

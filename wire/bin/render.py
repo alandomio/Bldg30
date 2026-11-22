@@ -52,7 +52,7 @@ a grey border, In Progress yellow, In Review orange, Staging teal, Done blue; "s
 overrides a #rrggbb; text is dark or white by contrast) and the step left to Done as plain text.
 An MR row's "merge_state" (conflicts, pipeline, approved, open_threads...) adds Merge on the user's own MR when all clear
 and open_threads is 0, or Resolve and merge when threads are open (final feedback check, then resolve and merge).
-An MR row with "merged": true (the user's own, in a project listed in ships.json) renders as "Merged, apply not confirmed"
+An MR row with "merged": true (the user's own, in a project listed under 'ships' in the org config) renders as "Merged, apply not confirmed"
 or "Merged, release not confirmed" with a Mark applied / Mark released button; optional "ticket": "IN-2600" and
 "ticket_status": a Done or Canceled ticket drops the row and --tasks marks its task done.
 Facts to buttons (mr_steps.py): top-level "collect": "<collect_mrs.py --format json output>" (or --collect f.json) gives each MR
@@ -523,13 +523,12 @@ def add_merge(mrs, user):
             raise ValueError(f"{ref}: apply and delete are never offered as buttons ({bad[0]})")
 
 
-SHIPS_FILE = org.CONFIG  # the "ships" key of the local org config
 CLOSED = {"done", "canceled", "cancelled"}
 DONE_WORD = {"apply": "applied", "release": "released"}
 
 
 def ship_step(x):
-    """'apply' or 'release' when the MR's project ships to production only after a separate step (ships.json), else None.
+    """'apply' or 'release' when the org config's 'ships' key specifies a separate production step, else None.
     The project comes from the MR URL (gitlab.com/<group>/<path>/-/merge_requests/) or the short ref (pi !1937)."""
     ships = org.SHIPS
     url, label = x["refs"][0][0], x["refs"][0][1]
@@ -553,7 +552,7 @@ def merged_rows(b, user):
         ref, step = x["refs"][0][1], ship_step(x)
         if not step or not own_mr(x, user):
             raise ValueError(f"{ref}: a merged MR stays on the board only when it is the user's own and its project needs a "
-                             f"production apply or release ({SHIPS_FILE.name}); drop it from board.json otherwise")
+                             "production apply or release (the 'ships' key of the org config); drop it from board.json otherwise")
         if str(x.get("ticket_status", "")).lower() in CLOSED:
             closed.append(dict(x, _closed=f"ticket {x.get('ticket', '')} is {x['ticket_status']}".replace("  ", " ")))
             continue

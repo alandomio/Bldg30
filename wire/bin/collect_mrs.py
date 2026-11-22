@@ -7,7 +7,7 @@ Facts only, no verdicts: the model decides verdicts and next actions. `step` (th
 `merge_state` (for render.py's Merge button) are derived from those facts by mr_steps.py.
 
 With --merged-since YYYY-MM-DD it also reads the user's own MRs merged since then in projects where nothing
-ships on merge (ships.json): the candidates for the board's "Merged, apply/release not confirmed" rows.
+ships on merge (the 'ships' key of the org config): the candidates for the board's "Merged, apply/release not confirmed" rows.
 
 Usage: collect_mrs.py [--user <gitlab username, default: the glab-authenticated user>] [--extra 34967520!1834 ...] [--merged-since 2026-10-12] [--format toon|json]  (TOON default)
 """
@@ -17,8 +17,6 @@ from pathlib import Path
 
 import mr_steps
 import org
-
-SHIPS = org.CONFIG  # the "ships" key of the local org config
 
 
 def api(path):

@@ -12,14 +12,15 @@ the firstmate home, so nothing tested the contract between them and the app.
       and with the organisation config present the output is identical to the old copy.
 - [x] One schema (`wire/schema/companion-feed.v1.schema.json`) and synthetic sample feeds (`wire/fixtures/feeds`). The
       producer's output validates against the schema, and the app decodes the same files.
-- [x] Every button type (decision option, free answer, Add context, review draft, MR and ticket row action) writes a
-      click that the real click pipe matches to the right work item, files, acknowledges and answers, end to end on a
-      temporary folder, and the app's command ledger reads it as done.
+- [x] Every button type (decision option, free answer, Add context, review draft, MR and ticket row action, worker
+      control, Deck Officer comment) writes a click that the real click pipe matches to the right work item, files,
+      acknowledges and answers in a temporary folder. The app reads completion from the command ledger or the
+      Deck Officer reply file.
 - [x] `bash scripts/test.sh` runs translations, the wire tests, the full Swift suite and the app build. CI and the
       no-mistakes test step (`.no-mistakes.yaml`) run it.
 - [x] A feed older than 30 minutes wakes the owner agent (`wire/bin/freshness.py`) and shows a red badge in the app.
-- [x] `docs/companion/PRD.md` and `PLAN.md` match the firstmate copies; `docs/shipdeck-wire.md` documents the layout,
-      configuration, tests and the switch-over.
+- [x] `docs/companion/PRD.md` and `PLAN.md` carry the firstmate content with organisation names removed, including
+      the v1.1 section in the plan. `docs/shipdeck-wire.md` documents the layout, configuration, tests and the switch-over.
 
 ## Proving tests
 

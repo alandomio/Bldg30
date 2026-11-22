@@ -1,8 +1,10 @@
 import AppKit
 
-// Usage: generate-icon.swift <assets-dir> <iconset-dir>. Renders the R1 SVGs into the iconset and the in-app PNGs.
+// Usage: generate-icon.swift <assets-dir> <iconset-dir> <png-dir>. Reads the R1 SVGs from assets-dir; writes the iconset and the in-app PNGs elsewhere.
 let assets = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 let iconset = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
+let pngs = URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
+try FileManager.default.createDirectory(at: pngs, withIntermediateDirectories: true)
 try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
 
 func render(_ svg: String, pixels: Int, to url: URL) throws {
@@ -22,6 +24,6 @@ for size in [16, 32, 128, 256, 512] {
         try render(pixels <= 64 ? "icon-r1-small.svg" : "icon-r1.svg", pixels: pixels, to: iconset.appendingPathComponent("icon_\(size)x\(size)\(scale == 2 ? "@2x" : "").png"))
     }
 }
-try render("icon-r1-menubar.svg", pixels: 18, to: assets.appendingPathComponent("MenuBarTemplate.png"))
-try render("icon-r1-menubar.svg", pixels: 36, to: assets.appendingPathComponent("MenuBarTemplate@2x.png"))
-try render("icon-r1-small.svg", pixels: 96, to: assets.appendingPathComponent("Logo.png"))
+try render("icon-r1-menubar.svg", pixels: 18, to: pngs.appendingPathComponent("MenuBarTemplate.png"))
+try render("icon-r1-menubar.svg", pixels: 36, to: pngs.appendingPathComponent("MenuBarTemplate@2x.png"))
+try render("icon-r1-small.svg", pixels: 96, to: pngs.appendingPathComponent("Logo.png"))

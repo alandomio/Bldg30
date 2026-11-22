@@ -47,7 +47,7 @@ public enum CompanionBoard {
             if let raw, raw.gitlabOK, let generated = feed?.generatedAt, raw.fetchedAt > generated {
                 if let live = rawByURL[key(mr.url)] {
                     pipeline = live.pipeline; threads = live.openThreads
-                    stale = live.pipeline != mr.pipeline || live.openThreads != mr.openThreads || live.updatedAt > generated
+                    stale = PipelineState.canonical(live.pipeline) != PipelineState.canonical(mr.pipeline) || live.openThreads != mr.openThreads || live.updatedAt > generated
                 } else { stale = true }
             }
             rawByURL[key(mr.url)] = nil

@@ -265,8 +265,14 @@ public enum WorkerBoard {
 /// Click ids for what firstmate does for ShipDeck. The executor split: refresh, peek, interrupt, exit, relaunch and
 /// answer run in the app (`WorkerRunner`); these go through the click inbox.
 public enum WorkerActions {
-    public static let sweep = "worker.sweep", cleanup = "worker.cleanup", discard = "worker.discard", merge = "worker.merge", steer = "worker.steer", spawn = "worker.spawn"
+    public static let sweep = "worker.sweep", cleanup = "worker.cleanup", discard = "worker.discard", steer = "worker.steer"
     public static func target(_ task: String) -> String { "worker:" + task }
+    public static func mayRun(_ action: String, task: String, ledger: CommandLedger) -> Bool {
+        switch action {
+        case sweep, cleanup, discard: return CardActivity.inFlight(target: target(task), ledger: ledger) == nil
+        default: return true
+        }
+    }
     public static func task(of target: String) -> String? { target.hasPrefix("worker:") ? String(target.dropFirst(7)) : nil }
 
     /// Sweep: the verdict travels as the text so firstmate records exactly what the captain saw.
@@ -280,10 +286,6 @@ public enum WorkerActions {
         guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return CompanionClick(actionID: steer, target: target(task), draftText: typed, now: now)
     }
-    public static func click(_ action: String, task: String, text: String? = nil, now: Date = Date()) -> CompanionClick {
-        CompanionClick(actionID: action, target: target(task), draftText: text, now: now)
-    }
-
     /// What a discard throws away, for the confirm dialog: the worktree, the branch, and what firstmate said it refused over.
     public static func discardLoss(_ worker: Worker) -> [String] {
         var lines: [String] = []

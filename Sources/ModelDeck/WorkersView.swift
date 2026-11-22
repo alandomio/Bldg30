@@ -155,7 +155,13 @@ struct WorkersView: View {
         case .peek: tailBox(worker.id)
         case .steer:
             box { textEntry(key: worker.id + ".steer", prompt: L("Cosa deve fare in più o diversamente?"), send: L("Invia a firstmate")) { text in
-                if let click = WorkerActions.steerClick(task: worker.id, text: text) { send(click.actionID, worker.id, text, label: L("Guida \(worker.id)")); model.panel[worker.id] = nil; model.text[worker.id + ".steer"] = nil }
+                guard let click = WorkerActions.steerClick(task: worker.id, text: text) else { return }
+                let error = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: text)
+                feedback = error
+                if error == nil {
+                    model.panel[worker.id] = nil
+                    model.text[worker.id + ".steer"] = nil
+                }
             } }
         case .relaunch:
             box { textEntry(key: worker.id + ".relaunch", prompt: L("Nota per il nuovo agente (cosa è fatto, cosa resta)"), send: L("Rilancia")) { _ in model.relaunch(task: worker.id) } }
@@ -235,7 +241,7 @@ struct WorkersView: View {
     }
 
     private func sweepButton(_ worker: Worker, primary: Bool) -> some View {
-        Button(L("Sweep")) { if let click = WorkerActions.sweepClick(worker) { send(click.actionID, worker.id, click.draftText, label: L("Sweep \(worker.id)")) } }
+        Button(L("Sweep")) { if let click = WorkerActions.sweepClick(worker) { sendCleanup(click.actionID, worker.id, click.draftText, label: L("Sweep \(worker.id)")) } }
             .buttonStyle(DeckButtonStyle(primary: primary, small: true)).disabled(!worker.sweepable)
             .help(worker.sweepBlocker.map { D($0) } ?? L("Segna il risultato come visto e chiude il lavoratore"))
     }
@@ -264,12 +270,12 @@ struct WorkersView: View {
         case .sweepAll(let list):
             return Alert(title: Text(L("Sweep di \(list.count) lavoratori?")),
                          message: Text(list.prefix(8).map { "• " + $0.id + ": " + ($0.verdict.map { WorkerBoard.firstLine($0, limit: 90) } ?? "") }.joined(separator: "\n") + (list.count > 8 ? "\n…" : "")),
-                         primaryButton: .default(Text(L("Sweep"))) { list.forEach { if let click = WorkerActions.sweepClick($0) { send(click.actionID, $0.id, click.draftText, label: L("Sweep \($0.id)")) } } },
+                         primaryButton: .default(Text(L("Sweep"))) { list.forEach { if let click = WorkerActions.sweepClick($0) { sendCleanup(click.actionID, $0.id, click.draftText, label: L("Sweep \($0.id)")) } } },
                          secondaryButton: .cancel(Text(L("Annulla"))))
         case .discard(let worker):
             return Alert(title: Text(L("Scartare \(worker.id) e pulire?")),
                          message: Text(L("Si perde:") + "\n" + WorkerActions.discardLoss(worker).map { "• " + $0 }.joined(separator: "\n")),
-                         primaryButton: .destructive(Text(L("Scarta e pulisci"))) { send(WorkerActions.discard, worker.id, nil, label: L("Scarta \(worker.id)")) },
+                         primaryButton: .destructive(Text(L("Scarta e pulisci"))) { sendCleanup(WorkerActions.discard, worker.id, nil, label: L("Scarta \(worker.id)")) },
                          secondaryButton: .cancel(Text(L("Annulla"))))
         case .exit(let worker):
             return Alert(title: Text(L("Fermare l’agente di \(worker.id)?")), message: Text(L("Il terminale, la copia locale e le modifiche non salvate restano.")),
@@ -280,7 +286,8 @@ struct WorkersView: View {
         }
     }
 
-    private func send(_ action: String, _ task: String, _ text: String?, label: String) {
+    private func sendCleanup(_ action: String, _ task: String, _ text: String?, label: String) {
+        guard WorkerActions.mayRun(action, task: task, ledger: store.commandLedger) else { return }
         feedback = store.sendCompanionClick(actionID: action, target: WorkerActions.target(task), draftText: text, label: text == nil ? label : nil)
     }
 

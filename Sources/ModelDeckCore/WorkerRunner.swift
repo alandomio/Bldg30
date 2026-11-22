@@ -48,7 +48,7 @@ public struct WorkerRunner: Sendable {
     public let home: String
     public init(home: String = WorkerRunner.defaultHome) { self.home = (home as NSString).expandingTildeInPath }
     public static var defaultHome: String {
-        CommandLine.arguments.firstIndex(of: "--fm-home").map { CommandLine.arguments[$0 + 1] } ?? UserDefaults.standard.string(forKey: "firstmateHome").flatMap { $0.isEmpty ? nil : $0 } ?? NSHomeDirectory() + "/firstmate"
+        CommandArguments.value(after: "--fm-home") ?? UserDefaults.standard.string(forKey: "firstmateHome").flatMap { $0.isEmpty ? nil : $0 } ?? NSHomeDirectory() + "/firstmate"
     }
     var env: [String: String] { ["FM_HOME": home] }
     func script(_ name: String) -> String { home + "/bin/" + name }

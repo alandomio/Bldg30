@@ -22,7 +22,7 @@ ShipDeck and firstmate's click bridge share one append-only log of commands. A c
 
 ## Who writes what
 
-- **The app** writes `queued` when it files the inbox note. The queued line is appended before the note is written, so a later line for the same `id` always follows it. If the note cannot be written, the app appends `failed` with a note.
+- **The app** requires a configured inbox path before writing. If the path is blank, it reports an error without writing a ledger entry or inbox note. It appends `queued` before writing the note, so a pickup for the same `id` always follows it. If writing the note fails after it was queued, the app attempts to append `failed` with the error reason.
 - **The consumer (click bridge)** writes `picked_up` when it takes a note, and `done` or `failed` when it has a result. Repeat `id`, `action_id` and `target` from the note. A consumer may write `done` or `failed` without a `picked_up` line, but never write a state it has not reached.
 - Append each line with one `write()` on a file opened with `O_APPEND`, so lines stay whole.
 
@@ -30,10 +30,10 @@ ShipDeck and firstmate's click bridge share one append-only log of commands. A c
 
 `queued` -> `picked_up` -> `done` | `failed`. Forward only. `done` and `failed` are final.
 
-The app ignores, and counts as ignored: lines that are not valid JSON, unknown `state` values, a line for an `id` that has no `queued` line before it, repeated lines, and any line that moves a command backwards or after `done` or `failed`. The app never decides a state from time: a command with no pickup line stays `queued` however old it is.
+The app ignores, and counts as ignored: lines that are not valid JSON, unknown `state` values, a line for an `id` that has no `queued` line before it, repeated lines, and any line that moves a command backwards or after `done` or `failed`. A command stays `queued` and continues to display its queued status until the ledger records a later state.
 
 ## What the app shows
 
 Decision, MR and ticket cards show a status line for the in-flight or most recent command. The decision card has a History disclosure, and MRs and tickets show history in their Details sections. Each history lists the card's commands newest first with their labels, states and available timestamps. The app reads the last 1 MB during its Bridge refresh, which waits 10 seconds between cycles.
 
-The older `replies/<key>.json` receipts are no longer read.
+The app uses the ledger as its sole source of command status. This replaces `replies/<key>.json` receipts and status inferred from inbox files or `<name>.reply.json`.

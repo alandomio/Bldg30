@@ -23,9 +23,11 @@ app="build/ShipDeck.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary_dir/ModelDeck" "$app/Contents/MacOS/ShipDeck"
 ditto "$binary_dir/ModelDeck_ModelDeckCore.bundle" "$app/Contents/Resources/ModelDeck_ModelDeckCore.bundle"
-"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift assets build/ShipDeck.iconset
-iconutil -c icns build/ShipDeck.iconset -o assets/AppIcon.icns
-cp assets/AppIcon.icns assets/MenuBarTemplate.png "assets/MenuBarTemplate@2x.png" assets/Logo.png "$app/Contents/Resources/"
+# Render into build/ so a build never rewrites tracked files; scripts/refresh-assets.sh updates assets/ on purpose.
+rendered="build/rendered-assets"
+"$swift_tool" "${swift_script_args[@]}" scripts/generate-icon.swift assets build/ShipDeck.iconset "$rendered"
+iconutil -c icns build/ShipDeck.iconset -o "$rendered/AppIcon.icns"
+cp "$rendered/AppIcon.icns" "$rendered/MenuBarTemplate.png" "$rendered/MenuBarTemplate@2x.png" "$rendered/Logo.png" "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

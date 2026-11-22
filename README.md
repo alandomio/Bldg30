@@ -70,13 +70,15 @@ ditto build/ShipDeck.app ~/Applications/ShipDeck.app
 open ~/Applications/ShipDeck.app
 ```
 
-The local build is ad hoc signed. There is no Developer ID signature, notarization, automatic updater or App Store distribution in this initial version. CI produces an app archive for its runner's architecture; it is not a universal binary.
+The local build is ad hoc signed. There is no Developer ID signature, notarization, automatic updater or App Store distribution in this initial version. The packaged app targets the build Mac's architecture.
 
 The Command Line Tools can build the application; the XCTest suite requires the full Xcode test frameworks and an accepted Xcode license. To build with installed Command Line Tools without changing the global developer selection, use `env DEVELOPER_DIR=/Library/Developer/CommandLineTools bash scripts/build.sh`.
 
 If a tool update changes the available SDK or build engine, `MODELDECK_SWIFT`, `MODELDECK_SDK` and `MODELDECK_BUILD_SYSTEM` optionally pin those selections for this build. For example, with a compatible SDK already installed, use `MODELDECK_SWIFT=/Library/Developer/CommandLineTools/usr/bin/swift MODELDECK_SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk MODELDECK_BUILD_SYSTEM=native` in the build environment. The icon script uses the same selected SDK and the macOS 14 deployment target.
 
 For development, `swift run ModelDeck` works. A generated `ModelDeck.xcodeproj` is also included. To regenerate it after changing targets, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run `xcodegen generate`.
+
+This repository uses local CI runs. Run the four workflow commands on macOS and cite the local run as CI evidence for the change. Merging requires explicit approval. [CI workflow](.github/workflows/ci.yml)
 
 ## Connect your tools
 

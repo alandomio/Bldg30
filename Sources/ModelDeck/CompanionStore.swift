@@ -22,7 +22,7 @@ enum CompanionSettings {
 extension CompanionSettings {
     /// `workers.json` sits beside the feed file; `--workers-file` overrides it for tests.
     static var fleetPath: String {
-        if let i = CommandLine.arguments.firstIndex(of: "--workers-file"), i + 1 < CommandLine.arguments.count { return CommandLine.arguments[i + 1] }
+        if let path = CommandArguments.value(after: "--workers-file") { return path }
         return URL(fileURLWithPath: (feedPath as NSString).expandingTildeInPath).deletingLastPathComponent().appendingPathComponent("workers.json").path
     }
 }

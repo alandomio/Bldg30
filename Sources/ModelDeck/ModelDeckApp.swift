@@ -136,7 +136,7 @@ import ModelDeckCore
         if fit { store.machine.memory = UInt64(16 * gibibyte); store.machine.metalWorkingSet = UInt64(12 * gibibyte); store.snapshot.memoryTotal = store.machine.memory; store.snapshot.memoryUsed = UInt64(8 * gibibyte) }
         let content: AnyView = fit ? AnyView(ModelFitView(demonstration: true, demonstrateSearch: CommandLine.arguments.contains("--search"), appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT"))) : AnyView(Dashboard(initialSection: section, initialProcessSort: resource, appearanceOverride: theme).environmentObject(store).environment(\.locale, Locale(identifier: "it_IT")))
         let hosting = NSHostingView(rootView: content)
-        let override = CommandLine.arguments.firstIndex(of: "--preview-height").flatMap { Double(CommandLine.arguments[$0 + 1]) }
+        let override = CommandArguments.value(after: "--preview-height").flatMap(Double.init)
         let height = override ?? (fit ? 850 : section == "processes" ? 1580 : section == "settings" ? 1500 : section == "credits" ? 850 : 1360)
         writePreview(hosting, to: url, width: fit ? 840 : CommandLine.arguments.contains("--narrow") ? 940 : 1180, height: CGFloat(height))
     }

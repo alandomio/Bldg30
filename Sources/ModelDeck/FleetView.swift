@@ -10,7 +10,7 @@ struct FleetView: View {
     @State private var collapsed: Set<String> = Set(Self.argument("--fleet-collapsed").map { $0.split(separator: ",").map(String.init) } ?? [])
 
     private static func argument(_ name: String) -> String? {
-        CommandLine.arguments.firstIndex(of: name).flatMap { $0 + 1 < CommandLine.arguments.count ? CommandLine.arguments[$0 + 1] : nil }
+        CommandArguments.value(after: name)
     }
 
     var body: some View {

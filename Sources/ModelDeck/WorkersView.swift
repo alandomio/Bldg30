@@ -20,6 +20,7 @@ struct WorkersView: View {
             }
         }
     }
+    @AppStorage("workersSection") private var section = CommandLine.arguments.contains("--fleet-view") ? "fleet" : "home"
     @State private var confirm: Confirm?
     @State private var feedback: String?
     @State private var closedGroups: Set<String> = CommandLine.arguments.contains("--workers-open-all") ? [] : [WorkerGroup.stale.rawValue, WorkerGroup.remote.rawValue]
@@ -27,6 +28,20 @@ struct WorkersView: View {
     private var discardedReview: Set<String> { Set(UserDefaults.standard.stringArray(forKey: "discardedReviewDrafts") ?? []) }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("", selection: $section) {
+                Text(L("Questa home")).tag("home")
+                Text(L("Flotta")).tag("fleet")
+            }.pickerStyle(.segmented).labelsHidden().frame(maxWidth: 260)
+            if section == "fleet" { FleetView() } else { homeContent }
+        }
+        .onAppear { model.start(mrs: { store.boardMRs }, ledger: { store.commandLedger }, discarded: { discardedReview }, decisions: { (store.companionFeed?.decisions ?? []).map { ($0.id, $0.displayTitle) } }) }
+        .onDisappear { model.stop() }
+        .onChange(of: store.commandLedger) { _ in model.reload(mrs: store.boardMRs, ledger: store.commandLedger, discarded: discardedReview, decisions: (store.companionFeed?.decisions ?? []).map { ($0.id, $0.displayTitle) }) }
+        .alert(item: $confirm, content: alert)
+    }
+
+    private var homeContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
             if !model.available {
@@ -43,10 +58,6 @@ struct WorkersView: View {
             if model.workers.isEmpty && model.available { Text(L("Nessun lavoratore registrato.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted) }
             if let feedback { Text(D(feedback)).font(.system(size: 12)).foregroundStyle(DeckTheme.amber).textSelection(.enabled) }
         }
-        .onAppear { model.start(mrs: { store.boardMRs }, ledger: { store.commandLedger }, discarded: { discardedReview }, decisions: { (store.companionFeed?.decisions ?? []).map { ($0.id, $0.displayTitle) } }) }
-        .onDisappear { model.stop() }
-        .onChange(of: store.commandLedger) { _ in model.reload(mrs: store.boardMRs, ledger: store.commandLedger, discarded: discardedReview, decisions: (store.companionFeed?.decisions ?? []).map { ($0.id, $0.displayTitle) }) }
-        .alert(item: $confirm, content: alert)
     }
 
     // MARK: header and groups

@@ -128,6 +128,25 @@ final class CompanionLiveTests: XCTestCase {
         XCTAssertEqual(live.events.map(\.task), ["b", "a"])
         XCTAssertEqual(live.events.first?.key, "k")
     }
+    func testSharedKeysAndRepeatedEventsHaveDistinctStableIdentities() throws {
+        let row: [String: Any] = ["task": "a", "state": "working", "key": "shared",
+                                  "at": "2026-11-05T13:00:00Z", "text": "first"]
+        var other = row
+        other["text"] = "second"
+        func decode(_ rows: [[String: Any]]) throws -> CompanionLive {
+            let data = try JSONSerialization.data(withJSONObject: ["schema": CompanionLive.schema,
+                "generated_at": "2026-11-05T14:00:00Z", "events": rows])
+            return try CompanionLive.decode(data)
+        }
+        let live = try decode([row, other, row])
+        XCTAssertEqual(live.events.count, 3)
+        XCTAssertEqual(Set(live.events.map(\.id)).count, 3)
+        XCTAssertEqual(live.events.map(\.id), try decode([row, other, row]).events.map(\.id))
+        var newer = row
+        newer["at"] = "2026-11-05T13:59:00Z"
+        let refreshed = try decode([newer, row, other, row])
+        XCTAssertEqual(Array(refreshed.events.dropFirst()).map(\.id), live.events.map(\.id))
+    }
     func testWrongSchemaIsRejected() {
         XCTAssertThrowsError(try CompanionLive.decode(Data(#"{"schema":"x","generated_at":"2026-11-05T14:00:00Z","events":[]}"#.utf8)))
     }

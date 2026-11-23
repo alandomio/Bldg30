@@ -1,0 +1,135 @@
+{
+ "schema": "companion-feed.v2",
+ "generated_at": "2026-11-19T12:00:00.250Z",
+ "producer": "shipdeck-wire",
+ "warnings": [
+  "Synthetic sample: optional, null and extra fields the app must accept."
+ ],
+ "decisions": [
+  {
+   "id": "hold-sample-1",
+   "title": "Ship the sync change before the freeze?",
+   "project": "infra/platform",
+   "why_now": "The freeze starts tomorrow.",
+   "options": [
+    {
+     "label": "Ship now",
+     "consequence": "It lands before the freeze.",
+     "action_id": "hold-sample-1.opt-1",
+     "outward": false
+    },
+    {
+     "label": "Defer one week",
+     "consequence": "Keep it held and bring it back in 7 days.",
+     "action_id": "hold-sample-1.opt-defer",
+     "outward": false
+    }
+   ],
+   "recommendation": "Ship now",
+   "links": [
+    "https://gitlab.com/example-group/infra/platform/-/merge_requests/7"
+   ],
+   "urgent": true,
+   "created_at": "2026-11-19T11:00:00Z",
+   "summary": [
+    {
+     "heading": "What",
+     "text": "A synthetic held decision."
+    }
+   ],
+   "full_context": "Synthetic."
+  }
+ ],
+ "mrs": [
+  {
+   "ref": "pi !7",
+   "url": "https://gitlab.com/example-group/infra/platform/-/merge_requests/7",
+   "title": "feat(sync): batch writes",
+   "role": "author",
+   "verdict": "notyet",
+   "label": "Fix the pipeline",
+   "next_owner": "You",
+   "pipeline": "failed",
+   "open_threads": 0,
+   "drafts": [],
+   "actions": [
+    {
+     "id": "row-mr-pi-7.fix-pipeline",
+     "label": "Fix pipeline",
+     "outward": false
+    }
+   ],
+   "decision_id": "hold-sample-1",
+   "close_rank": 2,
+   "stale": false,
+   "summary": [
+    {
+     "heading": "Step",
+     "text": "Pipeline failed on the head commit."
+    }
+   ],
+   "full_context": "Synthetic.",
+   "ticket_url": "https://linear.app/example/issue/IN-7"
+  },
+  {
+   "ref": "obs !9",
+   "url": "https://gitlab.com/example-group/ops/observability/-/merge_requests/9",
+   "title": "fix(alerts): page once",
+   "role": "reviewer",
+   "verdict": "blocked",
+   "label": "Risk if merged",
+   "next_owner": "Riley",
+   "pipeline": null,
+   "open_threads": null,
+   "drafts": [
+    {
+     "id": "f1",
+     "target": "src/alerts.js:12",
+     "target_url": "https://gitlab.com/example-group/ops/observability/-/merge_requests/9",
+     "text": "This pages twice when the monitor flaps. Please dedupe by fingerprint.",
+     "placement": "inline src/alerts.js:12",
+     "finding": "F1",
+     "severity": "required",
+     "source": "rv-obs-9"
+    }
+   ],
+   "actions": [
+    {
+     "id": "row-mr-obs-9.comment-f1",
+     "label": "Post comment F1",
+     "outward": true
+    },
+    {
+     "id": "row-mr-obs-9.nevermind",
+     "label": "Nevermind",
+     "outward": false
+    }
+   ]
+  }
+ ],
+ "tickets": [
+  {
+   "identifier": "IN-7",
+   "url": "https://linear.app/example/issue/IN-7",
+   "title": "Batch the sync writes",
+   "status": "In Progress",
+   "finish": {
+    "step": "Fix pipeline on pi !7",
+    "owner": "You"
+   },
+   "linked_mrs": [
+    "pi !7"
+   ],
+   "actions": [
+    {
+     "id": "row-t-in-7.ask-delivery-buddy",
+     "label": "Ask delivery buddy",
+     "outward": false
+    }
+   ],
+   "stale": true,
+   "summary": [],
+   "full_context": ""
+  }
+ ]
+}

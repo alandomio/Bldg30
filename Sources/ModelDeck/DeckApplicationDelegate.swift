@@ -64,6 +64,7 @@ import ModelDeckCore
         }.store(in: &subscriptions)
         store.$defender.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
         store.$companionFeed.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
+        store.$companionFeedOutdated.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshStatusItem(); self?.configureMainMenu() }.store(in: &subscriptions)
     }
@@ -72,7 +73,7 @@ import ModelDeckCore
     private func updateStatusItem(snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage) {
         guard let item = statusItem, let button = item.button else { return }
         let options = menuOptionsOverride ?? .load()
-        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).count, defender: store.defender)
+        let summary = MenuBarSummary.render(options: options, snapshot: snapshot, claude: claude, openAI: openAI, decisionsWaiting: OpenDecisions.filter(store.companionFeed?.decisions ?? [], ledger: store.commandLedger).count, feedOutdated: store.companionFeedOutdated, defender: store.defender)
         item.length = summary.title.isEmpty ? NSStatusItem.squareLength : NSStatusItem.variableLength
         if options.layout == .twoRows && !summary.readings.isEmpty {
             button.image = MenuBarBadge.image(for: summary, height: NSStatusBar.system.thickness - 2)

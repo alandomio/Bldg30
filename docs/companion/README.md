@@ -7,13 +7,17 @@ Command Bridge is off by default. The default feed path is `~/Library/Applicatio
 Demo mode shows `CompanionFixture`; `fixture-feed.json` is the same content for manual tests.
 
 ## Contract
-- `companion-feed.v1` is read from the feed file. The whole feed is rejected if the JSON is unreadable, the schema name differs from `companion-feed.v1`, or a required top-level field is missing or invalid. `generated_at` must be a valid ISO 8601 timestamp, `producer` a string, and `decisions`, `mrs` and `tickets` arrays. The optional `warnings` field must be an array of strings or null. Invalid rows are skipped and counted. Examples include an unknown verdict, a disallowed URL, a missing required field or a duplicate row identifier. The other rows still show. A feed older than 15 minutes shows an amber note and pill and stops sending urgent decision notifications. Its content stays readable and clickable.
+- See the [feed schema](../../wire/schema/companion-feed.v1.schema.json) for the producer contract and the [feed decoder](../../Sources/ModelDeckCore/CompanionFeed.swift) for app validation. The app rejects an unreadable feed or an invalid top-level field. It skips and counts invalid rows, so the remaining rows still show.
 - `companion-click.v1` writes one `<epoch>-<key>.json` note per click, atomically. See [CompanionClick.swift](../../Sources/ModelDeckCore/CompanionClick.swift) for the note fields.
 - `companion-event.v1`: JSON lines appended to the events file (Settings, optional), deduplicated by fingerprint, flushed at most every 5 minutes, 50 lines per flush. Kinds: `review_requested`, `pipeline_changed`, `new_comment` (more unresolved threads), `ticket_state`, `mr_merged` (an MR that left the open lists and GitLab reports as merged). The first poll after launch is a silent baseline.
 - **Add context** writes `<ref>.add-context` with the decision id, MR ref or ticket identifier as `target`. A free answer with no option uses `<decision id>.answer`. In either case, the app sends typed text in `draft_text` after trimming trailing whitespace.
 - A decision option uses its supplied `action_id` or falls back to `decision:<id>:option:<zero-based index>`. The option label supplies `draft_text` when no answer text is entered. MR and ticket row buttons use the feed action id and the row ref or ticket identifier. Posting sends the shown draft text and the MR ref. A review draft with a matching action id ending in `.comment-<draft id>` uses that action when each draft has a match. **Post all** confirms once and sends one click per remaining draft. The legacy draft panel uses the row's post action.
 - See the [command lifecycle](../../COMMANDS.md) for click status and send failures.
-- See the [feed decoder](../../Sources/ModelDeckCore/CompanionFeed.swift) for row fields and validation rules.
+- See the [wire reference](../shipdeck-wire.md) for the producer, click pipe, and integration tests.
+
+## Feed freshness
+
+After 15 minutes, the Command Bridge shows an amber warning and suppresses urgent decision notifications. After 30 minutes, the status pill turns red and shows the feed's age. The menu bar adds a feed status reading labeled **Feed fermo** in Italian. The feed stays readable and clickable. If a refresh fails, the app shows the error and continues to use the last good feed and its age, when available.
 
 ## Decision dates
 A decision may carry `created_at` (YYYY-MM-DD). The card header shows the date and age. The age turns amber after 14 days and red after 30. Urgent decisions come first, then High, then the rest. Within each priority, the card menu switches between feed order and oldest first with undated decisions last. ShipDeck remembers the choice.

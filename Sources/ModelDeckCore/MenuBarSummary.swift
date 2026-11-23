@@ -83,7 +83,7 @@ public struct MenuBarSummary: Sendable {
         return active.first ?? candidates.first
     }
 
-    public static func render(options: MenuBarOptions, snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage, decisionsWaiting: Int = 0, defender: DefenderUsage? = nil, now: Date = Date()) -> MenuBarSummary {
+    public static func render(options: MenuBarOptions, snapshot: SystemSnapshot, claude: SubscriptionUsage, openAI: SubscriptionUsage, decisionsWaiting: Int = 0, feedOutdated: Bool = false, defender: DefenderUsage? = nil, now: Date = Date()) -> MenuBarSummary {
         var readings: [MenuBarReading] = [], details = ["ShipDeck"]
         func percentage(_ value: Double?) -> String {
             guard let value, value.isFinite, value >= 0 else { return "—" }
@@ -130,6 +130,10 @@ public struct MenuBarSummary: Sendable {
                 if let reset = window.resetsAt { detail += " · reset " + reset.formatted(date: .abbreviated, time: .shortened) }
                 details.append(detail)
             }
+        }
+        if feedOutdated {
+            readings.append(.init(name: "Feed", value: "fermo"))
+            details.append("Feed fermo da oltre 30 min")
         }
         if decisionsWaiting > 0 {
             readings.append(.init(name: "Decisioni", value: String(decisionsWaiting)))

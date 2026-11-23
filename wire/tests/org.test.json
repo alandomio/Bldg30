@@ -1,0 +1,10 @@
+{
+ "_doc": "Synthetic org values for the wire tests (no real organisation).",
+ "gitlab_group": "example-group",
+ "linear_workspace": "example",
+ "projects": {"pi": "infra/platform", "platform": "infra/platform", "obs": "ops/observability", "observability": "ops/observability",
+              "services": "backend/services", "ts": "backend/services", "aim": "tools/ai-monorepo"},
+ "ticket_prefixes": ["IN", "PI"],
+ "ships": {"apply": ["infra/platform", "ops/observability"], "release": ["backend/services", "tools/ai-monorepo"]},
+ "knowledge_search": "knowledge-base search (query plus prompt)"
+}

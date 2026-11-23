@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companion-click.v1.schema.json",
+  "title": "companion-click.v1",
+  "description": "One JSON file per button click, filed by the app into the firstmate inbox. draft_text is the exact text Alan approved, when the click carries one. nudges (optional) names the idempotency_key of an earlier click that still waits for firstmate: the bridge files a fresh note pointing at it (a new wake), or answers 'already acknowledged'. The app sends it with action_id <original action_id>.nudge.",
+  "type": "object",
+  "required": [
+    "schema",
+    "idempotency_key",
+    "action_id",
+    "target",
+    "created_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "companion-click.v1"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 8
+    },
+    "action_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "draft_text": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "nudges": {
+      "type": "string",
+      "minLength": 8
+    }
+  }
+}

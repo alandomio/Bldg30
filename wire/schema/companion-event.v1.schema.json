@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companion-event.v1.schema.json",
+  "title": "companion-event.v1",
+  "description": "One change event per line (JSON lines) in the events file the app appends to. Batched, at most one flush per 5 minutes. fingerprint is a stable hash of source, id and state.",
+  "type": "object",
+  "required": ["schema", "fingerprint", "kind", "ref", "at"],
+  "properties": {
+    "schema": {"const": "companion-event.v1"},
+    "fingerprint": {"type": "string", "minLength": 8},
+    "kind": {"enum": ["new_comment", "review_requested", "pipeline_changed", "ticket_state", "mr_merged"]},
+    "ref": {"type": "string", "minLength": 1},
+    "at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"}
+  }
+}

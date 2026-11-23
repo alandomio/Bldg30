@@ -24,13 +24,15 @@ extension DeckStore {
     func refreshCompanion() {
         guard !demo else { return }
         refreshDeckReplies()
-        guard CompanionSettings.enabled else { companionFeed = nil; companionError = nil; return }
+        guard CompanionSettings.enabled else { companionFeed = nil; companionError = nil; companionFeedOutdated = false; return }
         do {
             let feed = try CompanionFeed.read(path: CompanionSettings.feedPath)
             if feed != companionFeed { companionFeed = feed }
             companionError = nil
             announceUrgent(feed)
         } catch { companionError = error.localizedDescription }
+        let outdated = companionFeed?.isOutdated() ?? false  // also when the last good feed is all that is left
+        if outdated != companionFeedOutdated { companionFeedOutdated = outdated }
         refreshCommands()
     }
 

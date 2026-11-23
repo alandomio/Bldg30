@@ -1,0 +1,172 @@
+{
+ "schema": "companion-feed.v1",
+ "generated_at": "2026-11-19T12:00:00Z",
+ "producer": "linear-action-board",
+ "decisions": [
+  {
+   "id": "board-mr-obs-42",
+   "title": "Approve obs !42 now or wait for the test?",
+   "project": "ops/observability",
+   "why_now": "Review and approve.",
+   "options": [
+    {
+     "label": "Approve now",
+     "consequence": "The MR can merge today.",
+     "action_id": "row-mr-obs-42.opt-approve-now",
+     "outward": true
+    },
+    {
+     "label": "Wait for the test",
+     "consequence": "Merge slips a day.",
+     "action_id": "row-mr-obs-42.opt-wait-for-the-test",
+     "outward": false
+    }
+   ],
+   "recommendation": "Approve now",
+   "links": [
+    "https://gitlab.com/example-group/ops/observability/-/merge_requests/42"
+   ],
+   "urgent": false
+  }
+ ],
+ "mrs": [
+  {
+   "ref": "pi !1",
+   "url": "https://gitlab.com/example-group/infra/platform/-/merge_requests/1",
+   "title": "feat(sync): retry budget",
+   "role": "author",
+   "verdict": "hold",
+   "label": "Waiting on review",
+   "next_owner": "Riley",
+   "pipeline": null,
+   "open_threads": null,
+   "drafts": [],
+   "actions": [
+    {
+     "id": "row-mr-pi-1.nudge-riley",
+     "label": "Nudge Riley",
+     "outward": true
+    },
+    {
+     "id": "row-mr-pi-1.wait-what",
+     "label": "Wait, what?",
+     "outward": false
+    },
+    {
+     "id": "row-mr-pi-1.nevermind",
+     "label": "Nevermind",
+     "outward": false
+    }
+   ],
+   "author": "sam",
+   "headline": "Review owed by Riley.",
+   "blocker": "",
+   "next": "Riley reviews.",
+   "ticket": "IN-1",
+   "updated_at": ""
+  },
+  {
+   "ref": "obs !42",
+   "url": "https://gitlab.com/example-group/ops/observability/-/merge_requests/42",
+   "title": "fix(alerts): quieter paging",
+   "role": "reviewer",
+   "verdict": "close",
+   "label": "Review now",
+   "next_owner": "You",
+   "pipeline": null,
+   "open_threads": null,
+   "drafts": [
+    {
+     "id": "draft",
+     "target": "obs !42",
+     "target_url": "https://gitlab.com/example-group/ops/observability/-/merge_requests/42",
+     "text": "The threshold change looks right. Please add a test for the zero case."
+    }
+   ],
+   "actions": [
+    {
+     "id": "row-mr-obs-42.post-review-note",
+     "label": "Post review note",
+     "outward": true
+    },
+    {
+     "id": "row-mr-obs-42.wait-what",
+     "label": "Wait, what?",
+     "outward": false
+    },
+    {
+     "id": "row-mr-obs-42.nevermind",
+     "label": "Nevermind",
+     "outward": false
+    }
+   ],
+   "author": "jdoe",
+   "headline": "Your review is owed.",
+   "blocker": "",
+   "next": "Review and approve.",
+   "ticket": "",
+   "updated_at": "",
+   "decision_id": "board-mr-obs-42"
+  }
+ ],
+ "tickets": [
+  {
+   "identifier": "IN-1",
+   "url": "https://linear.app/example/issue/IN-1",
+   "title": "Add the retry budget to the sync job",
+   "status": "In Review",
+   "finish": {
+    "step": "Merge pi !1",
+    "owner": "Riley"
+   },
+   "linked_mrs": [
+    "pi !1"
+   ],
+   "actions": [
+    {
+     "id": "row-t-in-1.nudge-riley",
+     "label": "Nudge Riley",
+     "outward": true
+    },
+    {
+     "id": "row-t-in-1.wait-what",
+     "label": "Wait, what?",
+     "outward": false
+    },
+    {
+     "id": "row-t-in-1.nevermind",
+     "label": "Nevermind",
+     "outward": false
+    }
+   ]
+  },
+  {
+   "identifier": "IN-2",
+   "url": "https://linear.app/example/issue/IN-2",
+   "title": "Document the sync job alerts",
+   "status": "To Do",
+   "finish": {
+    "step": "Write the runbook section",
+    "owner": "You"
+   },
+   "linked_mrs": [],
+   "actions": [
+    {
+     "id": "row-t-in-2.draft-the-runbook-section",
+     "label": "Draft the runbook section",
+     "outward": false
+    },
+    {
+     "id": "row-t-in-2.wait-what",
+     "label": "Wait, what?",
+     "outward": false
+    },
+    {
+     "id": "row-t-in-2.nevermind",
+     "label": "Nevermind",
+     "outward": false
+    }
+   ]
+  }
+ ]
+}

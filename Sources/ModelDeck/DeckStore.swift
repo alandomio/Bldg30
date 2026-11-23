@@ -25,6 +25,7 @@ import Security
     @Published var commandLedger = CommandLedger()
     @Published var rawBoard: RawBoard?
     @Published var pollError: String?
+    @Published var companionFeedOutdated = false
     var batcher = CompanionEventBatcher()
     var lastPoll: Date?
     var polling = false

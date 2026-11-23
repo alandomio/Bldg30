@@ -268,9 +268,20 @@ struct WorkersView: View {
     private func alert(_ item: Confirm) -> Alert {
         switch item {
         case .sweepAll(let list):
-            return Alert(title: Text(L("Sweep di \(list.count) lavoratori?")),
-                         message: Text(list.prefix(8).map { "• " + $0.id + ": " + ($0.verdict.map { WorkerBoard.firstLine($0, limit: 90) } ?? "") }.joined(separator: "\n") + (list.count > 8 ? "\n…" : "")),
-                         primaryButton: .default(Text(L("Sweep"))) { list.forEach { if let click = WorkerActions.sweepClick($0) { sendCleanup(click.actionID, $0.id, click.draftText, label: L("Sweep \($0.id)")) } } },
+            // Split into typed steps: as one expression it exceeds the type checker's time limit on the CI toolchain.
+            let lines: [String] = list.prefix(8).map { (worker: Worker) -> String in
+                let verdict: String = worker.verdict.map { WorkerBoard.firstLine($0, limit: 90) } ?? ""
+                return "• " + worker.id + ": " + verdict
+            }
+            let message: String = lines.joined(separator: "\n") + (list.count > 8 ? "\n…" : "")
+            let sweep: () -> Void = {
+                for worker in list {
+                    guard let click = WorkerActions.sweepClick(worker) else { continue }
+                    sendCleanup(click.actionID, worker.id, click.draftText, label: L("Sweep \(worker.id)"))
+                }
+            }
+            return Alert(title: Text(L("Sweep di \(list.count) lavoratori?")), message: Text(message),
+                         primaryButton: .default(Text(L("Sweep")), action: sweep),
                          secondaryButton: .cancel(Text(L("Annulla"))))
         case .discard(let worker):
             return Alert(title: Text(L("Scartare \(worker.id) e pulire?")),

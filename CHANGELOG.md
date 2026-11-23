@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add the [ShipDeck test gate](docs/shipdeck-wire.md#tests-and-the-gate).
+- Bring the feed producer, click pipe and their schemas into [`wire/`](wire/).
+- Add an [outdated-feed warning](docs/companion/README.md#feed-freshness) and an installable [owner wake check](docs/shipdeck-wire.md#freshness-monitor).
+
 ## 1.1.0 — 2026-11-02
 
 - Add global and per-item Deck Officer comment boxes, saved comments and replies, with Settings and sidebar controls.

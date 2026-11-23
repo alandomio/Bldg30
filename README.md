@@ -43,7 +43,7 @@ Open **Settings → Language** (**Impostazioni → Lingua**) to choose **Automat
 
 ## Menu bar values
 
-Open **Impostazioni → Barra dei menu** to select any combination of CPU, RAM, GPU, Claude Code and OpenAI/Codex. CPU and RAM are enabled by default. Disable every value to keep only the icon. Preferences are saved and applied without restarting; the icon retains its left/right-click actions. **Disposizione** offers compact, two-row and detailed layouts. Two rows is the new default, including when migrating existing preferences; selected metrics, quota meaning and window choices are preserved.
+Open **Impostazioni → Barra dei menu** to select any combination of CPU, RAM, GPU, Claude Code and OpenAI/Codex. CPU and RAM are enabled by default. Disable every value to hide the selected metrics. The Command Bridge can still show pending decisions and [feed status](docs/companion/README.md#feed-freshness). Preferences are saved and applied without restarting; the icon retains its left/right-click actions. **Disposizione** offers compact, two-row and detailed layouts. Two rows is the new default, including when migrating existing preferences; selected metrics, quota meaning and window choices are preserved.
 
 RAM can show percentage or used memory. Each provider has its own quota-window selector, including any additional Codex buckets reported by the service. Choose used or remaining percentages for both providers. Compact mode shows `Claude 0% · OpenAI 99%`; two-row mode stacks pairs of readings with aligned names and percentages. The vector-backed template image uses 9–9.5 pt text with semibold values, rendered at the display's scale. Detailed mode includes window and meaning directly, for example `Claude 7g 0% rimanente`. All modes retain full window, meaning, reset and freshness information in the tooltip and accessibility label. [Layout comparison with synthetic data](docs/menu-bar-layouts.png).
 
@@ -72,13 +72,13 @@ open ~/Applications/ShipDeck.app
 
 The local build is ad hoc signed. There is no Developer ID signature, notarization, automatic updater or App Store distribution in this initial version. The packaged app targets the build Mac's architecture.
 
-The Command Line Tools can build the application; the XCTest suite requires the full Xcode test frameworks and an accepted Xcode license. To build with installed Command Line Tools without changing the global developer selection, use `env DEVELOPER_DIR=/Library/Developer/CommandLineTools bash scripts/build.sh`.
+The Command Line Tools can build the application; the XCTest suite requires the full Xcode test frameworks and an accepted Xcode license. Run `bash scripts/test.sh` for the [full test gate](docs/shipdeck-wire.md#tests-and-the-gate). To build with installed Command Line Tools without changing the global developer selection, use `env DEVELOPER_DIR=/Library/Developer/CommandLineTools bash scripts/build.sh`.
 
 If a tool update changes the available SDK or build engine, `MODELDECK_SWIFT`, `MODELDECK_SDK` and `MODELDECK_BUILD_SYSTEM` optionally pin those selections for this build. For example, with a compatible SDK already installed, use `MODELDECK_SWIFT=/Library/Developer/CommandLineTools/usr/bin/swift MODELDECK_SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk MODELDECK_BUILD_SYSTEM=native` in the build environment. The icon script uses the same selected SDK and the macOS 14 deployment target.
 
 For development, `swift run ModelDeck` works. A generated `ModelDeck.xcodeproj` is also included. To regenerate it after changing targets, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run `xcodegen generate`.
 
-This repository uses local CI runs. Run the four workflow commands on macOS and cite the local run as CI evidence for the change. Merging requires explicit approval. [CI workflow](.github/workflows/ci.yml)
+See the [review, test and CI requirements](docs/shipdeck-wire.md#tests-and-the-gate) for ShipDeck changes.
 
 ## Connect your tools
 
@@ -199,8 +199,7 @@ Scans run off the main actor, can be cancelled, and stop after 300,000 visited e
 System and inventory reads stay local. Local HTTP endpoints are restricted to loopback and redirects are refused. Public model metadata is fetched from Hugging Face only when requested in the hardware calculator; credentials and cookies are not used, and redirects are limited to HTTPS on huggingface.co. Codex CLI makes its own authenticated request to OpenAI to fetch quotas. ModelDeck has no analytics or update service. The app is not sandboxed because it needs model folder access and CLI execution; no administrator privileges are required.
 
 ```sh
-swift test
-python3 scripts/check-localization.py
+bash scripts/test.sh
 swift run ModelDeck --diagnostics
 swift run ModelDeck --demo
 .build/debug/ModelDeck --preview docs/dashboard.png
@@ -220,6 +219,8 @@ swift run ModelDeck --demo
 
 Tests cover API formats, unavailable versus zero values, multi-bucket quotas, sanitized quota persistence, HF cache symlinks/revisions, Unsloth settings read-only behavior, endpoint restrictions, reversible Claude status line installation, CPU delta units and process termination identity checks. Calculator tests cover KV scaling/precision, budgets, unsupported architectures, incomplete shard sets and bounded GGUF parsing. Search tests cover request encoding, fixed-host restrictions, result validation and limits. Menu bar tests cover selection, quota windows, remaining percentages, stale/expired values, missing samples and exhausted weekly quotas. Tests use fixtures without external services. The process termination test creates and stops only its own disposable child process. `--check-menu` exercises native panel opening/closing, template icon configuration, dashboard reopening, image-plus-text mode, live value changes, icon-only mode and title persistence while the panel opens/closes. `--check-fit` and `--check-search` are optional live public-metadata checks.
 
+See the [Command Bridge test coverage](docs/shipdeck-wire.md#tests-and-the-gate).
+
 Disk tests use temporary fixtures for allocated sizes, hard-link deduplication, symlink exclusion, cancellation, limits and invalid roots. Localization tests cover Italian/English labels, interpolation and expired Claude windows; the catalog check rejects duplicate keys and mismatched interpolation counts. Set `SHIPDECK_REAL_FEED_TESTS=1` only when you want the optional Bridge tests to read the local firstmate feed and dossiers.
 
 ## Versioning and release tags
@@ -228,9 +229,7 @@ The current release is **1.1.0**; changes are listed in [CHANGELOG.md](CHANGELOG
 
 ```sh
 xcodegen generate
-swift test
-python3 scripts/check-localization.py
-bash scripts/build.sh
+bash scripts/test.sh
 # Commit the reviewed release, then create its annotated tag:
 bash scripts/tag-release.sh
 ```

@@ -54,6 +54,16 @@ homes as shown in the [switch-over](#switch-over) to reuse the existing state.
 Set `SHIPDECK_ORG_CONFIG` as described under [Organisation values](#organisation-values). For standalone refresh
 overrides, see [`refresh.py`](../wire/bin/refresh.py).
 
+Held tasks can give choices in an `Options:` section. Each following `- ` line is one button. The first `: `
+separates its label from its consequence. `Recommendation:` supplies the text shown on the card; the app marks
+the matching option. These buttons use the existing `<task>.opt-<number>` click route. A task without an Options
+section keeps Add context, Defer one week and Drop it, with no inferred choices.
+
+The `shipdeck-skill.hold.json` fixture captures this card format, and `shipdeck-skill.feed.json` is its expected
+feed. The Python producer tests and Swift click tests use these files. The old deployed producer is a separate
+copy: update that producer and refresh the feed to supply these options to the running app. An app build alone
+does not update the producer.
+
 ## Tests and the gate
 
 Every ShipDeck change goes through no-mistakes review and validation, with automatic merge when the gate passes.

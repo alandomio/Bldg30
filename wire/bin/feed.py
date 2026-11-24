@@ -179,13 +179,16 @@ def parse_reason(reason):
 
 def options_segment(reason):
     """The free-text options part of a hold reason ('options - a, or b; recommendation ...'), or ''."""
-    m = re.search(r"\boptions?\b\s*[:\-]?\s*(.*?)(?=\brecommendation\s*[:\-]|\brecommended\s*[:\-]|\bwhy now\b|$)", reason, re.I | re.S)
+    m = re.search(r"\boptions?\b\s*[:\-]\s*(.*?)(?=\brecommendation\s*[:\-]|\brecommended\s*[:\-]|\bwhy now\b|$)", reason, re.I | re.S)
     return m.group(1).strip() if m else ""
 
 
 def option_chunks(text):
-    """Split an options text into choices; tries the formats firstmate cards use, needs at least two."""
+    """One choice per bullet line; legacy inline formats need at least two choices."""
     text = (text or "").strip()
+    bullets = [line[2:].strip() for line in text.splitlines() if line.startswith("- ")]
+    if bullets:
+        return bullets
     for pat in (r"\((?:\d|[a-h])\)\s*", r"\boption\s+\d+\s*", r"(?:^|(?<=[;,.]\s))\d\s+", r";\s*(?:or\s+)?", r",?\s+or\s+", r"\s+-\s+"):
         parts = re.split(pat, text, flags=re.I)
         if pat.startswith((r"\((", r"\boption", r"(?:^")) and parts and not re.match(pat, text, re.I):
@@ -281,25 +284,31 @@ def hold_decision(row):
     full = row.get("hold_reason") or ""
     card_title, summary, reason = card_head(full)
     s = parse_reason(reason)
-    legacy = None if card_title or summary else legacy_card(full, row.get("title"), row["id"])
+    listed = any(line.startswith("- ") for line in s.get("Options", "").splitlines())
+    legacy = None if card_title or summary or listed else legacy_card(full, row.get("title"), row["id"])
     if legacy:
         card_title, summary, by = legacy
         s = {"context": by.get("What and where", ""), "Why now": short_text(by.get("Why now", "")), "Options": by.get("Options", ""),
              "Recommendation": by.get("Recommendation", ""), "Links": by.get("Links", "")}
         reason = by.get("Options", "")
     opts = []
-    chunks = option_chunks(s.get("Options", "")) or option_chunks(options_segment(reason)) or option_chunks(reason)
+    chunks = option_chunks(s.get("Options", "") or options_segment(reason))
     for i, c in enumerate(chunks, 1):
-        label = re.split(r" - |(?<!\d):(?!\d)|;| \(|, ", c, maxsplit=1)[0].strip()
-        label = " ".join(label.split()[:8])[:80]
-        if len(label) < 3:  # schema needs a real label; fall back to the choice's own first words
-            label = " ".join(c.split()[:8])[:80]
-        if len(label) < 3:
+        if listed:
+            label, _, consequence = c.partition(": ")
+            label, consequence = label.strip(), consequence.strip() or c
+        else:
+            label = re.split(r" - |(?<!\d):(?!\d)|;| \(|, ", c, maxsplit=1)[0].strip()
+            label = " ".join(label.split()[:8])[:80]
+            if len(label) < 3:
+                label = " ".join(c.split()[:8])[:80]
+            consequence = c
+        if not label:
             continue
-        opts.append({"label": label, "consequence": c, "action_id": f"{row['id']}.opt-{i}", "outward": False})
-    rec = re.split(r"(?<=[.!?])\s", short_text(s.get("Recommendation", "")) if legacy else s.get("Recommendation", ""), maxsplit=1)[0]
-    if not opts and rec:
-        opts.append({"label": "Do the recommendation", "consequence": rec, "action_id": f"{row['id']}.opt-rec", "outward": False})
+        opts.append({"label": label, "consequence": consequence, "action_id": f"{row['id']}.opt-{i}", "outward": False})
+    rec = s.get("Recommendation", "")
+    if legacy:
+        rec = re.split(r"(?<=[.!?])\s", short_text(rec), maxsplit=1)[0]
     # Defer and Drop are on every card, after the specific choices; "standard" lets the app draw them smaller.
     opts += [{"label": "Defer one week", "consequence": "Keep it held and bring it back in 7 days.", "action_id": f"{row['id']}.opt-defer", "outward": False, "standard": True},
              {"label": "Drop it", "consequence": "Close it as no longer needed; nothing changes outside firstmate.", "action_id": f"{row['id']}.opt-drop", "outward": False, "standard": True}]

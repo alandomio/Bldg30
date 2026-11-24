@@ -1,0 +1,48 @@
+{
+ "schema": "companion-feed.v1",
+ "generated_at": "2026-11-24T17:00:00Z",
+ "producer": "ShipDeck held decision fixture",
+ "decisions": [
+  {
+   "full_context": "Old copy of the ShipDeck skill work: its worker copy still holds one commit that was never pushed, but those files already match main, because ai-skills MR 58 merged the same change.\nOptions:\n- Discard the copy (close the worker): the unpushed commit is dropped; nothing is lost, its content is already on main.\n- Keep it: the old worker session stays open and keeps using memory, with nothing left to do.\nRecommendation: discard the copy, since main already has every file.",
+   "id": "shipdeck-skill",
+   "title": "Unified shipdeck skill replacing linear-action-board",
+   "project": "ai-skills",
+   "why_now": "Old copy of the ShipDeck skill work: its worker copy still holds one commit that was never pushed, but those files already match main, because ai-skills MR 58 merged the same change.",
+   "options": [
+    {
+     "label": "Discard the copy (close the worker)",
+     "consequence": "the unpushed commit is dropped; nothing is lost, its content is already on main.",
+     "action_id": "shipdeck-skill.opt-1",
+     "outward": false
+    },
+    {
+     "label": "Keep it",
+     "consequence": "the old worker session stays open and keeps using memory, with nothing left to do.",
+     "action_id": "shipdeck-skill.opt-2",
+     "outward": false
+    },
+    {
+     "label": "Defer one week",
+     "consequence": "Keep it held and bring it back in 7 days.",
+     "action_id": "shipdeck-skill.opt-defer",
+     "outward": false,
+     "standard": true
+    },
+    {
+     "label": "Drop it",
+     "consequence": "Close it as no longer needed; nothing changes outside firstmate.",
+     "action_id": "shipdeck-skill.opt-drop",
+     "outward": false,
+     "standard": true
+    }
+   ],
+   "recommendation": "discard the copy, since main already has every file.",
+   "links": [],
+   "urgent": false,
+   "created_at": "2026-11-02"
+  }
+ ],
+ "mrs": [],
+ "tickets": []
+}

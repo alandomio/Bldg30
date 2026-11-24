@@ -274,6 +274,12 @@ struct CompanionView: View {
                     }
                 }
             }
+            if let recommendation = CompanionFeed.text(item.recommendation), !parts.contains(where: { $0.heading?.lowercased() == "recommendation" }) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("Raccomandazione").uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
+                    Text(recommendation).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             HStack(spacing: 10) {
                 Button(L(open ? "Nascondi contesto completo" : "Mostra contesto completo")) {
                     if open { openContext.remove(item.id) } else { openContext.insert(item.id) }

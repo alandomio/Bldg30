@@ -9,7 +9,7 @@ __import__("os").environ["SHIPDECK_ORG_CONFIG"] = str(Path(__file__).resolve().w
 from click_roundtrip import roundtrip
 
 FEEDS = Path(__file__).resolve().parent.parent / "fixtures" / "feeds"
-SAMPLES = ["producer", "edge-cases"]
+SAMPLES = ["producer", "edge-cases", "shipdeck-skill"]
 WORKER_PROMPTS = {
     "worker.sweep": "record its report as delivered",
     "worker.cleanup": "Refuse when the worker has unposted work",

@@ -1,0 +1,8 @@
+{
+ "id": "shipdeck-skill",
+ "title": "Unified shipdeck skill replacing linear-action-board",
+ "hold_reason": "Old copy of the ShipDeck skill work: its worker copy still holds one commit that was never pushed, but those files already match main, because ai-skills MR 58 merged the same change.\nOptions:\n- Discard the copy (close the worker): the unpushed commit is dropped; nothing is lost, its content is already on main.\n- Keep it: the old worker session stays open and keeps using memory, with nothing left to do.\nRecommendation: discard the copy, since main already has every file.",
+ "repo": "ai-skills",
+ "priority": "",
+ "created": "2026-11-02"
+}

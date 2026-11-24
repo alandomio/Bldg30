@@ -7,6 +7,7 @@ permissions:
 concurrency:
   group: bldg30-ci
   cancel-in-progress: false
+  queue: max
 jobs:
   macos:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository

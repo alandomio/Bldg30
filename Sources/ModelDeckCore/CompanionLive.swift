@@ -15,8 +15,8 @@ public struct CompanionLive: Equatable, Sendable {
     /// Past this age the app asks the producer for a fresh file, and never more often than `minRunGap`.
     public static let staleAfter: TimeInterval = 30
     public static let minRunGap: TimeInterval = 15
-    public static let defaultScript = "/Users/a.domio/firstmate/data/shipdeck-wire/bin/wire.py"
-    public static let defaultHome = "/Users/a.domio/firstmate"
+    public static var defaultHome: String { WorkerRunner(home: WorkerRunner.defaultHome).home }
+    public static var defaultScript: String { defaultHome + "/data/shipdeck-wire/bin/wire.py" }
     public let generatedAt: Date
     public let events: [Event]
 

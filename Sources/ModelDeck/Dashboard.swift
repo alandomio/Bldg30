@@ -26,7 +26,7 @@ struct Dashboard: View {
                     else if section == "disk" { DiskUsageView() }
                     else if section == "services" { ServicesView() }
                     else if section == "companion" { CompanionView() }
-                    else if section == "live" { LiveView() }
+                    else if section == "live" { LiveView(model: store.liveModel) }
                     else if section == "processes" {
                         ProcessList(sort: $processSort) { scrollProxy.scrollTo(ProcessSectionAnchor.table, anchor: .top) }
                     }

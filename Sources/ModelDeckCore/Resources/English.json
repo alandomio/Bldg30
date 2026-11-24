@@ -759,5 +759,8 @@
   "Aggiorno": "Refreshing",
   "Lettura ogni 5 s": "Re-read every 5 s",
   "Script live": "Live script",
-  "La vista Live lo esegue (wire.py live) quando live.json ha più di 30 secondi, al massimo ogni 15 secondi.": "The Live view runs it (wire.py live) when live.json is older than 30 seconds, at most every 15 seconds."
+  "La vista Live lo esegue (wire.py live) quando live.json ha più di 30 secondi, al massimo ogni 15 secondi.": "The Live view runs it (wire.py live) when live.json is older than 30 seconds, at most every 15 seconds.",
+  "Feed decisioni": "Decision feed",
+  "feed.json aggiornato %@ s fa": "feed.json updated %@ s ago",
+  "Lettura feed decisioni non riuscita: %@": "Decision feed read failed: %@"
 }

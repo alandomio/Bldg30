@@ -54,6 +54,90 @@ final class FleetWorkersTests: XCTestCase {
         XCTAssertThrowsError(try FleetSnapshot.read(path: "/nonexistent/workers.json")) { XCTAssertEqual($0 as? CompanionError, .missingFile) }
     }
 
+    func testInvalidAgesAreUnknownInTheDisplayConversion() throws {
+        // This is the conversion used by both FleetView age labels, not just a decoder check.
+        for value in [1e100, Double(Int.max), -1, Double.infinity, -.infinity, .nan] {
+            XCTAssertNil(FleetAge.minutes(value), "invalid display age: \(value)")
+        }
+        XCTAssertNil(FleetAge.minutes(nil))
+        XCTAssertEqual(FleetAge.minutes(0), 0)
+        XCTAssertEqual(FleetAge.minutes(119), 1)
+        XCTAssertEqual(FleetAge.minutes(7200), 120)
+        XCTAssertNotNil(FleetAge.minutes(Double(Int.max).nextDown))
+
+        for value in ["1e100", "-1", String(Double(Int.max))] {
+            let worker = try JSONDecoder().decode(FleetWorker.self, from: Data("""
+            {"id":"bad-age","state":"done","age_seconds":\(value)}
+            """.utf8))
+            XCTAssertNil(worker.ageSeconds)
+            XCTAssertNil(worker.age(now: now))
+            XCTAssertNil(FleetAge.minutes(worker.age(now: now)))
+            XCTAssertEqual(FleetSnapshot.rows([worker], showFinished: false, now: now).count, 1)
+        }
+        let timestamped = try JSONDecoder().decode(FleetWorker.self, from: Data("""
+        {"id":"timestamped","last_activity_at":"2026-11-13T15:00:00Z","age_seconds":1e100}
+        """.utf8))
+        XCTAssertEqual(FleetAge.minutes(timestamped.age(now: now)), 60)
+        XCTAssertNil(FleetAge.minutes(timestamped.age(now: Date(timeIntervalSince1970: 1e100))))
+    }
+
+    func testMalformedEntryNextToValidWorkerRejectsSnapshot() throws {
+        for invalid in ["null", "42", "[]", "\"bad\""] {
+            let data = Data("""
+            {"schema":"companion-workers.v1","generated_at":"2026-11-13T15:50:00Z",
+             "homes":[{"name":"healthy","ok":true,"workers":[{"id":"good","state":"working"},\(invalid)]}]}
+            """.utf8)
+            XCTAssertThrowsError(try FleetSnapshot.decode(data)) { error in
+                guard case .invalid = error as? CompanionError else { return XCTFail("expected snapshot error: \(error)") }
+            }
+        }
+        for invalid in ["null", "42", "{}"] {
+            let data = Data("""
+            {"schema":"companion-workers.v1","generated_at":"2026-11-13T15:50:00Z",
+             "homes":[{"ok":true,"workers":\(invalid)}]}
+            """.utf8)
+            XCTAssertThrowsError(try FleetSnapshot.decode(data))
+        }
+    }
+
+    func testUnnamedRowsUseStableSourcePositionsWithoutNamedIDCollisions() throws {
+        let data = Data("""
+        {"workers":[{}, {}, {"kind":"decision"}, {"id":"index:0"}, {"name":"named"}]}
+        """.utf8)
+        let home = try JSONDecoder().decode(FleetHome.self, from: data)
+        XCTAssertEqual(home.workers.map(\.rowID), ["worker/index:0", "worker/index:1", "decision/index:2",
+                                                  "worker/id:index:0", "worker/id:named"])
+        XCTAssertEqual(Set(home.workers.map(\.rowID)).count, 5)
+        XCTAssertEqual(try JSONDecoder().decode(FleetHome.self, from: data).workers.map(\.rowID), home.workers.map(\.rowID))
+    }
+
+    func testProducerWorkerAndDecisionHaveSeparateRowAndExpansionIdentities() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["python3", root.appendingPathComponent("wire/tests/fleet_overlap.py").path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        process.environment = environment
+        let output = Pipe()
+        process.standardOutput = output
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0)
+        let home = try XCTUnwrap(FleetSnapshot.decode(data).homes.first)
+        XCTAssertEqual(home.workers.map(\.id), ["held-worker", "held-worker"])
+        XCTAssertEqual(home.workers.map(\.rowID), ["worker/id:held-worker", "decision/id:held-worker"])
+        let rows = FleetSnapshot.rows(home.workers, showFinished: false, now: now)
+        XCTAssertEqual(Set(rows.map(\.rowID)).count, 2)
+        let expansionKeys = rows.map { home.id + "/" + $0.rowID }
+        XCTAssertEqual(Set(expansionKeys).count, 2)
+        let expanded = Set([expansionKeys[0]])
+        XCTAssertFalse(expanded.contains(expansionKeys[1]))
+        let reload = try XCTUnwrap(FleetSnapshot.decode(data).homes.first)
+        XCTAssertEqual(reload.workers.map(\.rowID), home.workers.map(\.rowID))
+    }
+
     func testStaleAfterThirtyMinutes() throws {
         let snapshot = try FleetSnapshot.decode(fixture)   // generated 15:50
         XCTAssertFalse(snapshot.isStale(now: Self.date("2026-11-13T16:19:00Z")))

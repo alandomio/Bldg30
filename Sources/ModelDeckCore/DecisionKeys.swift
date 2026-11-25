@@ -17,6 +17,11 @@ public enum DecisionKeys {
         let start = min(max(selected ?? recommended ?? 0, 0), count - 1)
         return min(max(start + step, 0), count - 1)
     }
+    /// Enter requires a manual selection or an unambiguous recommendation. It never defaults to row zero.
+    public static func confirmed(selected: Int?, recommended: Int?, count: Int) -> Int? {
+        guard let index = selected ?? recommended, (0..<count).contains(index) else { return nil }
+        return index
+    }
     /// The command for a key press, nil for keys that mean nothing here or while the user types.
     public static func command(_ key: Key, optionCount: Int, typing: Bool) -> Command? {
         guard !typing else { return nil }

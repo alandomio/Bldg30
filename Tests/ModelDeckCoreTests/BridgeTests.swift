@@ -226,7 +226,7 @@ private let requiresRealFeed = ConditionTrait.enabled(
         let bareOption = CompanionFeed.Option(label: "Old", consequence: "c", actionId: nil, outward: nil, standard: nil)
         #expect(CompanionAnswer.click(decisionID: "dec-1", option: bareOption, optionIndex: 3, text: "")?.actionID == "decision:dec-1:option:3")  // only for feeds without ids
         let bare = try #require(CompanionAnswer.click(decisionID: "dec-1", option: option, optionIndex: 1, text: "  ", now: t0, key: "k3"))
-        #expect(bare.draftText == option.label)
+        #expect(bare.draftText == nil && bare.selectedOption?.label == option.label)
         let custom = CompanionFeed.Option(label: "Go", consequence: "c", actionId: "act-9", outward: nil, standard: nil)
         #expect(CompanionAnswer.click(decisionID: "d", option: custom, text: "x")?.actionID == "act-9")
         #expect(CompanionAnswer.click(decisionID: "dec-1", text: " \n ") == nil)
@@ -310,13 +310,14 @@ private let requiresRealFeed = ConditionTrait.enabled(
         #expect(CompanionRecommendation.actionID(in: Array(actions.filter(\.outward)), texts: ["merge"]) == nil)
         #expect(CompanionRecommendation.ordered(actions, recommended: "r.fix-the-threads").map(\.id).first == "r.fix-the-threads")
     }
-    @Test func decisionRecommendationFindsTheOptionByLabelNumberOrWords() {
+    @Test func decisionRecommendationUsesOnlyDeclaredLabelsOrNumbers() {
         func option(_ label: String) -> CompanionFeed.Option { .init(label: label, consequence: "c", actionId: nil, outward: nil, standard: nil) }
         let options = [option("retry the two CI jobs that failed on a runner TLS fault"), option("do not merge")]
         #expect(CompanionRecommendation.optionIndex(recommendation: "option 1, retry then merge.", options: options) == 0)
         #expect(CompanionRecommendation.optionIndex(recommendation: "Option 2", options: options) == 1)
         #expect(CompanionRecommendation.optionIndex(recommendation: "do not merge", options: options) == 1)
-        #expect(CompanionRecommendation.optionIndex(recommendation: "retry the failed jobs first", options: options) == 0)
+        #expect(CompanionRecommendation.optionIndex(recommendation: "retry the failed jobs first", options: options) == nil)  // partial word overlap is not a declared choice
+        #expect(CompanionRecommendation.optionIndex(recommendation: options[0].label + ", then ask the owner.", options: options) == 0)
         #expect(CompanionRecommendation.optionIndex(recommendation: "option 7", options: options) == nil)
         #expect(CompanionRecommendation.optionIndex(recommendation: "", options: options) == nil)
     }

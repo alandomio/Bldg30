@@ -54,6 +54,31 @@ homes as shown in the [switch-over](#switch-over) to reuse the existing state.
 Set `SHIPDECK_ORG_CONFIG` as described under [Organisation values](#organisation-values). For standalone refresh
 overrides, see [`refresh.py`](../wire/bin/refresh.py).
 
+Held tasks can give choices in an `Options:` section. Each following `- ` line is one button. The first `: `
+separates its label from its consequence. `Recommendation:` supplies the text shown on the card; the app marks
+the matching option. These buttons use the existing `<task>.opt-<number>` click route. A task without an Options
+section keeps Add context, Defer one week and Drop it, with no inferred choices.
+
+The `Options:` heading must occupy its own line. Numbered list lines (`1. `, `1) `, `(1) `) are also accepted.
+Inline prose and semicolons do not define choices. More than five list entries produce a visible card error and
+feed warning, with no specific choice buttons; the full card text stays available for correction.
+
+Option clicks include `selected_option` with the selected label, consequence and zero-based position in the card.
+Typed context stays in `draft_text`. Before calling the hold owner, the bridge checks the snapshot against the current
+feed. Missing or changed snapshots are rejected in the reply and command ledger; no hold is answered or released.
+The same check runs inside `apply_hold`. Once an answer is recorded, a note retry uses that saved answer.
+Deploy the app and bridge together: clicks from older apps without a snapshot are refused and must be selected again.
+
+A recommendation marks a single declared label or a valid `option N` reference. A trailing parenthesis can be omitted
+from a label, as in "Discard the copy (close the worker)". Invalid numbers, negated or ambiguous recommendations and
+word overlap do not select a choice. Enter requires a valid recommendation or a manual selection. Recommendation
+text remains visible when nothing matches.
+
+The `shipdeck-skill.hold.json` fixture captures this card format, and `shipdeck-skill.feed.json` is its expected
+feed. The Python producer tests and Swift click tests use these files. The old deployed producer is a separate
+copy: update that producer and refresh the feed to supply these options to the running app. An app build alone
+does not update the producer.
+
 ## Tests and the gate
 
 Every ShipDeck change goes through no-mistakes review and validation, with automatic merge when the gate passes.

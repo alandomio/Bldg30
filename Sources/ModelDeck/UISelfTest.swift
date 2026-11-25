@@ -22,7 +22,7 @@ import ModelDeckCore
         func check(_ ok: Bool, _ text: String) { print((ok ? "PASS " : "FAIL ") + text); if !ok { failures.append(text) } }
         func clicks() -> [[String: String]] {
             let names = (try? FileManager.default.contentsOfDirectory(atPath: CompanionSettings.inboxPath))?.filter { $0.hasSuffix(".json") }.sorted() ?? []
-            return names.compactMap { try? JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CompanionSettings.inboxPath).appendingPathComponent($0))) as? [String: String] }
+            return names.compactMap { try? JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CompanionSettings.inboxPath).appendingPathComponent($0))) as? [String: Any] }.map { $0.compactMapValues { $0 as? String } }
         }
         func click(at point: NSPoint) {
             let base = host.convert(point, to: nil)

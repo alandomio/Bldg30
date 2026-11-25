@@ -30,6 +30,15 @@
     "draft_text": {
       "type": "string"
     },
+    "selected_option": {
+      "type": "object",
+      "required": ["label", "consequence", "index"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1},
+        "consequence": {"type": "string"},
+        "index": {"type": "integer", "minimum": 0}
+      }
+    },
     "created_at": {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"

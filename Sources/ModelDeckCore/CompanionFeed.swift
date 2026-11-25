@@ -32,6 +32,8 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         /// Optional short headed paragraphs and the original record, both written by the producer.
         public let summary: [SummaryPart]?
         public let fullContext: String?
+        /// Invalid decision blocks remain visible, with no specific option buttons.
+        public let validationError: String?
         /// The summary parts that have text, at most four; empty when the feed has none.
         public var summaryParts: [SummaryPart] { Array((summary ?? []).filter { CompanionFeed.text($0.text) != nil }.prefix(4)) }
         /// The original record, or `why_now` while the producer sends none.
@@ -42,7 +44,14 @@ public struct CompanionFeed: Decodable, Equatable, Sendable {
         /// The title, or one derived from the legacy reason while the feed still carries the task id.
         public var displayTitle: String { title == id ? (legacy?.title ?? title) : title }
         /// The feed's headed summary, else the legacy reason split into sections.
-        public var displayParts: [SummaryPart] { summaryParts.isEmpty ? (legacy?.parts ?? []) : summaryParts }
+        public var displayParts: [SummaryPart] {
+            var parts = summaryParts.isEmpty ? (legacy?.parts ?? []) : summaryParts
+            if let text = CompanionFeed.text(recommendation), !parts.contains(where: { $0.heading?.lowercased() == "recommendation" }) {
+                if parts.isEmpty, let context = CompanionFeed.text(whyNow) { parts.append(.init(heading: nil, text: context)) }
+                parts.append(.init(heading: "Recommendation", text: text))
+            }
+            return parts
+        }
         public var contextText: String { CompanionFeed.text(fullContext) ?? whyNow }
         public var created: Date? { CompanionFeed.day(createdAt) }
         public func ageDays(now: Date = Date()) -> Int? {

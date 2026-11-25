@@ -82,7 +82,7 @@ struct ClickRoundTripTests {
         return try JSONDecoder().decode(Report.self, from: data)
     }
 
-    @Test(arguments: ["producer", "edge-cases"])
+    @Test(arguments: ["producer", "edge-cases", "shipdeck-skill"])
     func everyButtonReachesItsWorkItemAndIsAnswered(sample: String) throws {
         let feed = try CompanionFeed.decode(try Data(contentsOf: Self.feeds.appendingPathComponent("\(sample).feed.json")))
         let cardClicks = Self.buttons(of: feed)
@@ -141,5 +141,22 @@ struct ClickRoundTripTests {
         let edge = try CompanionFeed.decode(try Data(contentsOf: Self.feeds.appendingPathComponent("edge-cases.feed.json")))
         let reviewed = try #require(edge.mrs.first { $0.ref == "obs !9" })
         #expect(ReviewDrafts.actionID(for: reviewed.drafts[0], in: reviewed.actions) == "row-mr-obs-9.comment-f1")
+    }
+
+    @Test func heldSkillOptionsUseTheirLabelsAndKeepTypedContext() throws {
+        let feed = try CompanionFeed.decode(try Data(contentsOf: Self.feeds.appendingPathComponent("shipdeck-skill.feed.json")))
+        let decision = try #require(feed.decisions.first)
+        let options = decision.options.filter { !$0.isStandard }
+        #expect(options.map(\.label) == ["Discard the copy (close the worker)", "Keep it"])
+        #expect(options[0].consequence == "the unpushed commit is dropped; nothing is lost, its content is already on main.")
+        #expect(decision.recommendation == "discard the copy, since main already has every file.")
+        #expect(CompanionRecommendation.optionIndex(recommendation: decision.recommendation, options: options) == 0)
+        for (index, option) in options.enumerated() {
+            let click = try #require(CompanionAnswer.click(decisionID: decision.id, option: option, optionIndex: index, text: ""))
+            #expect(click.actionID == "shipdeck-skill.opt-\(index + 1)")
+            #expect(click.target == "shipdeck-skill" && click.draftText == nil && click.selectedOption?.label == option.label)
+            let context = try #require(CompanionAnswer.click(decisionID: decision.id, option: option, optionIndex: index, text: "After review.\n"))
+            #expect(context.actionID == click.actionID && context.draftText == "After review.")
+        }
     }
 }

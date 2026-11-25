@@ -346,14 +346,24 @@ def dossiers():
     return 0
 
 
+class StaleDecisionOption(ValueError):
+    """A click no longer names the choice that was shown. Never reinterpret its positional action ID."""
+
+
 def decision_option(click):
-    """(decision, option) from feed.json for a held decision's option click, or None."""
+    """Resolve only the immutable choice the app selected, including its position in the card."""
+    rec = read_json(STATE / HOLD_CLICKS, {}).get(click.get("idempotency_key"))
+    if rec and rec["hold"] == click["target"] and rec["option"].get("action_id") == click["action_id"]:
+        # This answer is already recorded. A note retry must use that answer, even after a feed refresh.
+        return {"id": rec["hold"], "title": rec.get("title", rec["hold"])}, rec["option"]
     for d in (read_json(FEED, {}) or {}).get("decisions", []):
-        for o in d.get("options", []):
+        for index, o in enumerate(d.get("options", [])):
             if o.get("action_id") == click["action_id"]:
+                expected = {"label": o["label"], "consequence": o.get("consequence", ""), "index": index}
+                if d["id"] != click["target"] or click.get("selected_option") != expected:
+                    raise StaleDecisionOption("Decision option changed or its snapshot is missing. Nothing was answered; refresh the card and choose again.")
                 return d, o
-    rec = read_json(STATE / HOLD_CLICKS, {}).get(click.get("idempotency_key"))  # answered on an earlier run, gone from a newer feed
-    return ({"id": rec["hold"], "title": rec.get("title", rec["hold"])}, rec["option"]) if rec else None
+    raise StaleDecisionOption("Decision option is no longer on the card. Nothing was answered; refresh the card and choose again.")
 
 
 # ---------------------------------------------------------------- captain holds
@@ -399,6 +409,14 @@ def apply_hold(click, d, o):
     free = aid == hid + ".answer"
     if not (free or aid.startswith(hid + ".opt-")) or not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", hid):
         return None
+    if not free:
+        # Recheck here too: callers must never bypass identity validation before owner intake.
+        try:
+            current = decision_option(click)
+            if current[0]["id"] != hid or current[1] != o:
+                raise StaleDecisionOption("Decision option changed before it could be applied. Nothing was answered; choose again.")
+        except StaleDecisionOption as error:
+            return "failed", str(error), False
     r = run_hold(["open", hid, "--distinguish-absent"])
     if r.returncode == 3:
         return None
@@ -542,16 +560,16 @@ def hold_click(click, f, seen, handled, errors):
     done = read_json(STATE / HOLD_CLICKS, {})
     if key in done:
         return done[key]["text"]
-    if click["action_id"] == click["target"] + ".answer" and (click.get("draft_text") or "").strip():
-        do = ({"id": click["target"], "title": click["target"]}, {"label": "Free answer", "consequence": ""})
-    elif re.match(r"^.+\.opt-[\w-]+$", click["action_id"]):
-        do = decision_option(click)
-    else:
-        return None
-    if not do:
-        return None
     try:
+        if click["action_id"] == click["target"] + ".answer" and (click.get("draft_text") or "").strip():
+            do = ({"id": click["target"], "title": click["target"]}, {"label": "Free answer", "consequence": ""})
+        elif re.match(r"^.+\.opt-[\w-]+$", click["action_id"]):
+            do = decision_option(click)
+        else:
+            return None
         res = apply_hold(click, *do)
+    except StaleDecisionOption as error:
+        return finish_hold_click(click, f, seen, handled, "failed", str(error))
     except HoldRetry as e:
         errors.append(f"{f.name}: hold not changed, retrying next run: {e}")
         return "retry"
@@ -562,6 +580,12 @@ def hold_click(click, f, seen, handled, errors):
         done[key] = {"hold": do[0]["id"], "title": do[0].get("title", ""), "option": do[1], "text": text, "at": now_iso()}
         write_json(STATE / HOLD_CLICKS, done)
         return text
+    return finish_hold_click(click, f, seen, handled, state, text)
+
+
+def finish_hold_click(click, f, seen, handled, state, text):
+    """A terminal hold result is visible in both the command ledger and the reply file."""
+    key = click["idempotency_key"]
     seen[key] = {"note_id": "-", "file": f.name, "at": now_iso(), "action_id": click["action_id"], "target": click["target"], "hold": text}
     cmd_log(seen[key], key, state, text)
     out = {"schema": "companion-reply.v1", "idempotency_key": key, "note_id": "-", "status": "done" if state == "done" else "rejected", "text": text, "updated_at": now_iso()}
@@ -621,6 +645,9 @@ def _clicks():
                 continue
             try:
                 r = run_inbox(["note", "--request-id", f"shipdeck-{key}", "--json", "-"], comment_body(click) if to_officer else click_body(click, side, held), home=home)
+            except StaleDecisionOption as error:
+                finish_hold_click(click, f, seen, handled, "failed", str(error))
+                continue
             except (OSError, subprocess.TimeoutExpired) as e:
                 errors.append(f"{f.name}: fm-inbox note failed: {e}")
                 continue

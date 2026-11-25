@@ -67,9 +67,9 @@ extension DeckStore {
 
     /// Refreshes card status even on failure so the ledger can show the result of the send.
     @discardableResult
-    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, label: String? = nil) -> String? {
+    func sendCompanionClick(actionID: String, target: String, draftText: String? = nil, selectedOption: CompanionClick.SelectedOption? = nil, label: String? = nil) -> String? {
         if demo { return nil }
-        let click = CompanionClick(actionID: actionID, target: target, draftText: draftText)
+        let click = CompanionClick(actionID: actionID, target: target, draftText: draftText, selectedOption: selectedOption)
         let error = ClickSender.send(click, label: label, inbox: CompanionSettings.inboxPath)
         refreshCommands()
         return error

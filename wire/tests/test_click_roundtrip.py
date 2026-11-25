@@ -9,7 +9,7 @@ __import__("os").environ["SHIPDECK_ORG_CONFIG"] = str(Path(__file__).resolve().w
 from click_roundtrip import roundtrip
 
 FEEDS = Path(__file__).resolve().parent.parent / "fixtures" / "feeds"
-SAMPLES = ["producer", "edge-cases"]
+SAMPLES = ["producer", "edge-cases", "shipdeck-skill"]
 WORKER_PROMPTS = {
     "worker.sweep": "record its report as delivered",
     "worker.cleanup": "Refuse when the worker has unposted work",
@@ -25,8 +25,9 @@ def app_clicks(doc):
     draft text, MR and ticket row buttons their action id with the MR ref or ticket identifier as target."""
     out = []
     for d in doc["decisions"]:
-        for o in d["options"]:
-            out.append(({"action_id": o["action_id"], "target": d["id"]}, ("option", d, o)))
+        for index, o in enumerate(d["options"]):
+            out.append(({"action_id": o["action_id"], "target": d["id"],
+                         "selected_option": {"label": o["label"], "consequence": o["consequence"], "index": index}}, ("option", d, o)))
         out.append(({"action_id": d["id"] + ".answer", "target": d["id"], "draft_text": "Free answer text"}, ("answer", d, None)))
         out.append(({"action_id": d["id"] + ".add-context", "target": d["id"], "draft_text": "Context for the decision"}, ("context", d, None)))
     for m in doc["mrs"]:

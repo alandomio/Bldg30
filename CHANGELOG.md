@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add a read-only Fleet view in the Workers tab, grouped by machine and home, with worker states and file freshness.
+- Add a Live view with pinned open decisions, newest-first status events, five-second file reads and stale-file refresh.
 - Add the [ShipDeck test gate](docs/shipdeck-wire.md#tests-and-the-gate).
 - Bring the feed producer, click pipe and their schemas into [`wire/`](wire/).
 - Add an [outdated-feed warning](docs/companion/README.md#feed-freshness) and an installable [owner wake check](docs/shipdeck-wire.md#freshness-monitor).

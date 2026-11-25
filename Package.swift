@@ -8,6 +8,7 @@ let package = Package(
     targets: [
         .target(name: "ModelDeckCore", resources: [.process("Resources")]),
         .executableTarget(name: "ModelDeck", dependencies: ["ModelDeckCore"], exclude: ["Info.plist"]),
-        .testTarget(name: "ModelDeckCoreTests", dependencies: ["ModelDeckCore"])
+        .testTarget(name: "ModelDeckCoreTests", dependencies: ["ModelDeckCore"]),
+        .testTarget(name: "ModelDeckTests", dependencies: ["ModelDeck", "ModelDeckCore"])
     ]
 )

@@ -22,6 +22,7 @@ import Security
     @Published var defender: DefenderUsage?
     @Published var companionFeed: CompanionFeed?
     @Published var companionError: String?
+    let liveModel = LiveModel()
     @Published var fleet: FleetSnapshot?
     @Published var fleetError: String?
     var fleetModified: Date?

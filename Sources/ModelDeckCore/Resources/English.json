@@ -747,5 +747,20 @@
   "meno di 1 min": "under 1 min",
   "%@ min": "%@ min",
   "%@ h": "%@ h",
-  "ora": "now"
+  "ora": "now",
+  "Cosa sta succedendo adesso.": "What is happening now.",
+  "Decisioni aperte ed eventi di stato dei lavoratori, più recenti in alto.": "Open decisions and worker status events, newest first.",
+  "Aggiornamento live non riuscito: %@": "Live refresh failed: %@",
+  "DECISIONI APERTE": "OPEN DECISIONS",
+  "EVENTI": "EVENTS",
+  "Nessun evento.": "No events.",
+  "live.json aggiornato %@ s fa": "live.json updated %@ s ago",
+  "live.json non ancora letto": "live.json not read yet",
+  "Aggiorno": "Refreshing",
+  "Lettura ogni 5 s": "Re-read every 5 s",
+  "Script live": "Live script",
+  "La vista Live lo esegue (wire.py live) quando live.json ha più di 30 secondi, al massimo ogni 15 secondi.": "The Live view runs it (wire.py live) when live.json is older than 30 seconds, at most every 15 seconds.",
+  "Feed decisioni": "Decision feed",
+  "feed.json aggiornato %@ s fa": "feed.json updated %@ s ago",
+  "Lettura feed decisioni non riuscita: %@": "Decision feed read failed: %@"
 }

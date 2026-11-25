@@ -4,9 +4,15 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: bldg30-ci
+  cancel-in-progress: false
+  queue: max
 jobs:
   macos:
-    runs-on: macos-15
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, bldg30]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Test gate (translations, wire tests, Swift tests, app build)

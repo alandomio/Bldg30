@@ -2,20 +2,27 @@ import Foundation
 
 /// `companion-click.v1`: one JSON note per button click, filed into a configurable inbox folder.
 public struct CompanionClick: Codable, Equatable, Sendable {
+    /// The exact choice shown at click time, independent of any typed context or later feed refresh.
+    public struct SelectedOption: Codable, Equatable, Sendable {
+        public let label: String, consequence: String
+        public let index: Int
+    }
     public static let schema = "companion-click.v1"
     public let schemaName: String
     public let idempotencyKey: String
     public let actionID: String
     public let target: String
     public let draftText: String?
+    public let selectedOption: SelectedOption?
     public let createdAt: String
 
     private enum CodingKeys: String, CodingKey {
-        case schemaName = "schema", idempotencyKey = "idempotency_key", actionID = "action_id", target, draftText = "draft_text", createdAt = "created_at"
+        case schemaName = "schema", idempotencyKey = "idempotency_key", actionID = "action_id", target, draftText = "draft_text", selectedOption = "selected_option", createdAt = "created_at"
     }
 
-    public init(actionID: String, target: String, draftText: String? = nil, now: Date = Date(), key: String = UUID().uuidString.lowercased()) {
+    public init(actionID: String, target: String, draftText: String? = nil, selectedOption: SelectedOption? = nil, now: Date = Date(), key: String = UUID().uuidString.lowercased()) {
         schemaName = Self.schema; idempotencyKey = key; self.actionID = actionID; self.target = target; self.draftText = draftText
+        self.selectedOption = selectedOption
         createdAt = ISO8601DateFormatter().string(from: now)
     }
 }
@@ -45,7 +52,8 @@ public enum CompanionAnswer {
         while let last = typed.last, last.isWhitespace || last.isNewline { typed.removeLast() }
         if let option {
             let action = option.actionId ?? "decision:\(decisionID):option:\(optionIndex)"
-            return CompanionClick(actionID: action, target: decisionID, draftText: typed.isEmpty ? option.label : typed, now: now, key: key)
+            return CompanionClick(actionID: action, target: decisionID, draftText: typed.isEmpty ? nil : typed,
+                                  selectedOption: .init(label: option.label, consequence: option.consequence, index: optionIndex), now: now, key: key)
         }
         guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return CompanionClick(actionID: decisionID + ".answer", target: decisionID, draftText: typed, now: now, key: key)
@@ -78,17 +86,34 @@ public enum CompanionRecommendation {
         if let best = candidates.max(by: { score($0) < score($1) }), score(best) > 0 { return best.id }
         return candidates.first?.id
     }
-    /// Which option a decision recommends: its exact label, "option N", or the label sharing the most words with the text.
+    /// Match one declared choice. Invalid numbers, negation and ambiguous prose never seed a selection.
     public static func optionIndex(recommendation: String, options: [CompanionFeed.Option]) -> Int? {
-        let text = recommendation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let text = recommendation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: "’", with: "'")
         guard !text.isEmpty else { return nil }
-        if let exact = options.firstIndex(where: { $0.label.lowercased() == text }) { return exact }
-        if let range = text.range(of: #"option\s*(\d+)"#, options: .regularExpression),
-           let number = Int(text[range].filter(\.isNumber)), options.indices.contains(number - 1) { return number - 1 }
-        func words(_ value: String) -> Set<String> { Set(value.lowercased().split { !$0.isLetter }.map(String.init).filter { $0.count >= 4 }) }
-        let target = words(text)
-        let scored = options.enumerated().map { ($0.offset, words($0.element.label).intersection(target).count) }
-        if let best = scored.max(by: { $0.1 < $1.1 }), best.1 > 0, scored.filter({ $0.1 == best.1 }).count == 1 { return best.0 }
+        let exact = options.indices.filter { options[$0].label.lowercased().replacingOccurrences(of: "’", with: "'") == text }
+        if !exact.isEmpty { return exact.count == 1 ? exact[0] : nil }
+        if text.range(of: #"\b(no|not|never|don't|dont|avoid|without|cannot|can't|reject)\b"#, options: .regularExpression) != nil { return nil }
+        let numberPattern = try! NSRegularExpression(pattern: #"\boption\s*([+-]?\d+)\b"#)
+        let ns = text as NSString
+        let numbers = numberPattern.matches(in: text, range: NSRange(location: 0, length: ns.length))
+        if !numbers.isEmpty {
+            guard numbers.count == 1, text.range(of: #"\b(or|and)\s*(option\s*)?[+-]?\d+\b"#, options: .regularExpression) == nil, let number = Int(ns.substring(with: numbers[0].range(at: 1))), options.indices.contains(number - 1) else { return nil }
+            return number - 1
+        }
+        if text.range(of: #"\boption\b"#, options: .regularExpression) != nil { return nil }
+        func normalized(_ value: String) -> String { value.lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ") }
+        let phrase = " " + normalized(text) + " "
+        let named = options.indices.filter { index in
+            let label = options[index].label
+            var aliases = [normalized(label)]
+            // A trailing parenthesis is an explanation, as in "Discard the copy (close the worker)".
+            if let paren = label.firstIndex(of: "("), label.hasSuffix(")") {
+                let short = normalized(String(label[..<paren]))
+                if short.split(separator: " ").count >= 2 { aliases.append(short) }
+            }
+            return aliases.contains { !$0.isEmpty && phrase.contains(" " + $0 + " ") }
+        }
+        if named.count == 1 { return named[0] }
         return nil
     }
     /// The recommended action first, the others in feed order.

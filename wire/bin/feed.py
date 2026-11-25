@@ -177,27 +177,17 @@ def parse_reason(reason):
     return sections
 
 
-def options_segment(reason):
-    """The free-text options part of a hold reason ('options - a, or b; recommendation ...'), or ''."""
-    m = re.search(r"\boptions?\b\s*[:\-]\s*(.*?)(?=\brecommendation\s*[:\-]|\brecommended\s*[:\-]|\bwhy now\b|$)", reason, re.I | re.S)
-    return m.group(1).strip() if m else ""
-
-
 def option_chunks(text):
-    """One choice per bullet line; legacy inline formats need at least two choices."""
-    text = (text or "").strip()
-    bullets = [line[2:].strip() for line in text.splitlines() if line.startswith("- ")]
-    if bullets:
-        return bullets
-    for pat in (r"\((?:\d|[a-h])\)\s*", r"\boption\s+\d+\s*", r"(?:^|(?<=[;,.]\s))\d\s+", r";\s*(?:or\s+)?", r",?\s+or\s+", r"\s+-\s+"):
-        parts = re.split(pat, text, flags=re.I)
-        if pat.startswith((r"\((", r"\boption", r"(?:^")) and parts and not re.match(pat, text, re.I):
-            parts = parts[1:]  # text before the first marker is context, not a choice
-        parts = [re.sub(r"^\d+[).,:]?\s+", "", p).strip(" ;,.-") for p in parts]
-        parts = [p for p in parts if len(p) > 3]
-        if 2 <= len(parts) <= 5:
-            return parts
-    return []
+    """Explicit bullet or numbered list lines only. Punctuation inside a choice is never a boundary."""
+    choices = []
+    for line in (text or "").splitlines():
+        if not line.strip():
+            continue
+        match = re.match(r"^(?:- |\d+[.)] |\(\d+\) )(.+)$", line)
+        if not match:
+            break
+        choices.append(match.group(1).strip())
+    return choices
 
 
 def card_head(reason):
@@ -284,7 +274,9 @@ def hold_decision(row):
     full = row.get("hold_reason") or ""
     card_title, summary, reason = card_head(full)
     s = parse_reason(reason)
-    listed = any(line.startswith("- ") for line in s.get("Options", "").splitlines())
+    listed = bool(re.search(r"(?m)^Options:[ \t]*$", reason))
+    chunks = option_chunks(s.get("Options", "")) if listed else []
+    error = f"Invalid decision: {len(chunks)} options; at most 5 are allowed. Edit the card before choosing." if len(chunks) > 5 else ""
     legacy = None if card_title or summary or listed else legacy_card(full, row.get("title"), row["id"])
     if legacy:
         card_title, summary, by = legacy
@@ -292,17 +284,9 @@ def hold_decision(row):
              "Recommendation": by.get("Recommendation", ""), "Links": by.get("Links", "")}
         reason = by.get("Options", "")
     opts = []
-    chunks = option_chunks(s.get("Options", "") or options_segment(reason))
-    for i, c in enumerate(chunks, 1):
-        if listed:
-            label, _, consequence = c.partition(": ")
-            label, consequence = label.strip(), consequence.strip() or c
-        else:
-            label = re.split(r" - |(?<!\d):(?!\d)|;| \(|, ", c, maxsplit=1)[0].strip()
-            label = " ".join(label.split()[:8])[:80]
-            if len(label) < 3:
-                label = " ".join(c.split()[:8])[:80]
-            consequence = c
+    for i, c in enumerate(chunks if not error else [], 1):
+        label, _, consequence = c.partition(": ")
+        label, consequence = label.strip(), consequence.strip() or c
         if not label:
             continue
         opts.append({"label": label, "consequence": consequence, "action_id": f"{row['id']}.opt-{i}", "outward": False})
@@ -315,6 +299,8 @@ def hold_decision(row):
     links = [u.rstrip(".,;)") for u in re.findall(r"https?://[^\s,)]+", s.get("Links", "") or reason)]
     repo = row.get("repo") or ""
     extra = {"summary": summary[:4]} if 2 <= len(summary) <= 4 else {}
+    if error:
+        extra["validation_error"] = error
     extra["full_context"] = full.replace("\\n", "\n").strip()
     return {**extra, "id": row["id"], "title": card_title or row.get("title") or row["id"], "project": "" if repo in ("-", "") else repo,
             "why_now": s.get("Why now") or s["context"].split("\n")[0], "options": opts, "recommendation": rec,
@@ -397,6 +383,7 @@ def build(r, b, t, m, dec, user, holds=(), producer="linear-action-board", now=N
     feed = {"schema": "companion-feed.v1", "generated_at": when, "producer": producer,
             "decisions": decisions, "mrs": mrs, "tickets": tickets}
     warnings = [str(w) for w in b.get("feed_warnings") or []] + warnings
+    warnings += [f"{d['id']}: {d['validation_error']}" for d in decisions if d.get("validation_error")]
     if warnings:
         feed["warnings"] = warnings
     errors = validate(feed, load_schema("companion-feed.v1"))

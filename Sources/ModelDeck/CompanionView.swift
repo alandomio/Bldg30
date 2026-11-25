@@ -174,9 +174,12 @@ struct CompanionView: View {
                         } else {
                             CardStatusLine(target: item.id).environmentObject(store)
                             decisionText(item)
+                            if let error = CompanionFeed.text(item.validationError) {
+                                Text(error).font(.system(size: 13, weight: .semibold)).foregroundStyle(DeckTheme.amber).fixedSize(horizontal: false, vertical: true)
+                            }
                             VStack(spacing: 8) {
                                 ForEach(Array(specific.enumerated()), id: \.offset) { letterIndex, entry in
-                                    optionRow(item, option: entry.element, offset: entry.offset, letter: DecisionKeys.keycap(letterIndex), recommended: entry.offset == recommendedOffset, selected: letterIndex == (selection[item.id] ?? specific.firstIndex { $0.offset == recommendedOffset } ?? 0), locked: locked)
+                                    optionRow(item, option: entry.element, offset: entry.offset, letter: DecisionKeys.keycap(letterIndex), recommended: entry.offset == recommendedOffset, selected: DecisionKeys.confirmed(selected: selection[item.id], recommended: specific.firstIndex { $0.offset == recommendedOffset }, count: specific.count) == letterIndex, locked: locked)
                                 }
                             }
                             if let hint = keyHint(count: specific.count) { Text(hint).font(.system(size: 10, design: .monospaced)).foregroundStyle(DeckTheme.muted) }
@@ -202,6 +205,7 @@ struct CompanionView: View {
                 }
                 .onAppear { KeyRouter.shared.start(owner: "decisions") { key, typing in keyPress = KeyEvent(key: key, typing: typing) } }
                 .onDisappear { KeyRouter.shared.stop(owner: "decisions") }
+                .onChange(of: item) { _, _ in selection[item.id] = nil }
                 .onChange(of: keyPress) { _, event in
                     guard let event, let command = DecisionKeys.command(event.key, optionCount: specific.count, typing: event.typing) else { return }
                     switch command {
@@ -211,8 +215,7 @@ struct CompanionView: View {
                         let current = recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } }
                         selection[item.id] = DecisionKeys.moved(selected: selection[item.id], recommended: current, by: command == .selectUp ? -1 : 1, count: specific.count)
                     case .confirm:
-                        let current = selection[item.id] ?? recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } } ?? 0
-                        guard !locked, !drops.isHidden(item.id), specific.indices.contains(current) else { return }
+                        guard !locked, !drops.isHidden(item.id), let current = DecisionKeys.confirmed(selected: selection[item.id], recommended: recommendedOffset.flatMap { r in specific.firstIndex { $0.offset == r } }, count: specific.count) else { return }
                         sendDecision(item, option: specific[current].element, index: specific[current].offset)
                     case .pick(let letterIndex):
                         guard !locked, !drops.isHidden(item.id), specific.indices.contains(letterIndex) else { return }
@@ -269,15 +272,9 @@ struct CompanionView: View {
             } else {
                 ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
                     VStack(alignment: .leading, spacing: 4) {
-                        if let heading = CompanionFeed.text(part.heading) { Text(heading.uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint) }
+                        if let heading = CompanionFeed.text(part.heading) { Text((heading == "Recommendation" ? L("Raccomandazione") : heading).uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint) }
                         Text(part.text).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true)
                     }
-                }
-            }
-            if let recommendation = CompanionFeed.text(item.recommendation), !parts.contains(where: { $0.heading?.lowercased() == "recommendation" }) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L("Raccomandazione").uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1).foregroundStyle(DeckTheme.mint)
-                    Text(recommendation).font(.system(size: 15)).lineSpacing(10).fixedSize(horizontal: false, vertical: true)
                 }
             }
             HStack(spacing: 10) {
@@ -381,7 +378,7 @@ struct CompanionView: View {
     @discardableResult
     private func sendDecision(_ item: CompanionFeed.Decision, option: CompanionFeed.Option?, index: Int) -> Bool {
         guard let click = CompanionAnswer.click(decisionID: item.id, option: option, optionIndex: index, text: answers[item.id] ?? "") else { return true }
-        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText, label: option?.label ?? L("Risposta libera"))
+        feedback = store.sendCompanionClick(actionID: click.actionID, target: click.target, draftText: click.draftText, selectedOption: click.selectedOption, label: option?.label ?? L("Risposta libera"))
         if feedback == nil { answers[item.id] = "" }
         return feedback == nil
     }

@@ -154,7 +154,7 @@ struct ClickRoundTripTests {
         for (index, option) in options.enumerated() {
             let click = try #require(CompanionAnswer.click(decisionID: decision.id, option: option, optionIndex: index, text: ""))
             #expect(click.actionID == "shipdeck-skill.opt-\(index + 1)")
-            #expect(click.target == "shipdeck-skill" && click.draftText == option.label)
+            #expect(click.target == "shipdeck-skill" && click.draftText == nil && click.selectedOption?.label == option.label)
             let context = try #require(CompanionAnswer.click(decisionID: decision.id, option: option, optionIndex: index, text: "After review.\n"))
             #expect(context.actionID == click.actionID && context.draftText == "After review.")
         }

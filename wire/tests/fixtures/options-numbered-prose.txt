@@ -1,0 +1,5 @@
+Context.
+Options:
+1. Ship: Ready; retain old files.
+2. Wait: Delay.
+Recommendation: Ship

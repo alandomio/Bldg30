@@ -54,10 +54,10 @@ class DecisionOptions(unittest.TestCase):
                 self.assertEqual(self.specific(card), [])
                 self.assertEqual([o["label"] for o in card["options"]], ["Defer one week", "Drop it"])
 
-    def test_escaped_newlines_and_numbered_inline_options(self):
+    def test_escaped_newlines_and_numbered_list_options(self):
         card = self.card("Context\\nOptions:\\n- Ship: Done\\n- Wait: Held\\nRecommendation: Ship")
         self.assertEqual([o["label"] for o in self.specific(card)], ["Ship", "Wait"])
-        inline = self.card("Why now: Ready. Options: (1) Ship now; (2) Wait until Friday. Recommendation: (1).")
+        inline = self.card("Why now: Ready.\nOptions:\n(1) Ship now: Done.\n(2) Wait until Friday: Held.\nRecommendation: (1).")
         self.assertEqual([o["label"] for o in self.specific(inline)], ["Ship now", "Wait until Friday"])
 
 

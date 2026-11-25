@@ -80,6 +80,10 @@ class HoldClicks(unittest.TestCase):
         return self.fm("show", hid, "--full", tool="fm-tasks-axi.sh").stdout
 
     def drop(self, c):
+        for decision in self.decisions:
+            for index, option in enumerate(decision["options"]):
+                if option["action_id"] == c["action_id"]:
+                    c["selected_option"] = {"label": option["label"], "consequence": option["consequence"], "index": index}
         (wire.INBOX / f"1794900000-{c['idempotency_key']}.json").write_text(json.dumps(c))
 
     def lines(self, key=None):

@@ -83,7 +83,7 @@ struct FleetView: View {
                     if home.omitted > 0 { Text(L("\(home.omitted) lavoratori non elencati dalla home.")).font(.system(size: 11)).foregroundStyle(DeckTheme.amber) }
                     if home.workers.isEmpty { Text(L("Nessun lavoratore registrato.")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted) }
                     else if rows.isEmpty { Text(L("Solo lavoratori finiti da più di 24 ore: attiva «Mostra i finiti».")).font(.system(size: 12)).foregroundStyle(DeckTheme.muted) }
-                    ForEach(rows) { worker in row(worker, home: home, now: now) }
+                    ForEach(rows, id: \.rowID) { worker in row(worker, home: home, now: now) }
                     let hidden = home.workers.count - rows.count
                     if hidden > 0 { Text(L("\(hidden) finiti nascosti")).font(.system(size: 11)).foregroundStyle(DeckTheme.muted) }
                 }
@@ -99,7 +99,7 @@ struct FleetView: View {
     // MARK: one worker
 
     private func row(_ worker: FleetWorker, home: FleetHome, now: Date) -> some View {
-        let key = home.id + "/" + worker.id
+        let key = home.id + "/" + worker.rowID
         let open = expanded.contains(key)
         return VStack(alignment: .leading, spacing: 5) {
             Button { if open { expanded.remove(key) } else { expanded.insert(key) } } label: {
@@ -171,12 +171,11 @@ struct FleetView: View {
         }
     }
     private func minutes(_ seconds: TimeInterval) -> String {
-        let m = Int(seconds / 60)
+        guard let m = FleetAge.minutes(seconds) else { return "—" }
         return m < 1 ? L("meno di 1 min") : m < 120 ? L("\(m) min") : L("\(m / 60) h")
     }
     private func age(_ seconds: TimeInterval?) -> String {
-        guard let seconds else { return "—" }
-        let m = Int(seconds / 60)
+        guard let m = FleetAge.minutes(seconds) else { return "—" }
         return m < 1 ? L("ora") : m < 120 ? L("\(m) min") : m < 60 * 48 ? L("\(m / 60) h") : L("\(m / 1440) giorni")
     }
 }

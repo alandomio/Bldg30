@@ -23,8 +23,24 @@ public enum FleetState: String, CaseIterable, Sendable {
     public var isFinished: Bool { self == .done || self == .stopped }
 }
 
-public struct FleetWorker: Decodable, Equatable, Identifiable, Sendable {
+/// Age values used by the Fleet display. Invalid or unrepresentable seconds mean unknown.
+public enum FleetAge {
+    public static func seconds(_ value: TimeInterval?) -> TimeInterval? {
+        guard let value, value.isFinite, value >= 0, value < Double(Int.max) else { return nil }
+        return value
+    }
+
+    /// The conversion shared by every age label in FleetView.
+    public static func minutes(_ value: TimeInterval?) -> Int? {
+        guard let value = seconds(value) else { return nil }
+        return Int(exactly: (value / 60).rounded(.towardZero))
+    }
+}
+
+public struct FleetWorker: Decodable, Equatable, Sendable {
     public let id: String
+    /// UI identity, separate from the producer's ID shared by a worker and its decision.
+    public let rowID: String
     public let name: String
     public let project: String
     public let kind: String
@@ -47,16 +63,20 @@ public struct FleetWorker: Decodable, Equatable, Identifiable, Sendable {
         self.id = id.isEmpty ? name : id
         self.name = name.isEmpty ? id : name
         project = text(.project); kind = text(.kind); harness = text(.harness); model = text(.model)
+        // Unnamed object rows use their source array position, stable across reloads of that array.
+        // Separate prefixes prevent a real ID from colliding with this positional fallback.
+        let source = self.id.isEmpty ? "index:\(decoder.codingPath.last?.intValue ?? 0)" : "id:\(self.id)"
+        rowID = (kind == "decision" ? "decision/" : "worker/") + source
         state = FleetState(raw: ((try? c.decodeIfPresent(String.self, forKey: .state)) ?? nil))
         crewState = text(.crewState); detail = text(.detail); waitingOn = text(.waitingOn)
         lastActivityAt = CompanionFeed.date((try? c.decodeIfPresent(String.self, forKey: .lastActivityAt)) ?? nil)
-        ageSeconds = (try? c.decodeIfPresent(Double.self, forKey: .ageSeconds)) ?? nil
+        ageSeconds = FleetAge.seconds((try? c.decodeIfPresent(Double.self, forKey: .ageSeconds)) ?? nil)
         links = ((try? c.decodeIfPresent([String].self, forKey: .links)) ?? nil) ?? []
     }
 
     /// Seconds since the last activity; from the timestamp when there is one, else the producer's age.
     public func age(now: Date = Date()) -> TimeInterval? {
-        if let lastActivityAt { return max(0, now.timeIntervalSince(lastActivityAt)) }
+        if let lastActivityAt { return FleetAge.seconds(max(0, now.timeIntervalSince(lastActivityAt))) }
         return ageSeconds
     }
     /// Harness and model, with a dash when the home does not report them (remote homes).
@@ -93,7 +113,8 @@ public struct FleetHome: Decodable, Equatable, Identifiable, Sendable {
         observedAt = CompanionFeed.date((try? c.decodeIfPresent(String.self, forKey: .observedAt)) ?? nil)
         summaryAt = CompanionFeed.date((try? c.decodeIfPresent(String.self, forKey: .summaryAt)) ?? nil)
         omitted = ((try? c.decodeIfPresent(Int.self, forKey: .omitted)) ?? nil) ?? 0
-        workers = ((try? c.decodeIfPresent([FleetWorker].self, forKey: .workers)) ?? nil) ?? []
+        // Reject a broken collection so refreshFleet keeps its last good snapshot and shows the error.
+        workers = c.contains(.workers) ? try c.decode([FleetWorker].self, forKey: .workers) : []
     }
 
     /// Worker count per state, in display order, states with no worker left out.
